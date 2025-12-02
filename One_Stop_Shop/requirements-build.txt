@@ -1,0 +1,4 @@
+# Build requirements for creating executable
+# Install these in addition to requirements.txt
+
+pyinstaller>=6.0.0

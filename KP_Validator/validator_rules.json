@@ -1,0 +1,46 @@
+{
+  "validation_rules": {
+    "required_fields": [
+      "ID",
+      "Name",
+      "Status",
+      "Date"
+    ],
+    "field_types": {
+      "ID": "string",
+      "Name": "string",
+      "Status": "string",
+      "Date": "date",
+      "Amount": "numeric"
+    },
+    "field_constraints": {
+      "Status": {
+        "allowed_values": ["Active", "Inactive", "Pending"]
+      },
+      "Amount": {
+        "min": 0,
+        "max": 1000000
+      }
+    },
+    "custom_rules": [
+      {
+        "name": "unique_id",
+        "description": "ID must be unique",
+        "field": "ID",
+        "rule_type": "unique"
+      },
+      {
+        "name": "valid_email",
+        "description": "Email must be valid format",
+        "field": "Email",
+        "rule_type": "email"
+      }
+    ]
+  },
+  "validation_settings": {
+    "strict_mode": true,
+    "stop_on_first_error": false,
+    "generate_report": true,
+    "report_format": "xlsx"
+  }
+}

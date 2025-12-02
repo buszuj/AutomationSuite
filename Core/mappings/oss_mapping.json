@@ -1,0 +1,22 @@
+{
+  "oss_mapping": {
+    "project_id_column": "Project_ID",
+    "client_name_column": "Client",
+    "source_lang_column": "Source",
+    "target_lang_column": "Target",
+    "status_column": "Status",
+    "priority_column": "Priority"
+  },
+  "scenario_mappings": {
+    "scenario_A": {
+      "trigger_column": "Scenario_Type",
+      "trigger_value": "Type_A",
+      "actions": ["validate", "process", "export"]
+    },
+    "scenario_B": {
+      "trigger_column": "Scenario_Type",
+      "trigger_value": "Type_B",
+      "actions": ["validate", "transform", "export"]
+    }
+  }
+}

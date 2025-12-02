@@ -1,0 +1,57 @@
+{
+  "theme": {
+    "name": "AutomationSuite Default",
+    "version": "1.0",
+    "colors": {
+      "primary": "#0078D4",
+      "secondary": "#005A9E",
+      "success": "#107C10",
+      "warning": "#FF8C00",
+      "error": "#E81123",
+      "background": "#FFFFFF",
+      "text": "#000000",
+      "border": "#D1D1D1"
+    },
+    "fonts": {
+      "primary": "Segoe UI",
+      "monospace": "Consolas",
+      "sizes": {
+        "small": 9,
+        "normal": 10,
+        "large": 12,
+        "xlarge": 14
+      }
+    },
+    "spacing": {
+      "padding_small": 5,
+      "padding_normal": 10,
+      "padding_large": 20,
+      "margin_small": 5,
+      "margin_normal": 10,
+      "margin_large": 20
+    }
+  },
+  "window": {
+    "default_width": 1200,
+    "default_height": 800,
+    "min_width": 800,
+    "min_height": 600,
+    "resizable": true
+  },
+  "components": {
+    "button": {
+      "height": 30,
+      "min_width": 80,
+      "border_radius": 3
+    },
+    "input": {
+      "height": 25,
+      "border_width": 1
+    },
+    "table": {
+      "row_height": 25,
+      "header_height": 30,
+      "alternating_rows": true
+    }
+  }
+}

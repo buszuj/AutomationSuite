@@ -1,0 +1,64 @@
+{
+    "S IQVIA": {
+        "workflow1": [
+            "Translation",
+            "TM - Fuzzy Matches",
+            "TM - Exact Matches",
+            "Formatting",
+            "Review",
+            "Proofreading",
+            "Desktop Publishing (DTP)",
+            "Back Translation",
+            "Editing",
+            "Reconciliation",
+            "Project Management",
+            "Rush Premium"
+        ],
+        "workflow2": [
+            "Formatting"
+        ],
+        "All Services IQ WF": [
+            "Translation",
+            "TM - Fuzzy Matches",
+            "TM - Exact Matches",
+            "Formatting",
+            "Review",
+            "Proofreading",
+            "Desktop Publishing (DTP)",
+            "Back Translation",
+            "Editing",
+            "Reconciliation",
+            "Project Management",
+            "Rush Premium"
+        ]
+    },
+    "S PFM": {
+        "workflow1": [
+            "Proofreading"
+        ],
+        "FT/BT/Recon": [
+            "Trans./Edit/Proof.",
+            "TM - Fuzzy Matches",
+            "TM - Exact Matches",
+            "Back Translation",
+            "Reconciliation",
+            "GL Portal Usage fee",
+            "Rush Premium"
+        ],
+        "All Services testing": [
+            "Trans./Edit/Proof.",
+            "TM - Fuzzy Matches",
+            "TM - Exact Matches",
+            "Formatting",
+            "Review",
+            "Desktop Publishing (DTP)",
+            "Back Translation",
+            "Reconciliation",
+            "Proofreading",
+            "Redaction",
+            "Project Management",
+            "GL Portal Usage fee",
+            "Rush Premium"
+        ]
+    }
+}

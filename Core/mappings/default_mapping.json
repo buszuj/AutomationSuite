@@ -1,0 +1,24 @@
+{
+  "default_mapping": {
+    "date_format": "%Y-%m-%d",
+    "datetime_format": "%Y-%m-%d %H:%M:%S",
+    "encoding": "utf-8",
+    "decimal_separator": ".",
+    "thousand_separator": ","
+  },
+  "common_columns": {
+    "id": "ID",
+    "name": "Name",
+    "description": "Description",
+    "created_date": "Created",
+    "modified_date": "Modified",
+    "status": "Status"
+  },
+  "data_types": {
+    "id": "string",
+    "date": "datetime",
+    "amount": "float",
+    "count": "integer",
+    "flag": "boolean"
+  }
+}

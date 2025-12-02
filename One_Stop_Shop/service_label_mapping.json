@@ -1,0 +1,342 @@
+{
+  "S IQVIA": {
+    "Translation": {
+      "QuoteMe": [
+        "New Words:"
+      ],
+      "QTC": []
+    },
+    "TM - Fuzzy Matches": {
+      "QuoteMe": [
+        "Repetitions:",
+        "Fuzzy Matches:"
+      ],
+      "QTC": []
+    },
+    "TM - Exact Matches": {
+      "QuoteMe": [
+        "Context:",
+        "100%:"
+      ],
+      "QTC": []
+    },
+    "Machine Translation": {
+      "QuoteMe": [
+        "New Words:"
+      ],
+      "QTC": []
+    },
+    "Back Translation": {
+      "QuoteMe": [
+        "New Words:"
+      ],
+      "QTC": [
+        "TC WC for TRANSLATION:"
+      ]
+    },
+    "Formatting": {
+      "QuoteMe": {
+        "live_divider": "500",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": true
+      }
+    },
+    "Review": {
+      "QuoteMe": {
+        "live_divider": "500",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": true
+      }
+    },
+    "Proofreading": {
+      "QuoteMe": {
+        "live_divider": "500",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": false
+      }
+    },
+    "Desktop Publishing (DTP)": {
+      "QuoteMe": {
+        "live_divider": "500",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": true
+      }
+    },
+    "Editing": {
+      "QuoteMe": {
+        "live_divider": "500",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": false
+      }
+    },
+    "Reconciliation": {
+      "QuoteMe": {
+        "live_divider": "500",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": false
+      }
+    },
+    "min_hourly_rate": "0.5",
+    "increment_rate": "0.5",
+    "default_pm_percent": "10"
+  },
+  "S Pfizer": {
+    "Translation and Proofreading": {
+      "QuoteMe": [
+        "New Words:"
+      ],
+      "QTC": []
+    },
+    "TM - Fuzzy Matches": {
+      "QuoteMe": [
+        "Repetitions:",
+        "Fuzzy Matches:"
+      ],
+      "QTC": []
+    },
+    "TM - Exact Matches": {
+      "QuoteMe": [
+        "Context:",
+        "100%:"
+      ],
+      "QTC": []
+    },
+    "Trans./Edit/Proof.": {
+      "QuoteMe": [
+        "New Words:"
+      ],
+      "QTC": []
+    },
+    "Formatting": {
+      "QuoteMe": {
+        "live_divider": "1000",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": true
+      }
+    },
+    "Secondary Review": {
+      "QuoteMe": {
+        "live_divider": "1000",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": true
+      }
+    },
+    "min_hourly_rate": "0.5",
+    "increment_rate": ".05",
+    "default_pm_percent": "10"
+  },
+  "S JJ": {
+    "Translation": {
+      "QuoteMe": [
+        "New Words:"
+      ],
+      "QTC": [
+        "TC WC for TRANSLATION:"
+      ]
+    },
+    "TM - Fuzzy Matches": {
+      "QuoteMe": [
+        "Repetitions:",
+        "Fuzzy Matches:"
+      ],
+      "QTC": []
+    },
+    "TM - Exact Matches": {
+      "QuoteMe": [
+        "Context:",
+        "100%:"
+      ],
+      "QTC": []
+    },
+    "Back Translation": {
+      "QuoteMe": [
+        "New Words:"
+      ],
+      "QTC": [
+        "TC WC for TRANSLATION:"
+      ]
+    },
+    "Formatting": {
+      "QuoteMe": {
+        "live_divider": "1000",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": true
+      }
+    },
+    "Review": {
+      "QuoteMe": {
+        "live_divider": "1000",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": true
+      }
+    },
+    "Desktop Publishing (DTP)": {
+      "QuoteMe": {
+        "live_divider": "1000",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": true
+      }
+    },
+    "min_hourly_rate": "0.5",
+    "increment_rate": "0.5",
+    "default_pm_percent": "10"
+  },
+  "S PFM": {
+    "Trans./Edit/Proof.": {
+      "QuoteMe": [
+        "New Words:"
+      ],
+      "QTC": []
+    },
+    "TM - Fuzzy Matches": {
+      "QuoteMe": [
+        "Repetitions:",
+        "Fuzzy Matches:"
+      ],
+      "QTC": []
+    },
+    "TM - Exact Matches": {
+      "QuoteMe": [
+        "Context:",
+        "100%:"
+      ],
+      "QTC": []
+    },
+    "Back Translation": {
+      "QuoteMe": [
+        "New Words:"
+      ],
+      "QTC": []
+    },
+    "Formatting": {
+      "QuoteMe": {
+        "live_divider": "1000",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": true
+      }
+    },
+    "Review": {
+      "QuoteMe": {
+        "live_divider": "1000",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": true
+      }
+    },
+    "Desktop Publishing (DTP)": {
+      "QuoteMe": {
+        "live_divider": "1000",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": true
+      }
+    },
+    "Reconciliation": {
+      "QuoteMe": {
+        "live_divider": "1000",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": true
+      }
+    },
+    "Proofreading": {
+      "QuoteMe": {
+        "live_divider": "1000",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": true
+      }
+    },
+    "Redaction": {
+      "QuoteMe": {
+        "live_divider": "1000",
+        "dead_divider": "1000"
+      },
+      "QTC": {
+        "live_divider": "1000",
+        "dead_divider": "1000",
+        "use_wc_for_revision": false,
+        "use_wc_for_translation": true
+      }
+    },
+    "min_hourly_rate": "0.5",
+    "increment_rate": "0.5",
+    "default_pm_percent": "10"
+  }
+}

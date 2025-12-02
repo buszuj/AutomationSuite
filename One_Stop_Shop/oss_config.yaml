@@ -1,0 +1,87 @@
+# One Stop Shop Configuration
+
+# General Settings
+general:
+  app_name: "One Stop Shop - The OneBP Quote Calculator"
+  version: "1.1.0"
+  enable_logging: true
+
+# TheOneBP Settings
+theonebp:
+  ratesheet_file: "One_BP_IQ fixed.01.xlsx"
+  workflows_file: "workflows.json"
+  service_mapping_file: "service_label_mapping.json"
+  
+  # Default values
+  defaults:
+    hourly_divider: 1000
+    min_fee_rate: 150
+    min_hourly_rate: 0.5
+    increment_rate: 0.25
+    default_pm_percent: 10
+  
+  # UI Settings
+  ui:
+    window_width: 1200
+    base_height: 400
+    row_height: 18
+    theme: "blue"
+    appearance_mode: "System"
+  
+  # PA Entities
+  pa_entities:
+    - "TPTNY"
+    - "TPTUK"
+    - "TPTZA"
+    - "TPTFR"
+    - "TPTIT"
+    - "ESTDC"
+    - "TPTSK"
+    - "TPTDE"
+    - "TPTNL"
+    - "TPTBR"
+    - "TPBRA"
+    - "TPTTW"
+    - "TPTSG"
+    - "TPTZH"
+    - "TPTHK"
+    - "TPTJP"
+    - "TPTMI"
+    - "TPTAR"
+    - "QGNTO"
+
+# Scenario Settings (legacy - kept for future expansion)
+scenarios:
+  enabled_scenarios:
+    - "theonebp_calculator"
+  
+  default_scenario: "theonebp_calculator"
+  
+  scenario_directory: "scenario_modules"
+
+# Data Processing
+data_processing:
+  input_directory: "input"
+  output_directory: "output"
+  archive_directory: "archive"
+  
+  file_patterns:
+    - "*.xlsx"
+    - "*.xlsm"
+    - "*.csv"
+
+# Validation Rules
+validation:
+  strict_mode: false
+  required_columns:
+    - "Service"
+    - "UofM"
+    - "Quantity"
+    - "Rate"
+
+# Export Settings
+export:
+  default_format: "csv"
+  include_timestamp: true
+  csv_encoding: "utf-8-sig"
+

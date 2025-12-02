@@ -1,0 +1,27 @@
+{
+  "ceva_mapping": {
+    "source_column": "Source File Type",
+    "target_column": "File_Type",
+    "language_code_column": "LP",
+    "deadline_column": "Deadline",
+    "word_count_column": "Total_WC",
+    "job_id_column": "Sub_ID",
+    "pdf_delivery_column": "Please pick yes if a PDF delivery is required (by default TP does not deliver PDFs)",
+    "study_type_column": "Study_Type",
+    "msla_column": "MSLA"
+  },
+  "column_mappings": {
+    "Sub_ID": "Job ID",
+    "Total_WC": "Word Count",
+    "File_Status": "File Status",
+    "Source_File_Type": "File Type",
+    "Study_Type": "Study Type",
+    "LP": "Language Pair",
+    "File_Count": "File Count",
+    "Deadline": "Due Date",
+    "PDF_Delivery": "PDF Required",
+    "Status": "Job Status",
+    "PO_Balance": "PO Balance",
+    "PO_Project_Match": "PO Match"
+  }
+}

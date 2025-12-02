@@ -1,0 +1,19 @@
+# One Stop Shop Requirements
+# Dependencies for the TheOneBP quote calculator application
+
+# UI Framework
+customtkinter>=5.2.0
+ttkthemes>=3.2.2
+
+# Data Processing
+pandas>=2.0.0
+openpyxl>=3.1.0  # For Excel file handling
+
+# Standard library dependencies (no installation needed)
+# - tkinter (comes with Python)
+# - json
+# - os
+# - sys
+# - pathlib
+# - math
+# - threading

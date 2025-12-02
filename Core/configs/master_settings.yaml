@@ -1,0 +1,68 @@
+# AutomationSuite Master Configuration
+
+# General Settings
+general:
+  app_name: "AutomationSuite"
+  version: "1.0.0"
+  author: "Your Organization"
+  log_level: "INFO"
+
+# Core Module Settings
+core:
+  excel:
+    default_engine: "openpyxl"
+    read_timeout: 30
+    write_timeout: 30
+  
+  dataframe:
+    default_encoding: "utf-8"
+    max_rows_display: 100
+    chunk_size: 10000
+  
+  validation:
+    strict_mode: false
+    auto_fix: false
+
+# CEVA Launcher Settings
+ceva_launcher:
+  enabled: true
+  config_file: "ceva_config.yaml"
+  auto_load_reports: true
+  default_language_pair: "en-US"
+
+# One Stop Shop Settings
+one_stop_shop:
+  enabled: false
+  config_file: "oss_config.yaml"
+  scenario_directory: "scenario_modules"
+
+# KP Validator Settings
+kp_validator:
+  enabled: false
+  config_file: "validator_rules.json"
+  strict_validation: true
+
+# Shared UI Settings
+shared_ui:
+  theme: "default"
+  window_size: [1200, 800]
+  font_family: "Segoe UI"
+  font_size: 10
+
+# Paths
+paths:
+  temp_directory: "temp"
+  logs_directory: "logs"
+  output_directory: "output"
+  backup_directory: "backups"
+
+# External Tools
+external_tools:
+  tesseract_path: "tesseract"
+  poppler_path: "poppler/bin"
+  
+# Performance
+performance:
+  max_workers: 4
+  enable_caching: true
+  cache_size_mb: 100
