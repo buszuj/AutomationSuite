@@ -1,0 +1,31 @@
+{
+	"folders": [
+		{
+			"path": "Core",
+			"name": "Core"
+		},
+		{
+			"path": "CEVA_Launcher",
+			"name": "CEVA_Launcher"
+		},
+		{
+			"path": "One_Stop_Shop",
+			"name": "One_Stop_Shop"
+		},
+		{
+			"path": "KP_Validator",
+			"name": "KP_Validator"
+		},
+		{
+			"path": "Shared_UI",
+			"name": "Shared_UI"
+		}
+	],
+	"settings": {
+		"python.defaultInterpreterPath": "python",
+		"files.exclude": {
+			"**/__pycache__": true,
+			"**/*.pyc": true
+		}
+	}
+}
