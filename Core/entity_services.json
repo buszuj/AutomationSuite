@@ -1,0 +1,63 @@
+{
+  "TPUS": [
+    ["Service Group 1", "Service Group 2", "Service", "Default UofM"],
+    ["Language Services", "Translation", "Translation and Proofreading", "Word"],
+    ["Language Services", "Translation", "MT full EditProof", "Word"],
+    ["Language Services", "Translation", "TM - Fuzzy Matches", "Word"],
+    ["Language Services", "Translation", "TM - Exact Matches", "Word"],
+    ["Language Services", "Translation", "Localization", "Hour"],
+    ["Desktop Publishing", "Translation", "Formatting", "Hour"],
+    ["Language Services", "Translation", "Redaction", "Hour"],
+    ["Language Services", "Translation", "Transcription", "Word"],
+    ["Language Services", "Translation", "Proofreading", "Hour"],
+    ["Language Services", "Translation", "Reconciliation", "Hour"],
+    ["Language Services", "Translation", "Review", "Hour"],
+    ["Language Services", "Translation", "Revision", "Hour"],
+    ["Verification Services", "Notary Service", "Notary Service", "Word"],
+    ["Handling & Delivery", "", "Courrier", "Fee"],
+    ["Desktop Publishing", "Translation", "Desktop Publishing", "Hour"],
+    ["Handling & Delivery", "", "Courier - Domestic", "Fee"]
+  ],
+  "TPTDE": [
+    ["Service Group 1", "Service Group 2", "Service", "Default UofM"],
+    ["Language Services", "Translation", "Translation and Proofreading", "Word"]
+  ],
+  "TPTEST": [
+    ["Service Group 1", "Service Group 2", "Service", "Default UofM"],
+    ["Language Services", "Translation", "Translation and Proofreading", "Word"],
+    ["Language Services", "Translation", "MT full EditProof", "Word"],
+    ["Language Services", "Translation", "TM - Fuzzy Matches", "Word"],
+    ["Language Services", "Translation", "TM - Exact Matches", "Word"],
+    ["Language Services", "Translation", "Localization", "Hour"],
+    ["Desktop Publishing", "Translation", "Formatting", "Hour"],
+    ["Language Services", "Translation", "Redaction", "Hour"],
+    ["Language Services", "Translation", "Transcription", "Word"],
+    ["Language Services", "Translation", "Proofreading", "Hour"],
+    ["Language Services", "Translation", "Reconciliation", "Hour"],
+    ["Language Services", "Translation", "Review", "Hour"],
+    ["Language Services", "Translation", "Revision", "Hour"],
+    ["Verification Services", "Notary Service", "Notary Service", "Word"],
+    ["Handling & Delivery", "", "Courrier", "Fee"],
+    ["Desktop Publishing", "Translation", "Desktop Publishing", "Hour"],
+    ["Handling & Delivery", "", "Courier - Domestic", "Fee"]
+  ],
+  "TPTFR": [
+    ["Service Group 1", "Service Group 2", "Service", "Default UofM"],
+    ["Language Services", "Translation", "Translation and Proofreading", "Word"],
+    ["Language Services", "Translation", "MT full EditProof", "Word"],
+    ["Language Services", "Translation", "TM - Fuzzy Matches", "Word"],
+    ["Language Services", "Translation", "TM - Exact Matches", "Word"],
+    ["Language Services", "Translation", "Localization", "Hour"],
+    ["Desktop Publishing", "Translation", "Le Formatting :(", "Hour"],
+    ["Language Services", "Translation", "Redaction", "Hour"],
+    ["Language Services", "Translation", "Transcription", "Word"],
+    ["Language Services", "Translation", "Proofreading", "Hour"],
+    ["Language Services", "Translation", "Reconciliation", "Hour"],
+    ["Language Services", "Translation", "Review", "Hour"],
+    ["Language Services", "Translation", "Revision", "Hour"],
+    ["Verification Services", "Notary Service", "Notary Service", "Word"],
+    ["Handling & Delivery", "", "Courrier", "Fee"],
+    ["Desktop Publishing", "Translation", "Desktop Publishing", "Hour"],
+    ["Handling & Delivery", "", "Courier - Domestic", "Fee"]
+  ]
+}

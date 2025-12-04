@@ -1,0 +1,31 @@
+{
+  "accounts": {
+    "Test Account": {
+      "workflows": {
+        "Standard Translation": [
+          "Translation and Proofreading",
+          "Proofreading"
+        ],
+        "Full Service": [
+          "Translation and Proofreading",
+          "Desktop Publishing",
+          "Proofreading"
+        ]
+      }
+    },
+    "IQVIA": {
+      "workflows": {
+        "HT Trans + Proof": [
+          "Translation and Proofreading",
+          "Proofreading"
+        ]
+      }
+    },
+    "PXL": {
+      "workflows": {}
+    },
+    "Pfizer": {
+      "workflows": {}
+    }
+  }
+}
