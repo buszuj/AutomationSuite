@@ -1,0 +1,82 @@
+{
+    "TEST_ACCOUNT": {
+        "template_name": "Test Integration Template",
+        "description": "Test template for validation",
+        "key_column_name": "Field Name",
+        "data_column_name": "Value",
+        "mappings": [
+            {
+                "key": "Project Code",
+                "source_column": "Project_Code",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": "text"
+            },
+            {
+                "key": "Job ID",
+                "source_column": "Sub_ID",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": "text"
+            },
+            {
+                "key": "Language Pair",
+                "source_column": "Language_Pair",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": "text"
+            },
+            {
+                "key": "Word Count",
+                "source_column": "Word_Count",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": "number"
+            },
+            {
+                "key": "Status",
+                "source_column": null,
+                "mapping_type": "static",
+                "static_value": "Ready for Import",
+                "formula": null,
+                "format": "text"
+            },
+            {
+                "key": "Total Cost",
+                "source_column": null,
+                "mapping_type": "calculated",
+                "static_value": null,
+                "formula": "row['Word_Count'] * 0.15",
+                "format": "currency"
+            },
+            {
+                "key": "Due Date",
+                "source_column": "Due_Date",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": "date"
+            }
+        ]
+    },
+    "Pfizer": {
+        "template_name": "PXL integration Template",
+        "description": "Standard Template for job  PXL job integration",
+        "key_column_name": "Field Name",
+        "data_column_name": "Value",
+        "mappings": [
+            {
+                "key": "Entity",
+                "mapping_type": "static",
+                "source_column": "",
+                "static_value": "TP",
+                "formula": null,
+                "format": "text"
+            }
+        ]
+    }
+}

@@ -1,0 +1,53 @@
+{
+  "PXL": [
+    "Submission LP",
+    "Source Language",
+    "Target Language(s)",
+    "Deadline (actual date & time)",
+    "GL Portal No",
+    "Bill To Info",
+    "Currency Code",
+    "If Rush, please enter desired rush deadline here",
+    "PAREXEL Project Number",
+    "Sponsor",
+    "Workflow"
+  ],
+  "Pfizer": [
+    "GL Portal No",
+    "Submitter Username",
+    "Submitter Name",
+    "Source Language",
+    "Target Language(s)",
+    "Client Requested Deadline",
+    "Proposed Deadline",
+    "Accepted Deadline",
+    "Requester's Country",
+    "Additional Instructions",
+    "Country",
+    "Blanket PO",
+    "Document Type",
+    "If Rush, please enter desired rush deadline here",
+    "PO Number",
+    "PAREXEL Project Number",
+    "Rush",
+    "Sponsor Protocol Number",
+    "Sponsor",
+    "Workflow"
+  ],
+  "IQVIA": [
+    "Submission ID",
+    "Submission Created Date CET",
+    "Sponsor",
+    "Protocol",
+    "Workflow",
+    "Country",
+    "Source Language",
+    "Target Language",
+    "Project Code",
+    "Document Type",
+    "File Name",
+    "PO Number",
+    "Instructions",
+    "SubmissionOwner"
+  ]
+}

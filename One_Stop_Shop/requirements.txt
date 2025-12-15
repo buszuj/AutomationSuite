@@ -4,10 +4,14 @@
 # UI Framework
 customtkinter>=5.2.0
 ttkthemes>=3.2.2
+tkinterdnd2>=0.3.0  # For drag-and-drop functionality
 
 # Data Processing
 pandas>=2.0.0
 openpyxl>=3.1.0  # For Excel file handling
+
+# API and HTTP
+requests>=2.31.0  # For GLE API calls
 
 # Standard library dependencies (no installation needed)
 # - tkinter (comes with Python)
@@ -17,3 +21,4 @@ openpyxl>=3.1.0  # For Excel file handling
 # - pathlib
 # - math
 # - threading
+# - tempfile

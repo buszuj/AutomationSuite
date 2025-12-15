@@ -1,18 +1,5 @@
 {
   "accounts": {
-    "Test Account": {
-      "workflows": {
-        "Standard Translation": [
-          "Translation and Proofreading",
-          "Proofreading"
-        ],
-        "Full Service": [
-          "Translation and Proofreading",
-          "Desktop Publishing",
-          "Proofreading"
-        ]
-      }
-    },
     "IQVIA": {
       "workflows": {
         "HT Trans + Proof": [
@@ -25,6 +12,12 @@
       "workflows": {}
     },
     "Pfizer": {
+      "workflows": {}
+    },
+    "Sandoz": {
+      "workflows": {}
+    },
+    "ROCHE": {
       "workflows": {}
     }
   }
