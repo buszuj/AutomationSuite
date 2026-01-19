@@ -30,6 +30,9 @@ from Core.rate_calculations import (
 # Import admin config UI
 from admin_config_ui import open_admin_config
 
+# Import QuoteMe Parser
+from quoteme_parser_ui import create_parser_tab
+
 
 def get_excel_path():
     if getattr(sys, 'frozen', False):
@@ -313,6 +316,60 @@ file_type_var = ctk.StringVar(value=file_types[0])
 ctk.CTkLabel(header_frame, text="File Type:", font=FONT).grid(row=2, column=0, padx=5, pady=PADY_LABEL, sticky="w")
 file_type_dropdown = ctk.CTkOptionMenu(header_frame, variable=file_type_var, values=file_types)
 file_type_dropdown.grid(row=2, column=1, padx=5, pady=PADY_ITEM, sticky="ew")
+
+# Add QuoteMe Parser button
+parser_window = None
+
+def open_quoteme_parser():
+    """Open the QuoteMe Email Parser window"""
+    global parser_window
+    
+    if parser_window is not None and parser_window.winfo_exists():
+        parser_window.lift()
+        return
+    
+    def on_parser_apply(lp_code: str, lp_data):
+        """Callback when parser applies data to main form"""
+        # Add language pair if not exists
+        lp_obj = lp_manager.get_lp(lp_code)
+        if not lp_obj:
+            parts = lp_code.split(" > ")
+            if len(parts) == 2:
+                source, target = parts
+                lp_manager.add_lp(source.strip(), target.strip())
+        
+        # Apply the word count data to QuoteMe fields
+        cumulative_wc = lp_data.cumulative_wc
+        quoteMe_entries["Context:"].delete(0, "end")
+        quoteMe_entries["Context:"].insert(0, str(cumulative_wc.context))
+        quoteMe_entries["100%:"].delete(0, "end")
+        quoteMe_entries["100%:"].insert(0, str(cumulative_wc.fuzzy_100))
+        quoteMe_entries["Repetitions:"].delete(0, "end")
+        quoteMe_entries["Repetitions:"].insert(0, str(cumulative_wc.repetitions))
+        quoteMe_entries["Fuzzy Matches:"].delete(0, "end")
+        quoteMe_entries["Fuzzy Matches:"].insert(0, str(cumulative_wc.fuzzy_matches))
+        quoteMe_entries["New Words:"].delete(0, "end")
+        quoteMe_entries["New Words:"].insert(0, str(cumulative_wc.new_words))
+        
+        update_preview()
+        messagebox.showinfo("Success", f"Applied QuoteMe data for:\n{lp_code}")
+    
+    # Create floating window
+    parser_window = ctk.CTkToplevel(root)
+    parser_window.title("QuoteMe Email Parser")
+    parser_window.geometry("1000x700")
+    
+    # Create parser tab
+    parser_tab = create_parser_tab(parser_window, on_apply_callback=on_parser_apply)
+    
+    # Handle window close
+    def on_closing():
+        global parser_window
+        parser_window = None
+    
+    parser_window.protocol("WM_DELETE_WINDOW", on_closing)
+
+ctk.CTkButton(header_frame, text="📧 Parse Email", command=open_quoteme_parser, fg_color="orange").grid(row=3, column=0, columnspan=2, padx=5, pady=PADY_ITEM, sticky="ew")
 
 file_type_var.get()  # returns "Live" or "Dead"
 
