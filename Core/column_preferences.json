@@ -1,14 +1,16 @@
 {
   "PXL": [
-    "Submission LP",
+    "GL Portal No",
     "Source Language",
     "Target Language(s)",
     "Deadline (actual date & time)",
-    "GL Portal No",
-    "Bill To Info",
-    "Currency Code",
     "If Rush, please enter desired rush deadline here",
+    "Country",
+    "Requester's Country",
+    "Additional Instructions",
+    "Currency Code",
     "PAREXEL Project Number",
+    "PO Number",
     "Sponsor",
     "Workflow"
   ],

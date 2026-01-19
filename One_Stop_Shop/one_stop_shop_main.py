@@ -657,7 +657,8 @@ class OneStopShopMain:
                 command=dialog.destroy,
                 width=120,
                 height=35,
-                fg_color="gray"
+                fg_color="gray",
+                text_color="white"
             ).pack(side="left", padx=10)
         
         except Exception as e:
@@ -1141,7 +1142,8 @@ class OneStopShopMain:
             command=dialog.destroy,
             width=120,
             height=40,
-            fg_color="gray"
+            fg_color="gray",
+            text_color="white"
         ).pack(side="left", padx=10)
     
     def refresh_ui(self):
@@ -1554,7 +1556,8 @@ class OneStopShopMain:
             command=dialog.destroy,
             width=120,
             height=35,
-            fg_color="gray"
+            fg_color="gray",
+            text_color="white"
         ).pack(side="left", padx=10)
     
     def configure_visible_columns(self):
@@ -1594,9 +1597,26 @@ class OneStopShopMain:
         checkbox_frame = ctk.CTkScrollableFrame(dialog, height=400)
         checkbox_frame.pack(fill="both", expand=True, padx=20, pady=10)
         
-        # Create checkboxes for each column
+        # Load saved preferences to maintain column order
+        saved_columns = self.load_column_preferences(self.current_account) if self.current_account else []
+        
+        # Build column list: keep saved order, then add new columns at bottom
+        all_columns = list(self.current_data.columns)
+        ordered_columns = []
+        
+        # First, add columns in saved order
+        for col in saved_columns:
+            if col in all_columns:
+                ordered_columns.append(col)
+        
+        # Then, add any new columns not in saved preferences (at the bottom)
+        for col in all_columns:
+            if col not in ordered_columns:
+                ordered_columns.append(col)
+        
+        # Create checkboxes for each column in preserved order
         column_vars = {}
-        for col in self.current_data.columns:
+        for col in ordered_columns:
             var = ctk.BooleanVar(value=col in self.visible_columns)
             column_vars[col] = var
             
@@ -1660,7 +1680,8 @@ class OneStopShopMain:
             text="Cancel",
             command=dialog.destroy,
             width=100,
-            fg_color="gray"
+            fg_color="gray",
+            text_color="white"
         ).pack(side="left", padx=5)
     
     def update_data_display(self):
