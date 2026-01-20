@@ -86,7 +86,7 @@ class QuoteParserTab:
         self.email_text.pack(fill="both", expand=True, padx=5, pady=5)
         
         # Button frame
-        button_frame = ctk.CTkFrame(input_inner, fg_color="transparent")
+        button_frame = ctk.CTkFrame(input_inner)
         button_frame.pack(fill="x", padx=5, pady=5)
         
         parse_btn = ctk.CTkButton(button_frame, text="Parse Email", command=self._on_parse_click)
@@ -105,7 +105,7 @@ class QuoteParserTab:
         self.status_label.pack(anchor="w", padx=5, pady=(5, 0))
         
         # Language pair selector
-        lp_selector_frame = ctk.CTkFrame(results_inner, fg_color="transparent")
+        lp_selector_frame = ctk.CTkFrame(results_inner)
         lp_selector_frame.pack(fill="x", padx=5, pady=5)
         
         ctk.CTkLabel(lp_selector_frame, text="Language Pair:", font=ctk.CTkFont(size=10)).pack(side="left", padx=2)
@@ -120,9 +120,9 @@ class QuoteParserTab:
         display_frame.pack(fill="both", expand=True, padx=5, pady=5)
         
         # Create scrollable area for the data display
-        canvas = ctk.CTkCanvas(display_frame, fg_color="transparent", bg_color="transparent", highlightthickness=0)
+        canvas = ctk.CTkCanvas(display_frame, highlightthickness=0)
         scrollbar = ctk.CTkScrollbar(display_frame, orientation="vertical", command=canvas.yview)
-        scrollable_frame = ctk.CTkFrame(canvas, fg_color="transparent")
+        scrollable_frame = ctk.CTkFrame(canvas)
         
         scrollable_frame.bind(
             "<Configure>",
@@ -138,10 +138,10 @@ class QuoteParserTab:
         self.data_display_frame = scrollable_frame
         
         # --- Action Buttons ---
-        action_frame = ctk.CTkFrame(results_inner, fg_color="transparent")
+        action_frame = ctk.CTkFrame(results_inner)
         action_frame.pack(fill="x", padx=5, pady=5)
         
-        apply_btn = ctk.CTkButton(action_frame, text="Apply Selected LP", command=self._on_apply_click, fg_color="green")
+        apply_btn = ctk.CTkButton(action_frame, text="Apply Selected LP", command=self._on_apply_click)
         apply_btn.pack(side="left", padx=2)
         
         apply_all_btn = ctk.CTkButton(action_frame, text="Apply All LPs", command=self._on_apply_all_click)
@@ -300,7 +300,7 @@ class QuoteParserTab:
             field_name: Attribute name (context, fuzzy_100, etc)
             file_name: Optional file name for identification
         """
-        row_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        row_frame = ctk.CTkFrame(parent)
         row_frame.pack(fill="x", padx=10, pady=3)
         
         label = ctk.CTkLabel(row_frame, text=label_text, width=100, anchor="w")
