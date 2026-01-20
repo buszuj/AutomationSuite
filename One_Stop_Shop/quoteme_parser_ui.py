@@ -25,14 +25,23 @@ def create_labeled_frame(parent, text: str, **kwargs):
     Create a labeled frame compatible with customtkinter
     Works around CTkLabelFrame not being available in all versions
     """
-    frame = ctk.CTkFrame(parent, **kwargs)
+    # Filter out unsupported parameters for older customtkinter versions
+    supported_kwargs = {}
+    unsupported_params = {'fg_color', 'text_color', 'border_color', 'border_width'}
+    
+    for key, value in kwargs.items():
+        if key not in unsupported_params:
+            supported_kwargs[key] = value
+    
+    # Create outer frame
+    frame = ctk.CTkFrame(parent, **supported_kwargs)
     
     # Add a title label at the top
     label = ctk.CTkLabel(frame, text=text, font=ctk.CTkFont(size=12, weight="bold"))
     label.pack(anchor="w", padx=5, pady=(5, 10))
     
     # Create an inner frame for content
-    inner_frame = ctk.CTkFrame(frame, fg_color="transparent")
+    inner_frame = ctk.CTkFrame(frame)
     inner_frame.pack(fill="both", expand=True, padx=5, pady=5)
     
     return frame, inner_frame
