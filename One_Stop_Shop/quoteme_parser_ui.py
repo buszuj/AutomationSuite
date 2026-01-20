@@ -20,6 +20,24 @@ from Core.quoteme_email_parser import (
 )
 
 
+def create_labeled_frame(parent, text: str, **kwargs):
+    """
+    Create a labeled frame compatible with customtkinter
+    Works around CTkLabelFrame not being available in all versions
+    """
+    frame = ctk.CTkFrame(parent, **kwargs)
+    
+    # Add a title label at the top
+    label = ctk.CTkLabel(frame, text=text, font=ctk.CTkFont(size=12, weight="bold"))
+    label.pack(anchor="w", padx=5, pady=(5, 10))
+    
+    # Create an inner frame for content
+    inner_frame = ctk.CTkFrame(frame, fg_color="transparent")
+    inner_frame.pack(fill="both", expand=True, padx=5, pady=5)
+    
+    return frame, inner_frame
+
+
 class QuoteParserTab:
     """UI Tab for QuoteMe email parsing"""
     
@@ -49,17 +67,17 @@ class QuoteParserTab:
         main_frame.pack(fill="both", expand=True, padx=5, pady=5)
         
         # --- Email Input Section ---
-        input_frame = ctk.CTkLabelFrame(main_frame, text="Step 1: Paste Email Body", fg_color="transparent")
+        input_frame, input_inner = create_labeled_frame(main_frame, text="Step 1: Paste Email Body", fg_color="transparent")
         input_frame.pack(fill="both", padx=5, pady=5)
         
-        ctk.CTkLabel(input_frame, text="Paste the complete email body from QuoteMe:", 
+        ctk.CTkLabel(input_inner, text="Paste the complete email body from QuoteMe:", 
                      font=ctk.CTkFont(size=11)).pack(anchor="w", padx=5, pady=(5, 2))
         
-        self.email_text = scrolledtext.ScrolledText(input_frame, height=8, width=80, wrap="word")
+        self.email_text = scrolledtext.ScrolledText(input_inner, height=8, width=80, wrap="word")
         self.email_text.pack(fill="both", expand=True, padx=5, pady=5)
         
         # Button frame
-        button_frame = ctk.CTkFrame(input_frame, fg_color="transparent")
+        button_frame = ctk.CTkFrame(input_inner, fg_color="transparent")
         button_frame.pack(fill="x", padx=5, pady=5)
         
         parse_btn = ctk.CTkButton(button_frame, text="Parse Email", command=self._on_parse_click)
@@ -69,16 +87,16 @@ class QuoteParserTab:
         clear_btn.pack(side="left", padx=2)
         
         # --- Results Section ---
-        results_frame = ctk.CTkLabelFrame(main_frame, text="Step 2: Review & Edit Parsed Data", fg_color="transparent")
+        results_frame, results_inner = create_labeled_frame(main_frame, text="Step 2: Review & Edit Parsed Data", fg_color="transparent")
         results_frame.pack(fill="both", expand=True, padx=5, pady=5)
         
         # Status message
-        self.status_label = ctk.CTkLabel(results_frame, text="No data parsed yet", 
+        self.status_label = ctk.CTkLabel(results_inner, text="No data parsed yet", 
                                         text_color="gray", font=ctk.CTkFont(size=10))
         self.status_label.pack(anchor="w", padx=5, pady=(5, 0))
         
         # Language pair selector
-        lp_selector_frame = ctk.CTkFrame(results_frame, fg_color="transparent")
+        lp_selector_frame = ctk.CTkFrame(results_inner, fg_color="transparent")
         lp_selector_frame.pack(fill="x", padx=5, pady=5)
         
         ctk.CTkLabel(lp_selector_frame, text="Language Pair:", font=ctk.CTkFont(size=10)).pack(side="left", padx=2)
@@ -89,7 +107,7 @@ class QuoteParserTab:
         self.lp_dropdown.pack(side="left", padx=2, fill="x", expand=True)
         
         # Data display area (scrollable notebook-like layout)
-        display_frame = ctk.CTkFrame(results_frame)
+        display_frame = ctk.CTkFrame(results_inner)
         display_frame.pack(fill="both", expand=True, padx=5, pady=5)
         
         # Create scrollable area for the data display
@@ -111,7 +129,7 @@ class QuoteParserTab:
         self.data_display_frame = scrollable_frame
         
         # --- Action Buttons ---
-        action_frame = ctk.CTkFrame(results_frame, fg_color="transparent")
+        action_frame = ctk.CTkFrame(results_inner, fg_color="transparent")
         action_frame.pack(fill="x", padx=5, pady=5)
         
         apply_btn = ctk.CTkButton(action_frame, text="Apply Selected LP", command=self._on_apply_click, fg_color="green")
@@ -208,17 +226,17 @@ class QuoteParserTab:
         title.pack(anchor="w", padx=5, pady=(10, 5))
         
         # Cumulative Data Section
-        cum_frame = ctk.CTkLabelFrame(self.data_display_frame, text="Cumulative Data (All Files)", fg_color="transparent")
+        cum_frame, cum_inner = create_labeled_frame(self.data_display_frame, text="Cumulative Data (All Files)", fg_color="transparent")
         cum_frame.pack(fill="x", padx=5, pady=5)
         
-        self._create_wc_entry_row(cum_frame, "Context:", lp_data.cumulative_wc, "context")
-        self._create_wc_entry_row(cum_frame, "100%:", lp_data.cumulative_wc, "fuzzy_100")
-        self._create_wc_entry_row(cum_frame, "Repetitions:", lp_data.cumulative_wc, "repetitions")
-        self._create_wc_entry_row(cum_frame, "Fuzzy Matches:", lp_data.cumulative_wc, "fuzzy_matches")
-        self._create_wc_entry_row(cum_frame, "New Words:", lp_data.cumulative_wc, "new_words")
+        self._create_wc_entry_row(cum_inner, "Context:", lp_data.cumulative_wc, "context")
+        self._create_wc_entry_row(cum_inner, "100%:", lp_data.cumulative_wc, "fuzzy_100")
+        self._create_wc_entry_row(cum_inner, "Repetitions:", lp_data.cumulative_wc, "repetitions")
+        self._create_wc_entry_row(cum_inner, "Fuzzy Matches:", lp_data.cumulative_wc, "fuzzy_matches")
+        self._create_wc_entry_row(cum_inner, "New Words:", lp_data.cumulative_wc, "new_words")
         
         total_label = ctk.CTkLabel(
-            cum_frame,
+            cum_inner,
             text=f"Total: {lp_data.cumulative_wc.total}",
             font=ctk.CTkFont(size=11, weight="bold")
         )
@@ -226,7 +244,7 @@ class QuoteParserTab:
         
         # Per-File Data Section
         if lp_data.file_breakdowns:
-            file_frame = ctk.CTkLabelFrame(self.data_display_frame, text="Per-File Breakdown", fg_color="transparent")
+            file_frame, file_inner = create_labeled_frame(self.data_display_frame, text="Per-File Breakdown", fg_color="transparent")
             file_frame.pack(fill="both", expand=True, padx=5, pady=5)
             
             for file_bd in lp_data.file_breakdowns:
@@ -252,10 +270,10 @@ class QuoteParserTab:
         
         # TM Configuration
         if lp_data.tm_config:
-            tm_frame = ctk.CTkLabelFrame(self.data_display_frame, text="TM Configuration", fg_color="transparent")
+            tm_frame, tm_inner = create_labeled_frame(self.data_display_frame, text="TM Configuration", fg_color="transparent")
             tm_frame.pack(fill="x", padx=5, pady=5)
             
-            tm_label = ctk.CTkLabel(tm_frame, text=lp_data.tm_config, wraplength=400, justify="left")
+            tm_label = ctk.CTkLabel(tm_inner, text=lp_data.tm_config, wraplength=400, justify="left")
             tm_label.pack(anchor="w", padx=10, pady=5)
         
         # Store reference to LP data for later use
