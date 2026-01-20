@@ -22,15 +22,10 @@ sys.path.insert(0, str(core_path))
 
 from pa_template_manager import PATemplateManager
 from pa_template_processor import PATemplateProcessor
-import os
-from datetime import datetime
+from quoteme_email_parser import QuoteeMEmailParser, get_parse_cache
 
-# Add Core to path for PA Template modules
-core_path = Path(__file__).parent.parent / "Core"
-sys.path.insert(0, str(core_path))
-
-from pa_template_manager import PATemplateManager
-from pa_template_processor import PATemplateProcessor
+# Import the parser UI (from same directory)
+from quoteme_parser_ui import create_parser_tab
 
 
 class DataViewerWindow:
@@ -447,6 +442,8 @@ class OneStopShopMain:
         menubar.add_cascade(label="  Configuration  ", menu=config_menu)
         config_menu.add_command(label="Select Account", command=self.select_account)
         config_menu.add_separator()
+        config_menu.add_command(label="QuoteMe Email Parser", command=self.open_quoteme_parser)
+        config_menu.add_separator()
         config_menu.add_command(label="Manage Entities", command=self.open_entity_manager)
         config_menu.add_command(label="Map Services", command=self.open_service_mapper)
         config_menu.add_command(label="Configure Workflows", command=self.open_workflow_manager)
@@ -664,6 +661,42 @@ class OneStopShopMain:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load accounts: {str(e)}")
             dialog.destroy()
+    
+    def open_quoteme_parser(self):
+        """Open the QuoteMe Email Parser window"""
+        parser_window = None
+        
+        def check_parser_window():
+            nonlocal parser_window
+            if parser_window is not None and parser_window.winfo_exists():
+                parser_window.lift()
+                return
+            
+            def on_parser_apply(lp_code: str, lp_data):
+                """Callback when parser applies data - could be used for future integration"""
+                messagebox.showinfo("Success", f"Parsed data for:\n{lp_code}\n\nData cached and ready for use.")
+            
+            # Create floating window
+            parser_window = ctk.CTkToplevel(self.root)
+            parser_window.title("QuoteMe Email Parser")
+            parser_window.geometry("1000x700")
+            
+            try:
+                # Create parser tab
+                parser_tab = create_parser_tab(parser_window, on_apply_callback=on_parser_apply)
+                
+                # Handle window close
+                def on_closing():
+                    nonlocal parser_window
+                    parser_window = None
+                
+                parser_window.protocol("WM_DELETE_WINDOW", on_closing)
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to open parser: {str(e)}")
+                parser_window.destroy()
+                parser_window = None
+        
+        check_parser_window()
     
     def open_entity_manager(self):
         """Launch Entity Manager in modal mode"""

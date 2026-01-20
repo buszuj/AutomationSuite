@@ -436,7 +436,7 @@ def on_workflow_select(event):
     update_preview()
 
 WFlistbox.bind("<<ListboxSelect>>", on_workflow_select)
-workflows = load_workflows()
+workflows = workflow_manager.get_workflows_for_account(CurrentWS)
 
 
 def get_service_quantity(service, use_qtc_input=False):
