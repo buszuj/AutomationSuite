@@ -17,7 +17,7 @@ TPUS_PA_SERVICES = [
     ['Handling & Delivery', '', 'Courrier', 'Fee'],
     ['Desktop Publishing', 'Translation', 'Desktop Publishing', 'Hour'],
     ['Handling & Delivery', '', 'Courier - Domestic', 'Fee'],
-    ['testSG1', 'test Sg2', 'test Servce', 'test Uofm'],
+    ['Handling & Delivery', '', 'Rush\n', 'Fee'],
     ['', '', '', ''],
 ]
 
@@ -119,11 +119,39 @@ TPT_PA_SERVICES = [
     ['', '', '', ''],
 ]
 
+
+# List of TPTSWE PA Services
+TPTSWE_PA_SERVICES = [
+    ['Service Group 1', 'Service Group 2', 'Service', 'Default UofM'],
+    ['Language Services', 'Translation', 'Translation and Proofreading', 'Ord'],
+    ['Language Services', 'Translation', 'MT full EditProof', 'Ord'],
+    ['Language Services', 'Translation', 'TM - Fuzzy Matches', 'Ord'],
+    ['Language Services', 'Translation', 'TM - Exact Matches', 'Ord'],
+    ['Language Services', 'Translation', 'Localization', 'Ord'],
+    ['Desktop Publishing', 'Translation', 'Formatting', 'Ord'],
+    ['Language Services', 'Translation', 'Redaction', 'Ord'],
+    ['Language Services', 'Translation', 'Transcription', 'Ord'],
+    ['Language Services', 'Translation', 'Proofreading', 'Timme'],
+    ['Language Services', 'Translation', 'Reconciliation', 'Timme'],
+    ['Language Services', 'Translation', 'Review', 'Timme'],
+    ['Language Services', 'Translation', 'Revision', 'Timme'],
+    ['Verification Services', 'Notary Service', 'Notary Service', 'Ord'],
+    ['Handling & Delivery', '', 'Courrier', 'Fee'],
+    ['Desktop Publishing', 'Translation', 'Desktop Publishing', 'Timme'],
+    ['Handling & Delivery', '', 'Courier - Domestic', 'Fee'],
+    ['Language Services', 'Translation', 'TM - Repetitions', 'Ord'],
+    ['', '', '', ''],
+    ['', '', '', ''],
+    ['', '', '', ''],
+    ['testSG1', 'test Sg2', 'test Servce', 'test Uofm'],
+]
+
 PA_SERVICES = {
     "TPUS": TPUS_PA_SERVICES,
     "TPTDE": TPTDE_PA_SERVICES,
     "TPTIT": TPTIT_PA_SERVICES,
     "TPT": TPT_PA_SERVICES,
+    "TPTSWE": TPTSWE_PA_SERVICES,
 }
 
 

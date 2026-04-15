@@ -156,7 +156,7 @@ class PATemplateProcessor:
         
         try:
             if mapping_type == "direct":
-                return self._apply_direct_mapping(row_data, mapping)
+                return self._apply_direct_mapping(row_data, full_df, mapping)
             
             elif mapping_type == "static":
                 return self._apply_static_mapping(mapping)
@@ -175,7 +175,7 @@ class PATemplateProcessor:
             print(f"Error applying mapping for key '{mapping.get('key')}': {e}")
             return ""
     
-    def _apply_direct_mapping(self, row_data: pd.Series, mapping: Dict[str, Any]) -> Any:
+    def _apply_direct_mapping(self, row_data: pd.Series, full_df: pd.DataFrame, mapping: Dict[str, Any]) -> Any:
         """
         Apply direct column mapping
         
@@ -187,10 +187,42 @@ class PATemplateProcessor:
             Column value with optional formatting
         """
         source_column = mapping.get("source_column")
-        if not source_column or source_column not in row_data:
+        if not source_column:
             return ""
-        
+
+        # Try exact match, then case/whitespace-insensitive match
+        if source_column not in row_data:
+            normalized = {str(col).strip().lower(): col for col in row_data.index}
+            match = normalized.get(str(source_column).strip().lower())
+            if match:
+                source_column = match
+            else:
+                return ""
+
         value = row_data[source_column]
+
+        # If value is missing or looks like a header, try to map by job/portal ID
+        if (pd.isna(value) or str(value).strip() == "" or (isinstance(value, str) and value.strip() == str(source_column).strip())):
+            id_columns = [
+                "GL Portal No",
+                "GL Portal Number",
+                "Job ID",
+                "Job_ID",
+                "Sub_ID",
+                "Submission ID",
+            ]
+            id_col = next((c for c in id_columns if c in row_data.index), None)
+            if id_col is not None:
+                id_value = row_data.get(id_col)
+                if pd.notna(id_value):
+                    matches = full_df[full_df[id_col] == id_value]
+                    if not matches.empty:
+                        candidate_series = matches[source_column].dropna()
+                        candidate_series = candidate_series[candidate_series.astype(str).str.strip() != ""]
+                        if not candidate_series.empty:
+                            candidate = candidate_series.iloc[0]
+                            if str(candidate).strip() != str(source_column).strip():
+                                value = candidate
         
         # Apply formatting if specified
         format_type = mapping.get("format")

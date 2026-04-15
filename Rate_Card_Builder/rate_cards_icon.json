@@ -1,0 +1,163 @@
+{
+  "name": "icon",
+  "sponsor": "EIKON",
+  "services": [
+    "Translation",
+    "TM - Fuzzy Match Low",
+    "TM - Fuzzy Match Medium",
+    "TM - Fuzzy Match High",
+    "TM - Exact Match"
+  ],
+  "languages": {
+    "Danish": {
+      "iso_code": "da",
+      "rates": {
+        "Translation": "0.21",
+        "TM - Fuzzy Match Low": "",
+        "TM - Fuzzy Match Medium": "",
+        "TM - Fuzzy Match High": "",
+        "TM - Exact Match": ""
+      }
+    },
+    "Estonian": {
+      "iso_code": "et",
+      "rates": {
+        "Translation": "0.21",
+        "TM - Fuzzy Match Low": "",
+        "TM - Fuzzy Match Medium": "",
+        "TM - Fuzzy Match High": "",
+        "TM - Exact Match": ""
+      }
+    },
+    "Finnish": {
+      "iso_code": "fi",
+      "rates": {
+        "Translation": "0.21",
+        "TM - Fuzzy Match Low": "",
+        "TM - Fuzzy Match Medium": "",
+        "TM - Fuzzy Match High": "",
+        "TM - Exact Match": ""
+      }
+    },
+    "Flemish": {
+      "iso_code": "nl-BE",
+      "rates": {
+        "Translation": "0.21",
+        "TM - Fuzzy Match Low": "",
+        "TM - Fuzzy Match Medium": "",
+        "TM - Fuzzy Match High": "",
+        "TM - Exact Match": ""
+      }
+    },
+    "Japanese": {
+      "iso_code": "ja",
+      "rates": {
+        "Translation": "0.21",
+        "TM - Fuzzy Match Low": "",
+        "TM - Fuzzy Match Medium": "",
+        "TM - Fuzzy Match High": "",
+        "TM - Exact Match": ""
+      }
+    },
+    "Korean": {
+      "iso_code": "ko",
+      "rates": {
+        "Translation": "0.21",
+        "TM - Fuzzy Match Low": "",
+        "TM - Fuzzy Match Medium": "",
+        "TM - Fuzzy Match High": "",
+        "TM - Exact Match": ""
+      }
+    },
+    "Latvian": {
+      "iso_code": "lv",
+      "rates": {
+        "Translation": "0.21",
+        "TM - Fuzzy Match Low": "",
+        "TM - Fuzzy Match Medium": "",
+        "TM - Fuzzy Match High": "",
+        "TM - Exact Match": ""
+      }
+    },
+    "Lithuanian": {
+      "iso_code": "lt",
+      "rates": {
+        "Translation": "0.21",
+        "TM - Fuzzy Match Low": "",
+        "TM - Fuzzy Match Medium": "",
+        "TM - Fuzzy Match High": "",
+        "TM - Exact Match": ""
+      }
+    },
+    "Malay": {
+      "iso_code": "ms",
+      "rates": {
+        "Translation": "0.21",
+        "TM - Fuzzy Match Low": "",
+        "TM - Fuzzy Match Medium": "",
+        "TM - Fuzzy Match High": "",
+        "TM - Exact Match": ""
+      }
+    },
+    "Norwegian": {
+      "iso_code": "no",
+      "rates": {
+        "Translation": "0.21",
+        "TM - Fuzzy Match Low": "",
+        "TM - Fuzzy Match Medium": "",
+        "TM - Fuzzy Match High": "",
+        "TM - Exact Match": ""
+      }
+    },
+    "Swedish": {
+      "iso_code": "sv",
+      "rates": {
+        "Translation": "0.21",
+        "TM - Fuzzy Match Low": "",
+        "TM - Fuzzy Match Medium": "",
+        "TM - Fuzzy Match High": "",
+        "TM - Exact Match": ""
+      }
+    },
+    "Thai": {
+      "iso_code": "th",
+      "rates": {
+        "Translation": "0.21",
+        "TM - Fuzzy Match Low": "",
+        "TM - Fuzzy Match Medium": "",
+        "TM - Fuzzy Match High": "",
+        "TM - Exact Match": ""
+      }
+    },
+    "Ukrainian": {
+      "iso_code": "uk",
+      "rates": {
+        "Translation": "0.21",
+        "TM - Fuzzy Match Low": "",
+        "TM - Fuzzy Match Medium": "",
+        "TM - Fuzzy Match High": "",
+        "TM - Exact Match": ""
+      }
+    },
+    "Uzbek": {
+      "iso_code": "uz",
+      "rates": {
+        "Translation": "0.21",
+        "TM - Fuzzy Match Low": "",
+        "TM - Fuzzy Match Medium": "",
+        "TM - Fuzzy Match High": "",
+        "TM - Exact Match": ""
+      }
+    },
+    "Afrikaans": {
+      "iso_code": "af",
+      "rates": {
+        "Translation": "0.21",
+        "TM - Fuzzy Match Low": "",
+        "TM - Fuzzy Match Medium": "",
+        "TM - Fuzzy Match High": "",
+        "TM - Exact Match": ""
+      }
+    }
+  }
+}

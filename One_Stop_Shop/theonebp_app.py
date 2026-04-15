@@ -365,6 +365,8 @@ def open_quoteme_parser():
     # Handle window close
     def on_closing():
         global parser_window
+        if parser_window is not None and parser_window.winfo_exists():
+            parser_window.destroy()
         parser_window = None
     
     parser_window.protocol("WM_DELETE_WINDOW", on_closing)

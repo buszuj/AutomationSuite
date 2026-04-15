@@ -54,7 +54,19 @@ class ServiceEditorWindow:
             
             self.services = [row.copy() for row in WF_Matrix.PA_SERVICES[entity_name]]
             self.modified = False
-            
+
+            # Load TPUS master services and mapper (only needed for non-TPUS entities)
+            self._pending_new_tpus_services = []   # new rows to be added to TPUS
+            self._mapping_vars = []                # (mapping_var, entries_ref) per row
+            if self.entity_name != "TPUS":
+                from entity_service_mapper import EntityServiceMapper
+                self.mapper = EntityServiceMapper()
+                tpus_data = WF_Matrix.PA_SERVICES.get("TPUS", [])
+                self.tpus_services = [row[2] for row in tpus_data[1:]]  # skip header
+            else:
+                self.mapper = None
+                self.tpus_services = []
+
             self.setup_ui()
             
         except Exception as e:
@@ -112,11 +124,15 @@ class ServiceEditorWindow:
         # Header row
         header_bg = ctk.CTkFrame(self.scroll_frame, fg_color="#2b2b2b")
         header_bg.pack(fill="x", pady=(0, 10))
-        
-        headers = ["#", "Service Group 1", "Service Group 2", "Service", "UofM", "Actions"]
-        col_widths = [40, 150, 150, 200, 80, 100]
-        
-        for i, (header, width) in enumerate(zip(headers, col_widths)):
+
+        if self.entity_name != "TPUS":
+            headers = ["#", "Service Group 1", "Service Group 2", "Service", "UofM", "Map TPUS Variant", "Actions"]
+            self._col_widths = [40, 130, 130, 170, 70, 185, 80]
+        else:
+            headers = ["#", "Service Group 1", "Service Group 2", "Service", "UofM", "Actions"]
+            self._col_widths = [40, 150, 150, 200, 80, 100]
+
+        for i, (header, width) in enumerate(zip(headers, self._col_widths)):
             label = ctk.CTkLabel(
                 header_bg,
                 text=header,
@@ -124,7 +140,7 @@ class ServiceEditorWindow:
                 width=width
             )
             label.grid(row=0, column=i, padx=5, pady=10, sticky="w")
-        
+
         # Data rows (skip header row in services)
         self.entry_widgets = []
         for idx, service in enumerate(self.services[1:], 1):
@@ -172,43 +188,166 @@ class ServiceEditorWindow:
         
     def create_service_row(self, row_num, service):
         """Create a row for editing a service"""
-        
+
         row_frame = ctk.CTkFrame(self.scroll_frame)
         row_frame.pack(fill="x", pady=2)
-        
+
         # Row number
-        num_label = ctk.CTkLabel(row_frame, text=str(row_num), width=40)
-        num_label.grid(row=0, column=0, padx=5, pady=5)
-        
-        # Entry fields
+        ctk.CTkLabel(row_frame, text=str(row_num), width=40).grid(
+            row=0, column=0, padx=5, pady=5)
+
+        # Entry fields: SG1, SG2, Service, UofM
         entries = []
-        col_widths = [150, 150, 200, 80]
-        
+        entry_widths = [130, 130, 170, 70]
+
         def on_entry_change(*args):
             self.modified = True
-        
-        for col_idx, (value, width) in enumerate(zip(service, col_widths), 1):
+
+        for col_idx, (value, width) in enumerate(zip(service, entry_widths), 1):
             entry = ctk.CTkEntry(row_frame, width=width)
             entry.insert(0, str(value))
             entry.grid(row=0, column=col_idx, padx=5, pady=5)
-            # Bind change event
             entry.bind('<KeyRelease>', on_entry_change)
             entries.append(entry)
-        
-        # Delete button
-        delete_btn = ctk.CTkButton(
+
+        # TPUS mapping column (col 5) – typeahead combobox, non-TPUS entities only
+        mapping_var = None
+        if self.entity_name != "TPUS":
+            service_name = service[2] if len(service) > 2 else ""
+            existing = self.mapper.get_mapping(self.entity_name, service_name) or ""
+            _NEW_OPT = "\u2795 New TPUS service\u2026"
+            options = self.tpus_services + [_NEW_OPT]
+            initial = existing if existing in self.tpus_services else \
+                      (self.tpus_services[0] if self.tpus_services else "")
+
+            mapping_var = ctk.StringVar(value=initial)
+            combo = ctk.CTkComboBox(
+                row_frame,
+                variable=mapping_var,
+                values=options,
+                width=185,
+                height=30,
+                command=lambda v, mv=mapping_var: self._on_mapping_select(v, mv)
+            )
+            combo.set(initial)
+            combo.grid(row=0, column=5, padx=5, pady=5)
+            combo.bind("<KeyRelease>",
+                       lambda e, cb=combo, mv=mapping_var: self._filter_combo(e, cb, mv))
+            delete_col = 6
+        else:
+            delete_col = 5
+
+        ctk.CTkButton(
             row_frame,
-            text="🗑️",
-            command=lambda: self.delete_service_row(row_frame, row_num),
-            width=60,
-            height=30,
-            fg_color="#e74c3c",
-            hover_color="#c0392b"
-        )
-        delete_btn.grid(row=0, column=5, padx=5, pady=5)
+            text="\U0001f5d1\ufe0f",
+            command=lambda rf=row_frame: self.delete_service_row(rf, row_num),
+            width=60, height=30,
+            fg_color="#e74c3c", hover_color="#c0392b"
+        ).grid(row=0, column=delete_col, padx=5, pady=5)
+
+        self.entry_widgets.append((row_frame, entries, row_num, mapping_var))
+
+    def _filter_combo(self, event, combo: ctk.CTkComboBox, mv: ctk.StringVar):
+        """Typeahead: filter combobox values to those matching what was typed."""
+        typed = combo.get().lower()
+        _NEW_OPT = "\u2795 New TPUS service\u2026"
+        all_opts = self.tpus_services + [_NEW_OPT]
+        filtered = [o for o in all_opts if typed in o.lower()] if typed else all_opts
+        combo.configure(values=filtered if filtered else all_opts)
         
-        self.entry_widgets.append((row_frame, entries, row_num))
-        
+    def _on_mapping_select(self, value: str, mapping_var: ctk.StringVar):
+        """Handle selection in a TPUS mapping dropdown."""
+        _NEW_OPT = "\u2795 New TPUS service\u2026"
+        if value != _NEW_OPT:
+            self.modified = True
+            return
+
+        result = self._show_new_tpus_service_dialog()
+        if result and result.get("service"):
+            new_svc = result["service"].strip()
+            if new_svc and new_svc not in self.tpus_services:
+                self.tpus_services.append(new_svc)
+                self._pending_new_tpus_services.append(result)
+                # Refresh every mapping dropdown in the window
+                self._refresh_all_mapping_menus()
+            mapping_var.set(new_svc)
+            self.modified = True
+        else:
+            # Revert to first TPUS service
+            mapping_var.set(self.tpus_services[0] if self.tpus_services else "")
+
+    def _refresh_all_mapping_menus(self):
+        """Update values of every mapping ComboBox to include newly added TPUS services."""
+        _NEW_OPT = "\u2795 New TPUS service\u2026"
+        new_options = self.tpus_services + [_NEW_OPT]
+        for row_frame, _, __, mapping_var in self.entry_widgets:
+            if mapping_var is None:
+                continue
+            for widget in row_frame.winfo_children():
+                if isinstance(widget, ctk.CTkComboBox):
+                    widget.configure(values=new_options)
+
+    def _show_new_tpus_service_dialog(self) -> dict | None:
+        """
+        Small modal dialog to define a brand-new TPUS service.
+        Returns {sg1, sg2, service, uom} or None if cancelled.
+        """
+        result = {}
+        dialog = ctk.CTkToplevel(self.window)
+        dialog.title("New TPUS Service")
+        dialog.geometry("420x320")
+        dialog.grab_set()
+        dialog.attributes("-topmost", True)
+        dialog.resizable(False, False)
+
+        ctk.CTkLabel(dialog, text="Define New TPUS Service",
+                     font=ctk.CTkFont(size=15, weight="bold")).pack(pady=(16, 10))
+
+        form = ctk.CTkFrame(dialog, fg_color="transparent")
+        form.pack(fill="x", padx=24)
+        form.grid_columnconfigure(1, weight=1)
+
+        fields = [
+            ("Service Group 1:",  "e.g. Language Services"),
+            ("Service Group 2:",  "e.g. Translation"),
+            ("Service Name:",     "Required"),
+            ("Default UofM:",     "Word / Hour / Fee"),
+        ]
+        entries_map = {}
+        for r, (lbl, ph) in enumerate(fields):
+            ctk.CTkLabel(form, text=lbl, anchor="e", width=130).grid(
+                row=r, column=0, sticky="e", padx=(0, 8), pady=6)
+            e = ctk.CTkEntry(form, placeholder_text=ph, width=220)
+            e.grid(row=r, column=1, sticky="ew", pady=6)
+            entries_map[lbl] = e
+
+        def on_ok():
+            svc = entries_map["Service Name:"].get().strip()
+            if not svc:
+                messagebox.showwarning("Required", "Service Name cannot be empty.",
+                                       parent=dialog)
+                return
+            result["sg1"]     = entries_map["Service Group 1:"].get().strip()
+            result["sg2"]     = entries_map["Service Group 2:"].get().strip()
+            result["service"] = svc
+            result["uom"]     = entries_map["Default UofM:"].get().strip()
+            dialog.destroy()
+
+        def on_cancel():
+            dialog.destroy()
+
+        btn_row = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_row.pack(pady=16)
+        ctk.CTkButton(btn_row, text="Add", width=100,
+                      fg_color="#2ecc71", hover_color="#27ae60",
+                      command=on_ok).pack(side="left", padx=8)
+        ctk.CTkButton(btn_row, text="Cancel", width=100,
+                      fg_color="#95a5a6", hover_color="#7f8c8d",
+                      command=on_cancel).pack(side="left", padx=8)
+
+        dialog.wait_window()
+        return result if result else None
+
     def add_new_service(self):
         """Add a new blank service row"""
         new_row_num = len(self.entry_widgets) + 1
@@ -222,89 +361,141 @@ class ServiceEditorWindow:
             "Confirm Delete",
             f"Are you sure you want to delete service #{row_num}?"
         )
-        
+
         if confirm:
             row_frame.destroy()
-            # Remove from entry_widgets
-            self.entry_widgets = [(f, e, n) for f, e, n in self.entry_widgets if f != row_frame]
+            self.entry_widgets = [(f, e, n, mv) for f, e, n, mv in self.entry_widgets if f != row_frame]
             self.modified = True
             # Renumber remaining rows
-            for idx, (frame, entries, old_num) in enumerate(self.entry_widgets, 1):
-                # Update row number label
+            for idx, (frame, entries, old_num, _mv) in enumerate(self.entry_widgets, 1):
                 for widget in frame.winfo_children():
                     if isinstance(widget, ctk.CTkLabel):
                         widget.configure(text=str(idx))
                         break
             
     def save_changes(self):
-        """Save changes to WF_Matrix.py"""
-        
+        """Save changes to WF_Matrix.py, service_mappings.json and entity_services.json"""
+
         # Collect all services from entry widgets
         new_services = [self.services[0]]  # Keep header
-        
-        for frame, entries, _ in self.entry_widgets:
-            if frame.winfo_exists():  # Check if not deleted
+        mapping_pairs = []  # list of (entity_service_name, tpus_service_name)
+
+        for frame, entries, _, mapping_var in self.entry_widgets:
+            if frame.winfo_exists():
                 service = [entry.get() for entry in entries]
                 new_services.append(service)
+                if mapping_var is not None:
+                    mapping_pairs.append((service[2], mapping_var.get()))
         
         if len(new_services) == 1:  # Only header
             messagebox.showerror("Error", "Cannot save entity with no services!")
             return
-        
-        # Update WF_Matrix.py
+
         try:
-            # If this is TPUS (master), detect new services and sync to other entities
+            import importlib
+
+            # ── 1. Flush pending new TPUS services created via the dialog ──────
+            if self._pending_new_tpus_services:
+                for new_row in self._pending_new_tpus_services:
+                    svc_row = [
+                        new_row.get("sg1", ""),
+                        new_row.get("sg2", ""),
+                        new_row.get("service", ""),
+                        new_row.get("uom", ""),
+                    ]
+                    self._append_service_to_entity("TPUS", svc_row)
+                importlib.reload(WF_Matrix)
+
+            # ── 2. TPUS entity: detect added services, offer to sync ───────────
             if self.entity_name == "TPUS":
-                old_master_services = [row[2] for row in self.services[1:]]  # Old service names
-                new_master_services = [row[2] for row in new_services[1:]]  # New service names
+                old_master_services = [row[2] for row in self.services[1:]]
+                new_master_services = [row[2] for row in new_services[1:]]
                 added_services = [s for s in new_master_services if s not in old_master_services]
-                
+
                 if added_services:
-                    # Import mapper to sync
-                    sys.path.insert(0, str(Path(__file__).parent.parent.parent / "Core"))
                     from entity_service_mapper import EntityServiceMapper
                     mapper = EntityServiceMapper()
-                    
-                    # Ask user if they want to sync
                     sync_response = messagebox.askyesno(
                         "Sync Master Services",
                         f"You added {len(added_services)} new service(s) to TPUS:\n" +
-                        "\n".join(f"  • {s}" for s in added_services) +
-                        "\n\nDo you want to add these to all other entities?\n" +
+                        "\n".join(f"  \u2022 {s}" for s in added_services) +
+                        "\n\nDo you want to add these to all other entities?\n"
                         "(They will use the same name by default, but you can edit them later)"
                     )
-                    
                     if sync_response:
-                        # Update all entities
                         for service_name in added_services:
-                            mapper.update_all_entities_with_new_master_service(service_name, WF_Matrix.PA_SERVICES)
-            
+                            mapper.update_all_entities_with_new_master_service(
+                                service_name, WF_Matrix.PA_SERVICES)
+
+            # ── 3. Save this entity's services ────────────────────────────────
             self.update_services_in_file(new_services)
-            messagebox.showinfo("Success", f"Services for {self.entity_name} saved successfully!")
+
+            # ── 4. Save TPUS mapping pairs for non-TPUS entities ─────────────
+            if self.entity_name != "TPUS" and mapping_pairs:
+                _NEW_OPT = "\u2795 New TPUS service\u2026"
+                for entity_svc, tpus_svc in mapping_pairs:
+                    if entity_svc and tpus_svc and tpus_svc != _NEW_OPT:
+                        self.mapper.set_mapping(self.entity_name, entity_svc, tpus_svc)
+
+            messagebox.showinfo("Saved", f"Services for {self.entity_name} saved successfully!")
             self.modified = False
-            
+            # Update in-memory snapshot so on_closing won't flag unsaved changes
+            self.services = new_services
+
             if self.on_save_callback:
                 self.on_save_callback()
-            
-            self.window.destroy()
-            
+            # Window stays open – user can continue editing or close manually
+
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save services:\n{str(e)}")
+
+    def _append_service_to_entity(self, entity_name: str, service_row: list):
+        """Append a single service row to an entity in both WF_Matrix.py and entity_services.json."""
+        import json
+
+        # -- WF_Matrix.py --
+        wf_path = Path(__file__).parent.parent.parent / "Core" / "WF_Matrix.py"
+        with open(wf_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        var = f"{entity_name}_PA_SERVICES"
+        # Find closing bracket of that variable and insert before it
+        in_block, depth = False, 0
+        for i, line in enumerate(lines):
+            if f"{var} = [" in line:
+                in_block = True
+            if in_block:
+                depth += line.count("[") - line.count("]")
+                if depth == 0:
+                    lines.insert(i, f"    {service_row},\n")
+                    break
+        with open(wf_path, "w", encoding="utf-8") as f:
+            f.writelines(lines)
+
+        # -- entity_services.json --
+        js_path = Path(__file__).parent.parent.parent / "Core" / "entity_services.json"
+        if js_path.exists():
+            with open(js_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if entity_name in data:
+                data[entity_name].append(service_row)
+                with open(js_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
     
     def update_services_in_file(self, new_services):
-        """Update services in WF_Matrix.py file"""
-        
+        """Update services in WF_Matrix.py and entity_services.json"""
+        import json
+
+        # ── WF_Matrix.py ──────────────────────────────────────────────────────
         wf_matrix_path = Path(__file__).parent.parent.parent / "Core" / "WF_Matrix.py"
-        
+
         with open(wf_matrix_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
-        
-        # Find the entity list definition
+
         variable_name = f"{self.entity_name}_PA_SERVICES"
         start_line = -1
         end_line = -1
         bracket_count = 0
-        
+
         for i, line in enumerate(lines):
             if f"{variable_name} = [" in line:
                 start_line = i
@@ -314,49 +505,63 @@ class ServiceEditorWindow:
                 if bracket_count == 0:
                     end_line = i
                     break
-        
+
         if start_line == -1:
             raise Exception(f"Could not find {variable_name} in WF_Matrix.py")
-        
-        # Generate new lines
+
         new_lines = [f"{variable_name} = [\n"]
         for service in new_services:
             new_lines.append(f"    {service},\n")
         new_lines.append("]\n")
-        
-        # Replace old definition with new one
+
         lines = lines[:start_line] + new_lines + lines[end_line + 1:]
-        
-        # Write back
+
         with open(wf_matrix_path, 'w', encoding='utf-8') as f:
             f.writelines(lines)
+
+        # ── entity_services.json ──────────────────────────────────────────────
+        js_path = Path(__file__).parent.parent.parent / "Core" / "entity_services.json"
+        if js_path.exists():
+            with open(js_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            data[self.entity_name] = new_services   # full replacement for this entity
+            with open(js_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
 
 
 class EntityManagerGUI:
     """GUI for managing PA Service entities"""
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, frame=None):
         """
         Initialize the Entity Manager GUI
-        
+
         Args:
             parent: Parent window (optional). If None, creates standalone window.
+            frame: If provided, embeds the UI into this frame instead of a new window.
         """
-        if parent:
+        self.embedded = frame is not None
+
+        if frame is not None:
+            # Embedded mode: build into the provided frame
+            self.window = frame
+        elif parent:
             self.window = ctk.CTkToplevel(parent)
+            self.window.title("PA Services Entity Manager")
+            self.window.geometry("800x600")
         else:
             self.window = ctk.CTk()
-            
-        self.window.title("PA Services Entity Manager")
-        self.window.geometry("800x600")
-        
-        # Set theme
-        ctk.set_appearance_mode("dark")
-        ctk.set_default_color_theme("blue")
-        
+            self.window.title("PA Services Entity Manager")
+            self.window.geometry("800x600")
+
+        if not self.embedded:
+            # Set theme only for standalone windows
+            ctk.set_appearance_mode("dark")
+            ctk.set_default_color_theme("blue")
+
         # Store reference to open editor windows
         self.editor_windows = []
-        
+
         self.setup_ui()
         
     def setup_ui(self):
@@ -366,13 +571,14 @@ class EntityManagerGUI:
         main_frame = ctk.CTkFrame(self.window)
         main_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Title
-        title_label = ctk.CTkLabel(
-            main_frame, 
-            text="PA Services Entity Manager",
-            font=ctk.CTkFont(size=24, weight="bold")
-        )
-        title_label.pack(pady=(0, 20))
+        # Title (hidden when embedded)
+        if not self.embedded:
+            title_label = ctk.CTkLabel(
+                main_frame, 
+                text="PA Services Entity Manager",
+                font=ctk.CTkFont(size=24, weight="bold")
+            )
+            title_label.pack(pady=(0, 20))
         
         # Create two columns
         columns_frame = ctk.CTkFrame(main_frame)

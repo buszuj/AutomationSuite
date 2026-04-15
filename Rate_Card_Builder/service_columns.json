@@ -1,0 +1,10 @@
+{
+  "services": [
+    "Translation",
+    "TM - Fuzzy Match Low",
+    "TM - Fuzzy Matches",
+    "TM - Fuzzy Match Medium",
+    "TM - Fuzzy Match High",
+    "TM - Exact Match"
+  ]
+}

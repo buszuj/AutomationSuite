@@ -7,6 +7,7 @@ and allowing users to edit and apply the parsed values to the main form.
 
 import customtkinter as ctk
 from tkinter import messagebox, scrolledtext
+import re
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -65,90 +66,119 @@ class QuoteParserTab:
         self.parse_cache = get_parse_cache()
         self.current_parse_result: Optional[ParseResult] = None
         self.selected_lp_index = 0
-        
+        self._lp_label_map: Dict[str, str] = {}   # display label → full lp_code
+        self._entry_fields: Dict = {}
+
         # Create UI
         self._create_widgets()
     
     def _create_widgets(self):
         """Create all UI widgets"""
-        # Main container
+        # Main container - two rows: input (fixed) + results (expanding)
         main_frame = ctk.CTkFrame(self.parent)
         main_frame.pack(fill="both", expand=True, padx=5, pady=5)
-        
-        # --- Email Input Section ---
-        input_frame, input_inner = create_labeled_frame(main_frame, text="Step 1: Paste Email Body", fg_color="transparent")
-        input_frame.pack(fill="both", padx=5, pady=5)
-        
-        ctk.CTkLabel(input_inner, text="Paste the complete email body from QuoteMe:", 
-                     font=ctk.CTkFont(size=11)).pack(anchor="w", padx=5, pady=(5, 2))
-        
-        self.email_text = scrolledtext.ScrolledText(input_inner, height=8, width=80, wrap="word")
-        self.email_text.pack(fill="both", expand=True, padx=5, pady=5)
-        
-        # Button frame
-        button_frame = ctk.CTkFrame(input_inner)
-        button_frame.pack(fill="x", padx=5, pady=5)
-        
-        parse_btn = ctk.CTkButton(button_frame, text="Parse Email", command=self._on_parse_click)
-        parse_btn.pack(side="left", padx=2)
-        
-        clear_btn = ctk.CTkButton(button_frame, text="Clear", command=self._on_clear_click)
-        clear_btn.pack(side="left", padx=2)
-        
-        # --- Results Section ---
-        results_frame, results_inner = create_labeled_frame(main_frame, text="Step 2: Review & Edit Parsed Data", fg_color="transparent")
-        results_frame.pack(fill="both", expand=True, padx=5, pady=5)
-        
-        # Status message
-        self.status_label = ctk.CTkLabel(results_inner, text="No data parsed yet", 
-                                        text_color="gray", font=ctk.CTkFont(size=10))
-        self.status_label.pack(anchor="w", padx=5, pady=(5, 0))
-        
-        # Language pair selector
-        lp_selector_frame = ctk.CTkFrame(results_inner)
-        lp_selector_frame.pack(fill="x", padx=5, pady=5)
-        
-        ctk.CTkLabel(lp_selector_frame, text="Language Pair:", font=ctk.CTkFont(size=10)).pack(side="left", padx=2)
-        
-        self.lp_var = ctk.StringVar(value="")
-        self.lp_dropdown = ctk.CTkOptionMenu(lp_selector_frame, variable=self.lp_var, 
-                                            values=[], command=self._on_lp_select)
-        self.lp_dropdown.pack(side="left", padx=2, fill="x", expand=True)
-        
-        # Data display area (scrollable notebook-like layout)
-        display_frame = ctk.CTkFrame(results_inner)
-        display_frame.pack(fill="both", expand=True, padx=5, pady=5)
-        
-        # Create scrollable area for the data display
-        canvas = ctk.CTkCanvas(display_frame, highlightthickness=0)
-        scrollbar = ctk.CTkScrollbar(display_frame, orientation="vertical", command=canvas.yview)
-        scrollable_frame = ctk.CTkFrame(canvas)
-        
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        main_frame.grid_rowconfigure(1, weight=1)
+        main_frame.grid_columnconfigure(0, weight=1)
+
+        # ── Step 1: Email Input (fixed height, buttons on the right) ─────────
+        input_section = ctk.CTkFrame(main_frame, fg_color="#2b2b2b", corner_radius=8)
+        input_section.grid(row=0, column=0, sticky="ew", padx=5, pady=(5, 3))
+
+        ctk.CTkLabel(input_section, text="Step 1: Paste Email Body",
+                     font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=8, pady=(6, 2))
+
+        # Row: text area + action buttons side by side
+        input_row = ctk.CTkFrame(input_section, fg_color="transparent")
+        input_row.pack(fill="x", padx=5, pady=(0, 6))
+
+        self.email_text = scrolledtext.ScrolledText(input_row, height=7, wrap="word",
+                                                     bg="#1e1e1e", fg="white",
+                                                     insertbackground="white",
+                                                     font=("Arial", 11))
+        self.email_text.pack(side="left", fill="both", expand=True, padx=(0, 6))
+
+        # Buttons stacked vertically on the right
+        btn_col = ctk.CTkFrame(input_row, fg_color="transparent")
+        btn_col.pack(side="right", fill="y")
+
+        ctk.CTkButton(btn_col, text="Parse Email", command=self._on_parse_click,
+                      width=120, height=35, font=ctk.CTkFont(size=11, weight="bold"),
+                      fg_color="#2ecc71", hover_color="#27ae60").pack(pady=(0, 6))
+
+        ctk.CTkButton(btn_col, text="Clear", command=self._on_clear_click,
+                      width=120, height=35,
+                      fg_color="#e74c3c", hover_color="#c0392b").pack()
+
+        # ── Step 2: Results (expands to fill remaining space) ─────────────────
+        results_section = ctk.CTkFrame(main_frame, fg_color="#2b2b2b", corner_radius=8)
+        results_section.grid(row=1, column=0, sticky="nsew", padx=5, pady=(3, 5))
+        results_section.grid_rowconfigure(0, weight=0, minsize=48)  # LP picker strip – fixed 48 px
+        results_section.grid_rowconfigure(1, weight=1)   # panels – expand
+        results_section.grid_rowconfigure(2, weight=0)   # action buttons – fixed
+        results_section.grid_columnconfigure(0, weight=1)  # Parsed Data – equal half
+        results_section.grid_columnconfigure(1, weight=1)  # Review & Edit – equal half
+
+        # ── Compact LP-picker strip (row 0, spans both columns) ───────────────
+        # Fixed height – must NOT grow when LP data is loaded
+        lp_strip = ctk.CTkFrame(results_section, fg_color="transparent", height=40)
+        lp_strip.grid(row=0, column=0, columnspan=2, sticky="ew", padx=8, pady=(4, 4))
+        lp_strip.pack_propagate(False)   # children cannot resize this frame
+
+        ctk.CTkLabel(lp_strip, text="Step 2 – Language Pair:",
+                     font=ctk.CTkFont(size=11, weight="bold")).pack(side="left")
+
+        self.lp_var = ctk.StringVar(value="—")
+        self.lp_dropdown = ctk.CTkOptionMenu(
+            lp_strip, variable=self.lp_var,
+            values=["—"], command=self._on_lp_select,
+            width=220, height=28, font=ctk.CTkFont(size=11)
         )
-        
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-        
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-        
-        self.data_display_frame = scrollable_frame
-        
-        # --- Action Buttons ---
-        action_frame = ctk.CTkFrame(results_inner)
-        action_frame.pack(fill="x", padx=5, pady=5)
-        
-        apply_btn = ctk.CTkButton(action_frame, text="Apply Selected LP", command=self._on_apply_click)
-        apply_btn.pack(side="left", padx=2)
-        
-        apply_all_btn = ctk.CTkButton(action_frame, text="Apply All LPs", command=self._on_apply_all_click)
-        apply_all_btn.pack(side="left", padx=2)
-        
-        export_btn = ctk.CTkButton(action_frame, text="Export to JSON", command=self._on_export_click)
-        export_btn.pack(side="left", padx=2)
+        self.lp_dropdown.pack(side="left", padx=(8, 0))
+
+        self.status_label = ctk.CTkLabel(lp_strip, text="",
+                                         text_color="gray", font=ctk.CTkFont(size=10))
+        self.status_label.pack(side="left", padx=(12, 0))
+
+        # ── Left panel: Parsed data (read-only) ───────────────────────────────
+        left_panel = ctk.CTkFrame(results_section, fg_color="#1a1a2e", corner_radius=6)
+        left_panel.grid(row=1, column=0, sticky="nsew", padx=(8, 3), pady=(0, 4))
+        left_panel.grid_rowconfigure(1, weight=1)
+        left_panel.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(left_panel, text="Parsed Data",
+                     font=ctk.CTkFont(size=11, weight="bold")).grid(
+            row=0, column=0, sticky="w", padx=8, pady=(5, 2))
+
+        self.data_display_frame = ctk.CTkScrollableFrame(
+            left_panel, fg_color="#1e1e1e", corner_radius=4
+        )
+        self.data_display_frame.grid(row=1, column=0, sticky="nsew", padx=4, pady=(0, 4))
+
+        # ── Right panel: Review / edit entry boxes ────────────────────────────
+        right_panel = ctk.CTkFrame(results_section, fg_color="#1a2e1a", corner_radius=6)
+        right_panel.grid(row=1, column=1, sticky="nsew", padx=(3, 8), pady=(0, 4))
+        right_panel.grid_rowconfigure(1, weight=1)
+        right_panel.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(right_panel, text="Review & Edit",
+                     font=ctk.CTkFont(size=11, weight="bold")).grid(
+            row=0, column=0, sticky="w", padx=8, pady=(5, 2))
+
+        self.review_frame = ctk.CTkScrollableFrame(
+            right_panel, fg_color="#1e1e1e", corner_radius=4
+        )
+        self.review_frame.grid(row=1, column=0, sticky="nsew", padx=4, pady=(0, 4))
+
+        # ── Action buttons (row 2, spans both columns) ────────────────────────
+        action_frame = ctk.CTkFrame(results_section, fg_color="transparent")
+        action_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=8, pady=(0, 8))
+
+        ctk.CTkButton(action_frame, text="Apply Selected LP", command=self._on_apply_click,
+                      width=150, height=30).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(action_frame, text="Apply All LPs", command=self._on_apply_all_click,
+                      width=130, height=30).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(action_frame, text="Export to JSON", command=self._on_export_click,
+                      width=130, height=30).pack(side="left")
     
     def _on_parse_click(self):
         """Handle parse button click"""
@@ -189,13 +219,22 @@ class QuoteParserTab:
         self._clear_results_display()
         self.status_label.configure(text="Cleared", text_color="gray")
     
-    def _on_lp_select(self, lp_code: str):
-        """Handle language pair selection"""
-        if not self.current_parse_result or not self.current_parse_result.language_pairs:
+    @staticmethod
+    def _extract_lp_name(lp_code: str) -> str:
+        """Return only the 'Source > Target' part of an lp_code string."""
+        first_line = lp_code.split('\n')[0].strip()
+        m = re.match(r'^(.+?(?:>|\u2192|->).+?)(?:\s*[:\(\[]|\s{2,}|$)', first_line)
+        if m:
+            return m.group(1).strip()
+        # Fallback: first 80 chars
+        return first_line[:80]
+
+    def _on_lp_select(self, label: str):
+        """Handle language pair selection (label is the short display name)."""
+        if label == "\u2014" or not self.current_parse_result or not self.current_parse_result.language_pairs:
             return
-        
-        # Find matching LP in cache
-        lp_data = self.parse_cache.get(lp_code)
+        full_code = self._lp_label_map.get(label, label)
+        lp_data = self.parse_cache.get(full_code)
         if lp_data:
             self._display_lp_details(lp_data)
     
@@ -204,87 +243,149 @@ class QuoteParserTab:
         if not self.current_parse_result or not self.current_parse_result.language_pairs:
             self._clear_results_display()
             return
-        
-        # Update LP dropdown
-        lp_codes = [lp.lp_code for lp in self.current_parse_result.language_pairs]
-        self.lp_dropdown.configure(values=lp_codes)
-        
-        if lp_codes:
-            self.lp_var.set(lp_codes[0])
+
+        # Build short display labels and mapping → full lp_code
+        self._lp_label_map = {}
+        labels = []
+        for lp in self.current_parse_result.language_pairs:
+            label = self._extract_lp_name(lp.lp_code)
+            # Ensure uniqueness
+            base, n = label, 1
+            while label in self._lp_label_map:
+                n += 1
+                label = f"{base} ({n})"
+            self._lp_label_map[label] = lp.lp_code
+            labels.append(label)
+
+        self.lp_dropdown.configure(values=labels)
+        if labels:
+            self.lp_var.set(labels[0])
             self._display_lp_details(self.current_parse_result.language_pairs[0])
     
     def _clear_results_display(self):
         """Clear the results display"""
         for widget in self.data_display_frame.winfo_children():
             widget.destroy()
-        self.lp_dropdown.configure(values=[])
-        self.lp_var.set("")
+        for widget in self.review_frame.winfo_children():
+            widget.destroy()
+        self.lp_dropdown.configure(values=["—"])
+        self.lp_var.set("—")
+        self._entry_fields = {}
     
     def _display_lp_details(self, lp_data: LanguagePairData):
         """Display detailed information for a language pair"""
-        # Clear previous display
+        # Clear both panels
         for widget in self.data_display_frame.winfo_children():
             widget.destroy()
-        
-        # Title
-        title = ctk.CTkLabel(
+        for widget in self.review_frame.winfo_children():
+            widget.destroy()
+        self._entry_fields = {}
+
+        _WC_FIELDS = [
+            ("Context",       "context"),
+            ("100%",          "fuzzy_100"),
+            ("Repetitions",   "repetitions"),
+            ("Fuzzy Matches", "fuzzy_matches"),
+            ("New Words",     "new_words"),
+        ]
+
+        # ── LEFT panel: read-only parsed data ──────────────────────────────────
+        ctk.CTkLabel(
             self.data_display_frame,
-            text=f"Language Pair: {lp_data.lp_code}",
+            text=lp_data.lp_code,
             font=ctk.CTkFont(size=12, weight="bold")
+        ).pack(anchor="w", padx=6, pady=(8, 4))
+
+        # Cumulative (read-only)
+        ctk.CTkLabel(
+            self.data_display_frame, text="Cumulative (all files)",
+            font=ctk.CTkFont(size=10, weight="bold"), text_color="#aaaaaa"
+        ).pack(anchor="w", padx=6, pady=(6, 2))
+
+        for lbl, fld in _WC_FIELDS:
+            val = getattr(lp_data.cumulative_wc, fld, 0)
+            r = ctk.CTkFrame(self.data_display_frame, fg_color="transparent")
+            r.pack(fill="x", padx=6, pady=1)
+            ctk.CTkLabel(r, text=f"{lbl}:", width=110, anchor="w",
+                         font=ctk.CTkFont(size=10)).pack(side="left")
+            ctk.CTkLabel(r, text=str(val), anchor="w",
+                         font=ctk.CTkFont(size=10)).pack(side="left")
+
+        ctk.CTkLabel(
+            self.data_display_frame,
+            text=f"Total: {lp_data.cumulative_wc.total}",
+            font=ctk.CTkFont(size=10, weight="bold")
+        ).pack(anchor="e", padx=10, pady=(2, 6))
+
+        if lp_data.file_breakdowns:
+            ctk.CTkLabel(
+                self.data_display_frame, text="Per-File Breakdown",
+                font=ctk.CTkFont(size=10, weight="bold"), text_color="#aaaaaa"
+            ).pack(anchor="w", padx=6, pady=(6, 2))
+            for file_bd in lp_data.file_breakdowns:
+                ctk.CTkLabel(
+                    self.data_display_frame,
+                    text=file_bd.file_name,
+                    font=ctk.CTkFont(size=9, weight="bold"), text_color="#88aaff"
+                ).pack(anchor="w", padx=10, pady=(6, 1))
+                for lbl, fld in _WC_FIELDS:
+                    val = getattr(file_bd.wc_data, fld, 0)
+                    r = ctk.CTkFrame(self.data_display_frame, fg_color="transparent")
+                    r.pack(fill="x", padx=14, pady=1)
+                    ctk.CTkLabel(r, text=f"{lbl}:", width=100, anchor="w",
+                                 font=ctk.CTkFont(size=9)).pack(side="left")
+                    ctk.CTkLabel(r, text=str(val), anchor="w",
+                                 font=ctk.CTkFont(size=9)).pack(side="left")
+                ctk.CTkLabel(
+                    self.data_display_frame,
+                    text=f"Subtotal: {file_bd.wc_data.total}",
+                    font=ctk.CTkFont(size=9)
+                ).pack(anchor="e", padx=14, pady=(1, 4))
+
+        if lp_data.tm_config:
+            ctk.CTkLabel(
+                self.data_display_frame, text="TM Configuration",
+                font=ctk.CTkFont(size=10, weight="bold"), text_color="#aaaaaa"
+            ).pack(anchor="w", padx=6, pady=(8, 2))
+            ctk.CTkLabel(
+                self.data_display_frame,
+                text=lp_data.tm_config, wraplength=260, justify="left",
+                font=ctk.CTkFont(size=9)
+            ).pack(anchor="w", padx=10, pady=(0, 8))
+
+        # ── RIGHT panel: editable entry rows ─────────────────────────────────
+        cum_frame, cum_inner = create_labeled_frame(
+            self.review_frame, text="Cumulative Data (All Files)", fg_color="transparent"
         )
-        title.pack(anchor="w", padx=5, pady=(10, 5))
-        
-        # Cumulative Data Section
-        cum_frame, cum_inner = create_labeled_frame(self.data_display_frame, text="Cumulative Data (All Files)", fg_color="transparent")
         cum_frame.pack(fill="x", padx=5, pady=5)
-        
-        self._create_wc_entry_row(cum_inner, "Context:", lp_data.cumulative_wc, "context")
-        self._create_wc_entry_row(cum_inner, "100%:", lp_data.cumulative_wc, "fuzzy_100")
-        self._create_wc_entry_row(cum_inner, "Repetitions:", lp_data.cumulative_wc, "repetitions")
-        self._create_wc_entry_row(cum_inner, "Fuzzy Matches:", lp_data.cumulative_wc, "fuzzy_matches")
-        self._create_wc_entry_row(cum_inner, "New Words:", lp_data.cumulative_wc, "new_words")
-        
-        total_label = ctk.CTkLabel(
+
+        for label, field in _WC_FIELDS:
+            self._create_wc_entry_row(cum_inner, f"{label}:", lp_data.cumulative_wc, field)
+
+        ctk.CTkLabel(
             cum_inner,
             text=f"Total: {lp_data.cumulative_wc.total}",
             font=ctk.CTkFont(size=11, weight="bold")
-        )
-        total_label.pack(anchor="e", padx=10, pady=5)
-        
-        # Per-File Data Section
+        ).pack(anchor="e", padx=10, pady=5)
+
         if lp_data.file_breakdowns:
-            file_frame, file_inner = create_labeled_frame(self.data_display_frame, text="Per-File Breakdown", fg_color="transparent")
-            file_frame.pack(fill="both", expand=True, padx=5, pady=5)
-            
             for file_bd in lp_data.file_breakdowns:
-                file_label = ctk.CTkLabel(
-                    file_frame,
-                    text=f"File: {file_bd.file_name}",
-                    font=ctk.CTkFont(size=10, weight="bold")
+                file_frame, file_inner = create_labeled_frame(
+                    self.review_frame, text=file_bd.file_name, fg_color="transparent"
                 )
-                file_label.pack(anchor="w", padx=10, pady=(10, 5))
-                
-                self._create_wc_entry_row(file_frame, "Context:", file_bd.wc_data, "context", file_bd.file_name)
-                self._create_wc_entry_row(file_frame, "100%:", file_bd.wc_data, "fuzzy_100", file_bd.file_name)
-                self._create_wc_entry_row(file_frame, "Repetitions:", file_bd.wc_data, "repetitions", file_bd.file_name)
-                self._create_wc_entry_row(file_frame, "Fuzzy Matches:", file_bd.wc_data, "fuzzy_matches", file_bd.file_name)
-                self._create_wc_entry_row(file_frame, "New Words:", file_bd.wc_data, "new_words", file_bd.file_name)
-                
-                file_total = ctk.CTkLabel(
-                    file_frame,
+                file_frame.pack(fill="x", padx=5, pady=5)
+
+                for label, field in _WC_FIELDS:
+                    self._create_wc_entry_row(
+                        file_inner, f"{label}:", file_bd.wc_data, field, file_bd.file_name
+                    )
+
+                ctk.CTkLabel(
+                    file_inner,
                     text=f"Subtotal: {file_bd.wc_data.total}",
                     font=ctk.CTkFont(size=10)
-                )
-                file_total.pack(anchor="e", padx=20, pady=5)
-        
-        # TM Configuration
-        if lp_data.tm_config:
-            tm_frame, tm_inner = create_labeled_frame(self.data_display_frame, text="TM Configuration", fg_color="transparent")
-            tm_frame.pack(fill="x", padx=5, pady=5)
-            
-            tm_label = ctk.CTkLabel(tm_inner, text=lp_data.tm_config, wraplength=400, justify="left")
-            tm_label.pack(anchor="w", padx=10, pady=5)
-        
+                ).pack(anchor="e", padx=20, pady=5)
+
         # Store reference to LP data for later use
         self.current_displayed_lp = lp_data
     

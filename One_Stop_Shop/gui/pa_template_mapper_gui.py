@@ -11,6 +11,7 @@ Features:
 """
 
 import customtkinter as ctk
+import tkinter as tk
 from tkinter import messagebox, Toplevel
 import pandas as pd
 from typing import Optional, Dict, List, Any
@@ -22,6 +23,13 @@ core_path = Path(__file__).parent.parent.parent / "Core"
 sys.path.insert(0, str(core_path))
 
 from pa_template_manager import PATemplateManager
+
+try:
+    import WF_Matrix as _WF_Matrix
+    _ENTITY_NAMES = sorted(_WF_Matrix.PA_SERVICES.keys())
+except Exception:
+    _WF_Matrix = None
+    _ENTITY_NAMES = []
 
 
 # Default PA Template Fields (from CEVA Integration_Template)
@@ -115,13 +123,21 @@ DEFAULT_TEMPLATE_FIELDS = [
     "LP1 Quantity",
     "LP1 Rate",
     "LP1 Unit of Measure",
+    "Job Type",
+    "Program Manager(s)",
+    "Currency",
+    "Life Sci Subvertical",
+    "Documents Country",
+    "International Application No.",
+    "Ep Application No.",
+    "Brand"
 ]
 
 
 class PATemplateMapperGUI:
     """Visual template mapper for PA import configuration"""
     
-    def __init__(self, parent, account_name: str, dataframe: Optional[pd.DataFrame] = None):
+    def __init__(self, parent, account_name: str, dataframe: Optional[pd.DataFrame] = None, frame=None):
         """
         Initialize PA Template Mapper
         
@@ -129,11 +145,13 @@ class PATemplateMapperGUI:
             parent: Parent tkinter window
             account_name: Account to configure template for
             dataframe: Optional DataFrame to show available columns
+            frame: If provided, embeds the UI into this frame instead of a new window
         """
         self.parent = parent
         self.account_name = account_name
         self.dataframe = dataframe
         self.template_manager = PATemplateManager()
+        self.embedded = frame is not None
         
         # Current mappings configuration dict (key -> mapping config)
         self.mapping_config: Dict[str, Dict[str, Any]] = {}
@@ -141,20 +159,17 @@ class PATemplateMapperGUI:
         # Mapping widgets for reference
         self.mapping_widgets = {}
         
-        # Create modal dialog
-        self.dialog = ctk.CTkToplevel(parent)
-        self.dialog.title(f"PA Template Mapper - {account_name}")
-        self.dialog.geometry("1200x800")
-        
-        # Make modal
-        self.dialog.transient(parent)
-        self.dialog.grab_set()
-        
-        # Center on screen
-        self.dialog.update_idletasks()
-        x = (self.dialog.winfo_screenwidth() // 2) - (1200 // 2)
-        y = (self.dialog.winfo_screenheight() // 2) - (800 // 2)
-        self.dialog.geometry(f"1200x800+{x}+{y}")
+        if frame is not None:
+            # Embedded mode: build into the provided frame
+            self.dialog = frame
+        else:
+            # Standalone modal window
+            self.dialog = ctk.CTkToplevel(parent)
+            self.dialog.title(f"PA Template Mapper - {account_name}")
+            self.dialog.transient(parent)
+            self.dialog.grab_set()
+            self.dialog.state('zoomed')  # Windows maximize
+            self.dialog.minsize(1200, 800)
         
         # Load existing template if exists
         self.load_existing_template()
@@ -198,23 +213,24 @@ class PATemplateMapperGUI:
     
     def setup_ui(self):
         """Setup the template mapper UI"""
-        # Header
-        header_frame = ctk.CTkFrame(self.dialog, fg_color="#1f538d", corner_radius=0)
-        header_frame.pack(fill="x", padx=0, pady=0)
-        
-        ctk.CTkLabel(
-            header_frame,
-            text=f"🗂️ PA Template Mapper - {self.account_name}",
-            font=("Arial", 20, "bold"),
-            text_color="white"
-        ).pack(pady=15)
-        
-        ctk.CTkLabel(
-            header_frame,
-            text="Configure field mappings for PA import worksheets",
-            font=("Arial", 12),
-            text_color="#e0e0e0"
-        ).pack(pady=(0, 15))
+        # Header (hidden when embedded - the sub-tab label serves as header)
+        if not self.embedded:
+            header_frame = ctk.CTkFrame(self.dialog, fg_color="#1f538d", corner_radius=0)
+            header_frame.pack(fill="x", padx=0, pady=0)
+            
+            ctk.CTkLabel(
+                header_frame,
+                text=f"🗂️ PA Template Mapper - {self.account_name}",
+                font=("Arial", 20, "bold"),
+                text_color="white"
+            ).pack(pady=15)
+            
+            ctk.CTkLabel(
+                header_frame,
+                text="Configure field mappings for PA import worksheets",
+                font=("Arial", 12),
+                text_color="#e0e0e0"
+            ).pack(pady=(0, 15))
         
         # Main content area
         content_frame = ctk.CTkFrame(self.dialog, fg_color="transparent")
@@ -237,16 +253,18 @@ class PATemplateMapperGUI:
         button_frame = ctk.CTkFrame(self.dialog, fg_color="transparent")
         button_frame.pack(fill="x", padx=20, pady=(0, 20))
         
-        ctk.CTkButton(
-            button_frame,
-            text="❌ Cancel",
-            command=self.cancel,
-            width=150,
-            height=40,
-            font=("Arial", 13, "bold"),
-            fg_color="#e74c3c",
-            hover_color="#c0392b"
-        ).pack(side="left", padx=5)
+        # Cancel only shown in standalone mode
+        if not self.embedded:
+            ctk.CTkButton(
+                button_frame,
+                text="❌ Cancel",
+                command=self.cancel,
+                width=150,
+                height=40,
+                font=("Arial", 13, "bold"),
+                fg_color="#e74c3c",
+                hover_color="#c0392b"
+            ).pack(side="left", padx=5)
         
         ctk.CTkButton(
             button_frame,
@@ -397,12 +415,21 @@ class PATemplateMapperGUI:
         key_label.pack(side="left", padx=(0, 10))
         
         # Value entry (source column or static value) - expandable
-        value_entry = ctk.CTkEntry(
-            content_frame,
-            height=28,
-            font=("Arial", 10),
-            placeholder_text="Source column or static value..."
-        )
+        if field_name == "GP Company":
+            value_entry = ctk.CTkComboBox(
+                content_frame,
+                height=28,
+                font=("Arial", 10),
+                values=_ENTITY_NAMES if _ENTITY_NAMES else [""],
+                state="readonly"
+            )
+        else:
+            value_entry = ctk.CTkEntry(
+                content_frame,
+                height=28,
+                font=("Arial", 10),
+                placeholder_text="Source column or static value..."
+            )
         
         # Set current value based on mapping type
         current_value = ""
@@ -410,9 +437,16 @@ class PATemplateMapperGUI:
             current_value = mapping.get("static_value", "")
         elif mapping.get("source_column"):
             current_value = mapping.get("source_column", "")
+            # Add sample data preview if available
+            if self.dataframe is not None and current_value in self.dataframe.columns:
+                sample_value = str(self.dataframe[current_value].iloc[0]) if len(self.dataframe) > 0 else 'N/A'
+                current_value = f"{current_value} → {sample_value}"
         
         if current_value:
-            value_entry.insert(0, current_value)
+            if isinstance(value_entry, ctk.CTkComboBox):
+                value_entry.set(current_value)
+            else:
+                value_entry.insert(0, current_value)
         
         value_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
         
@@ -442,15 +476,16 @@ class PATemplateMapperGUI:
         # Create config dialog
         config_dialog = ctk.CTkToplevel(self.dialog)
         config_dialog.title(f"Configure: {field_name}")
-        config_dialog.geometry("600x500")
+        config_dialog.geometry("600x650")
+        config_dialog.minsize(600, 650)
         config_dialog.transient(self.dialog)
         config_dialog.grab_set()
         
         # Center dialog
         config_dialog.update_idletasks()
         x = (config_dialog.winfo_screenwidth() // 2) - (300)
-        y = (config_dialog.winfo_screenheight() // 2) - (250)
-        config_dialog.geometry(f"600x500+{x}+{y}")
+        y = (config_dialog.winfo_screenheight() // 2) - (325)
+        config_dialog.geometry(f"600x650+{x}+{y}")
         
         # Header
         header = ctk.CTkFrame(config_dialog, fg_color="#34495e")
@@ -487,27 +522,76 @@ class PATemplateMapperGUI:
         )
         type_combo.pack(fill="x", pady=(0, 15))
         
-        # Source Column
+        # Source Column with data preview
         ctk.CTkLabel(content, text="Source Column:", font=("Arial", 12, "bold"), anchor="w").pack(fill="x", pady=(10, 5))
         if self.dataframe is not None:
             source_var = ctk.StringVar(value=mapping.get("source_column", ""))
+            # Create column options with sample data preview
+            column_options = [""]
+            for col in self.dataframe.columns:
+                sample_value = str(self.dataframe[col].iloc[0]) if len(self.dataframe) > 0 else 'N/A'
+                column_options.append(f"{col} (→ {sample_value})")
+            
             source_combo = ctk.CTkComboBox(
                 content,
-                values=[""] + list(self.dataframe.columns),
+                values=column_options,
                 variable=source_var,
                 height=35,
                 font=("Arial", 11)
             )
             source_combo.pack(fill="x", pady=(0, 15))
+            
+            # Show current selection with sample data
+            current_col = mapping.get("source_column", "")
+            if current_col and current_col in self.dataframe.columns:
+                sample_value = str(self.dataframe[current_col].iloc[0]) if len(self.dataframe) > 0 else 'N/A'
+                source_var.set(f"{current_col} (→ {sample_value})")
         else:
             source_entry = ctk.CTkEntry(content, height=35, font=("Arial", 11))
             source_entry.insert(0, mapping.get("source_column", ""))
             source_entry.pack(fill="x", pady=(0, 15))
         
+        # Concatenate Options
+        ctk.CTkLabel(content, text="Concatenate Columns:", font=("Arial", 12, "bold"), anchor="w").pack(fill="x", pady=(10, 5))
+        if self.dataframe is not None:
+            concat_frame = ctk.CTkFrame(content, fg_color="transparent")
+            concat_frame.pack(fill="x", pady=(0, 10))
+
+            concat_listbox = tk.Listbox(concat_frame, selectmode="multiple", height=6, exportselection=False)
+            concat_scroll = ctk.CTkScrollbar(concat_frame, orientation="vertical", command=concat_listbox.yview)
+            concat_listbox.configure(yscrollcommand=concat_scroll.set)
+
+            concat_listbox.pack(side="left", fill="both", expand=True)
+            concat_scroll.pack(side="right", fill="y")
+
+            selected_cols = [col.strip() for col in (mapping.get("source_column") or "").split(",") if col.strip()]
+            for col in list(self.dataframe.columns):
+                concat_listbox.insert(tk.END, col)
+            for idx, col in enumerate(list(self.dataframe.columns)):
+                if col in selected_cols:
+                    concat_listbox.selection_set(idx)
+        else:
+            concat_entry = ctk.CTkEntry(content, height=35, font=("Arial", 11), placeholder_text="Column1, Column2")
+            concat_entry.insert(0, mapping.get("source_column", ""))
+            concat_entry.pack(fill="x", pady=(0, 10))
+
+        ctk.CTkLabel(content, text="Delimiter:", font=("Arial", 12, "bold"), anchor="w").pack(fill="x", pady=(10, 5))
+        delimiter_entry = ctk.CTkEntry(content, height=35, font=("Arial", 11))
+        delimiter_entry.insert(0, mapping.get("separator", " "))
+        delimiter_entry.pack(fill="x", pady=(0, 15))
+
         # Static Value
         ctk.CTkLabel(content, text="Static Value:", font=("Arial", 12, "bold"), anchor="w").pack(fill="x", pady=(10, 5))
-        static_entry = ctk.CTkEntry(content, height=35, font=("Arial", 11))
-        static_entry.insert(0, mapping.get("static_value", "") or "")
+        if field_name == "GP Company":
+            static_entry = ctk.CTkComboBox(
+                content, height=35, font=("Arial", 11),
+                values=_ENTITY_NAMES if _ENTITY_NAMES else [""],
+                state="readonly"
+            )
+            static_entry.set(mapping.get("static_value", "") or "")
+        else:
+            static_entry = ctk.CTkEntry(content, height=35, font=("Arial", 11))
+            static_entry.insert(0, mapping.get("static_value", "") or "")
         static_entry.pack(fill="x", pady=(0, 15))
         
         # Format
@@ -529,25 +613,62 @@ class PATemplateMapperGUI:
         
         def save_config():
             # Update mapping config
+            mapping_type = type_var.get()
+
+            if mapping_type == "concatenate":
+                if self.dataframe is not None:
+                    selected_indices = concat_listbox.curselection()
+                    source_value = ", ".join([list(self.dataframe.columns)[i] for i in selected_indices])
+                else:
+                    source_value = concat_entry.get().strip()
+                separator_value = delimiter_entry.get()
+                static_value = None
+            elif mapping_type == "static":
+                source_value = ""
+                separator_value = None
+                static_value = static_entry.get().strip() or None
+            else:
+                if self.dataframe is not None:
+                    # Extract actual column name from "column (→ sample)" format
+                    source_display = source_var.get()
+                    if " (→ " in source_display:
+                        source_value = source_display.split(" (→ ")[0]  # Extract column name only
+                    else:
+                        source_value = source_display
+                else:
+                    source_value = source_entry.get().strip()
+                separator_value = None
+                static_value = None
+
             self.mapping_config[field_name] = {
                 "key": field_name,
-                "mapping_type": type_var.get(),
-                "source_column": source_var.get() if self.dataframe is not None else source_entry.get().strip(),
-                "static_value": static_entry.get().strip() or None,
+                "mapping_type": mapping_type,
+                "source_column": source_value,
+                "static_value": static_value,
                 "formula": None,
-                "format": format_var.get() or None
+                "format": format_var.get() or None,
+                "separator": separator_value
             }
             
             # Update main display value entry
             widget_data = self.mapping_widgets.get(field_name, {})
             value_entry = widget_data.get("value_entry")
             if value_entry:
-                value_entry.delete(0, "end")
-                if type_var.get() == "static":
-                    value_entry.insert(0, static_entry.get().strip())
+                if mapping_type == "static":
+                    new_display = static_value or ""
                 else:
-                    source_val = source_var.get() if self.dataframe is not None else source_entry.get().strip()
-                    value_entry.insert(0, source_val)
+                    # Show column name with sample data preview
+                    display_value = source_value
+                    if self.dataframe is not None and source_value in self.dataframe.columns:
+                        sample_value = str(self.dataframe[source_value].iloc[0]) if len(self.dataframe) > 0 else 'N/A'
+                        display_value = f"{source_value} → {sample_value}"
+                    new_display = display_value
+
+                if isinstance(value_entry, ctk.CTkComboBox):
+                    value_entry.set(new_display)
+                else:
+                    value_entry.delete(0, "end")
+                    value_entry.insert(0, new_display)
             
             config_dialog.destroy()
         

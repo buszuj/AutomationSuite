@@ -1,0 +1,70 @@
+{
+  "name": "Sample Tiered Rate Card",
+  "sponsor": "XYZ Global Translations",
+  "type": "tiered",
+  "tiers": [
+    "0-10k",
+    "10k-50k",
+    "50k-100k",
+    "100k+"
+  ],
+  "services": [
+    "Translation",
+    "TM - Fuzzy Match Low",
+    "TM - Fuzzy Match Medium",
+    "TM - Fuzzy Match High",
+    "TM - Exact Match"
+  ],
+  "languages": {
+    "English": {
+      "iso_code": "en",
+      "rates": {
+        "0-10k_Translation": "0.15",
+        "0-10k_TM - Fuzzy Match Low": "0.12",
+        "0-10k_TM - Fuzzy Match Medium": "0.10",
+        "0-10k_TM - Fuzzy Match High": "0.08",
+        "0-10k_TM - Exact Match": "0.05",
+        "10k-50k_Translation": "0.14",
+        "10k-50k_TM - Fuzzy Match Low": "0.11",
+        "10k-50k_TM - Fuzzy Match Medium": "0.09",
+        "10k-50k_TM - Fuzzy Match High": "0.07",
+        "10k-50k_TM - Exact Match": "0.04",
+        "50k-100k_Translation": "0.13",
+        "50k-100k_TM - Fuzzy Match Low": "0.10",
+        "50k-100k_TM - Fuzzy Match Medium": "0.08",
+        "50k-100k_TM - Fuzzy Match High": "0.06",
+        "50k-100k_TM - Exact Match": "0.03",
+        "100k+_Translation": "0.12",
+        "100k+_TM - Fuzzy Match Low": "0.09",
+        "100k+_TM - Fuzzy Match Medium": "0.07",
+        "100k+_TM - Fuzzy Match High": "0.05",
+        "100k+_TM - Exact Match": "0.02"
+      }
+    },
+    "Spanish": {
+      "iso_code": "es",
+      "rates": {
+        "0-10k_Translation": "0.18",
+        "0-10k_TM - Fuzzy Match Low": "0.14",
+        "0-10k_TM - Fuzzy Match Medium": "0.12",
+        "0-10k_TM - Fuzzy Match High": "0.10",
+        "0-10k_TM - Exact Match": "0.06",
+        "10k-50k_Translation": "0.17",
+        "10k-50k_TM - Fuzzy Match Low": "0.13",
+        "10k-50k_TM - Fuzzy Match Medium": "0.11",
+        "10k-50k_TM - Fuzzy Match High": "0.09",
+        "10k-50k_TM - Exact Match": "0.05",
+        "50k-100k_Translation": "0.16",
+        "50k-100k_TM - Fuzzy Match Low": "0.12",
+        "50k-100k_TM - Fuzzy Match Medium": "0.10",
+        "50k-100k_TM - Fuzzy Match High": "0.08",
+        "50k-100k_TM - Exact Match": "0.04",
+        "100k+_Translation": "0.15",
+        "100k+_TM - Fuzzy Match Low": "0.11",
+        "100k+_TM - Fuzzy Match Medium": "0.09",
+        "100k+_TM - Fuzzy Match High": "0.07",
+        "100k+_TM - Exact Match": "0.03"
+      }
+    }
+  }
+}

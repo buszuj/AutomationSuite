@@ -78,5 +78,249 @@
                 "format": "text"
             }
         ]
+    },
+    "AMGEN": {
+        "template_name": "Integration Template",
+        "description": "",
+        "key_column_name": "Field Name",
+        "data_column_name": "Value",
+        "mappings": [
+            {
+                "key": "GP Company",
+                "source_column": "TPTSWE",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Billing Client #",
+                "source_column": "AMGE0004",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "End Client/Sponsor",
+                "source_column": "Amgen",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Job Name",
+                "mapping_type": "direct",
+                "source_column": "Submission Name → 20220159 DK_MD Letter_and_...",
+                "static_value": null,
+                "formula": null,
+                "format": null,
+                "separator": null
+            },
+            {
+                "key": "Client Deadline",
+                "mapping_type": "direct",
+                "source_column": "Client Requested Deadline → 2025-10-14 09:00 AM",
+                "static_value": null,
+                "formula": null,
+                "format": null,
+                "separator": null
+            },
+            {
+                "key": "AM",
+                "source_column": "Mariusz Rosinski",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Client Dept",
+                "source_column": "Clinical Operations",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "primary tech product",
+                "source_column": "GL Portal",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Billing Division",
+                "source_column": "TransPerfect Translations",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Main AE",
+                "source_column": "Maria Bernander",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "AE 2",
+                "source_column": "Stockholm (Paul Geete)",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "AE 3",
+                "source_column": "Global All SAS",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Main AE %",
+                "source_column": "45",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "AE 2 %",
+                "source_column": "45",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "AE 3 %",
+                "source_column": "10",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Job referred by",
+                "source_column": "None",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Revenue Credit Plan",
+                "source_column": "Proactive",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Primary Prod. Dept",
+                "source_column": "NY - Life Sciences Clinical",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Primary PM",
+                "source_column": "_Unclaimed_",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Primary QM",
+                "source_column": "Unassigned",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Primary Percent",
+                "source_column": "100",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Estimated External Costs",
+                "source_column": "1",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Estimated Revenue",
+                "source_column": "3",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Rebate Percentage",
+                "source_column": "0",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Rebate Amount",
+                "source_column": "0",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "Discount Percentage",
+                "source_column": "0",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            },
+            {
+                "key": "SourceFile1 SourceLanguage",
+                "mapping_type": "direct",
+                "source_column": "Source Language → en",
+                "static_value": null,
+                "formula": null,
+                "format": null,
+                "separator": null
+            },
+            {
+                "key": "SourceFile1 TargetLanguages",
+                "mapping_type": "direct",
+                "source_column": "Target Language(s) → da-DK",
+                "static_value": null,
+                "formula": null,
+                "format": null,
+                "separator": null
+            },
+            {
+                "key": "SourceFile3 File Type",
+                "source_column": "Cert",
+                "mapping_type": "direct",
+                "static_value": null,
+                "formula": null,
+                "format": null
+            }
+        ]
     }
 }

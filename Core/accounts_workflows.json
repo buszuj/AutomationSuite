@@ -9,7 +9,25 @@
       }
     },
     "PXL": {
-      "workflows": {}
+      "workflows": {
+        "TEP": [
+          "Translation and Proofreading",
+          "TM - Fuzzy Matches",
+          "TM - Exact Matches",
+          "Formatting",
+          "Desktop Publishing"
+        ],
+        "Tracked Changes Only": [
+          "Translation and Proofreading",
+          "Formatting"
+        ],
+        "Desktop Publishing": [
+          "Translation and Proofreading",
+          "TM - Fuzzy Matches",
+          "TM - Exact Matches",
+          "Desktop Publishing"
+        ]
+      }
     },
     "Pfizer": {
       "workflows": {}
@@ -22,6 +40,20 @@
     },
     "Janssen Canada": {
       "workflows": {}
+    },
+    "testedsgsdf": {
+      "workflows": {}
+    },
+    "AMGEN": {
+      "workflows": {
+        "TEP": [
+          "Translation and Proofreading",
+          "TM - Fuzzy Matches",
+          "TM - Exact Matches",
+          "Formatting",
+          "Desktop Publishing"
+        ]
+      }
     }
   }
 }

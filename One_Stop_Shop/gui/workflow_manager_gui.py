@@ -16,17 +16,24 @@ from account_workflow_manager import AccountWorkflowManager
 class WorkflowManagerGUI:
     """GUI for managing accounts and workflows"""
     
-    def __init__(self, parent=None):
-        if parent:
+    def __init__(self, parent=None, frame=None):
+        self.embedded = frame is not None
+
+        if frame is not None:
+            # Embedded mode: build into the provided frame
+            self.window = frame
+        elif parent:
             self.window = ctk.CTkToplevel(parent)
+            self.window.title("Account & Workflow Manager")
+            self.window.geometry("1200x700")
         else:
             self.window = ctk.CTk()
-        
-        self.window.title("Account & Workflow Manager")
-        self.window.geometry("1200x700")
-        
-        ctk.set_appearance_mode("dark")
-        ctk.set_default_color_theme("blue")
+            self.window.title("Account & Workflow Manager")
+            self.window.geometry("1200x700")
+
+        if not self.embedded:
+            ctk.set_appearance_mode("dark")
+            ctk.set_default_color_theme("blue")
         
         self.manager = AccountWorkflowManager()
         self.selected_account = None
@@ -37,13 +44,14 @@ class WorkflowManagerGUI:
     def setup_ui(self):
         """Setup the user interface"""
         
-        # Title
-        title_label = ctk.CTkLabel(
-            self.window,
-            text="Account & Workflow Manager",
-            font=("Arial", 24, "bold")
-        )
-        title_label.pack(pady=20)
+        # Title (hidden when embedded)
+        if not self.embedded:
+            title_label = ctk.CTkLabel(
+                self.window,
+                text="Account & Workflow Manager",
+                font=("Arial", 24, "bold")
+            )
+            title_label.pack(pady=20)
         
         # Main container with three columns
         main_frame = ctk.CTkFrame(self.window)

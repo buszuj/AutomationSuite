@@ -429,20 +429,12 @@ class OneStopShopMain:
         menubar = Menu(self.root, bg="#1f538d", fg="white", activebackground="#2b7dbc", activeforeground="white", font=("Arial", 11, "bold"))
         self.root.config(menu=menubar)
         
-        # File menu
-        file_menu = Menu(menubar, tearoff=0, bg="#2b2b2b", fg="white", activebackground="#1f538d", activeforeground="white", font=("Arial", 10))
-        menubar.add_cascade(label="  File  ", menu=file_menu)
-        file_menu.add_command(label="Import Job Data...", command=self.browse_file)
-        file_menu.add_command(label="Pull from GLE API...", command=self.show_gle_dialog)
-        file_menu.add_separator()
-        file_menu.add_command(label="Exit", command=self.root.quit)
-        
         # Configuration menu
         config_menu = Menu(menubar, tearoff=0, bg="#2b2b2b", fg="white", activebackground="#1f538d", activeforeground="white", font=("Arial", 10))
         menubar.add_cascade(label="  Configuration  ", menu=config_menu)
         config_menu.add_command(label="Select Account", command=self.select_account)
         config_menu.add_separator()
-        config_menu.add_command(label="QuoteMe Email Parser", command=self.open_quoteme_parser)
+        config_menu.add_command(label="QuoteMe Email Parser", command=self.open_quoteme_parser_fixed)
         config_menu.add_separator()
         config_menu.add_command(label="Manage Entities", command=self.open_entity_manager)
         config_menu.add_command(label="Map Services", command=self.open_service_mapper)
@@ -632,6 +624,7 @@ class OneStopShopMain:
             def confirm_selection():
                 if selected_account.get():
                     self.current_account = selected_account.get()
+                    self.update_account_display()
                     self.update_status(f"Active account: {self.current_account}")
                     # Account set as active
                     dialog.destroy()
@@ -662,41 +655,81 @@ class OneStopShopMain:
             messagebox.showerror("Error", f"Failed to load accounts: {str(e)}")
             dialog.destroy()
     
-    def open_quoteme_parser(self):
-        """Open the QuoteMe Email Parser window"""
+    def open_quoteme_parser_fixed(self):
+        """Open the QuoteMe Email Parser window with proper close handling"""
         parser_window = None
         
         def check_parser_window():
             nonlocal parser_window
-            if parser_window is not None and parser_window.winfo_exists():
-                parser_window.lift()
-                return
+            if parser_window is not None:
+                try:
+                    if parser_window.winfo_exists():
+                        parser_window.lift()
+                        parser_window.focus()
+                        return
+                except:
+                    pass
             
             def on_parser_apply(lp_code: str, lp_data):
-                """Callback when parser applies data - could be used for future integration"""
+                """Callback when parser applies data"""
                 messagebox.showinfo("Success", f"Parsed data for:\n{lp_code}\n\nData cached and ready for use.")
             
             # Create floating window
             parser_window = ctk.CTkToplevel(self.root)
             parser_window.title("QuoteMe Email Parser")
             parser_window.geometry("1000x700")
+            parser_window.transient(self.root)
+            parser_window.attributes('-topmost', True)
+            parser_window.after(100, lambda: parser_window.attributes('-topmost', False))
             
             try:
                 # Create parser tab
                 parser_tab = create_parser_tab(parser_window, on_apply_callback=on_parser_apply)
                 
-                # Handle window close
+                # FIXED: Proper window close handling
                 def on_closing():
                     nonlocal parser_window
+                    try:
+                        if parser_window is not None and parser_window.winfo_exists():
+                            parser_window.destroy()
+                    except:
+                        pass
                     parser_window = None
                 
                 parser_window.protocol("WM_DELETE_WINDOW", on_closing)
+                
+                # Ensure parser window can be properly closed
+                parser_window.bind('<Escape>', lambda e: on_closing())
+                
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to open parser: {str(e)}")
-                parser_window.destroy()
+                if parser_window:
+                    try:
+                        parser_window.destroy()
+                    except:
+                        pass
                 parser_window = None
         
         check_parser_window()
+    
+    def update_account_display(self):
+        """Update account display and show/hide tabs based on account selection"""
+        if self.current_account:
+            self.account_info_label.configure(text=self.current_account)
+            # Show tabs
+            if hasattr(self, 'account_prompt') and hasattr(self, 'main_tabs'):
+                self.account_prompt.pack_forget()
+                self.main_tabs.pack(fill="both", expand=True)
+            # Reload PA Template Mapper with the newly selected account
+            self.refresh_pa_integration_tab()
+        else:
+            self.account_info_label.configure(text="None Selected")
+            # Hide tabs, show prompt
+            if hasattr(self, 'account_prompt') and hasattr(self, 'main_tabs'):
+                self.main_tabs.pack_forget()
+                self.account_prompt.pack(fill="both", expand=True, padx=50, pady=50)
+            # Clear the mapper
+            self.refresh_pa_integration_tab()
     
     def open_entity_manager(self):
         """Launch Entity Manager in modal mode"""
@@ -846,6 +879,16 @@ class OneStopShopMain:
             self.last_generated_file = filepath
             self.update_status(f"Generated {len(results)} worksheet(s)")
             
+            # Update inline status labels in the Generate Worksheets sub-tab
+            if hasattr(self, 'pa_generate_status'):
+                self.pa_generate_status.configure(
+                    text=f"✅ {len(results)} worksheet(s) generated", text_color="#2ecc71"
+                )
+            if hasattr(self, 'pa_last_file_label'):
+                self.pa_last_file_label.configure(
+                    text=f"Last file: {Path(filepath).name}", text_color="#95a5a6"
+                )
+            
             # Ask if user wants to open the file
             result = messagebox.askyesno(
                 "Export Complete",
@@ -860,6 +903,8 @@ class OneStopShopMain:
         except Exception as e:
             messagebox.showerror("Generation Error", f"Failed to generate PA worksheets:\n\n{str(e)}")
             self.update_status("Error generating worksheets")
+            if hasattr(self, 'pa_generate_status'):
+                self.pa_generate_status.configure(text="⚠️ Generation failed", text_color="#e74c3c")
     
     def preview_integration_data(self):
         """Preview PA integration data before exporting"""
@@ -1141,6 +1186,31 @@ class OneStopShopMain:
                 # Store data
                 self.current_data = df
                 self.data_source = 'api'
+
+                # Load index column configuration if available
+                if not self.index_column and self.current_account:
+                    self.index_column = self.load_index_column(self.current_account)
+
+                # Default to GL Portal No for API pulls if not configured
+                if not self.index_column and "GL Portal No" in df.columns:
+                    self.index_column = "GL Portal No"
+
+                # Set current job id from GL Portal No (first row) and pre-filter data
+                if self.index_column and self.index_column in df.columns and len(df) > 0:
+                    first_job_id = df.iloc[0][self.index_column]
+                    if pd.notna(first_job_id) and str(first_job_id).strip():
+                        self.current_job_id = str(first_job_id).strip()
+                        filtered_df = df[df[self.index_column].astype(str) == self.current_job_id]
+                        if not filtered_df.empty:
+                            self.filtered_job_data = self.aggregate_job_data(filtered_df)
+                            if hasattr(self, "job_id_entry"):
+                                self.job_id_entry.delete(0, "end")
+                                self.job_id_entry.insert(0, self.current_job_id)
+                            if hasattr(self, "filter_status_label"):
+                                self.filter_status_label.configure(
+                                    text=f"✅ Showing job: {self.current_job_id} ({len(filtered_df)} rows aggregated)",
+                                    text_color="#2ecc71"
+                                )
                 
                 # Update UI
                 self.update_status(f"✅ GLE data pulled for Job ID: {job_id}")
@@ -1179,6 +1249,84 @@ class OneStopShopMain:
             text_color="white"
         ).pack(side="left", padx=10)
     
+    def pull_gle_data_from_entry(self):
+        """Pull GLE data using the job ID from the entry field"""
+        job_id = self.gle_entry.get().strip()
+        
+        if not job_id:
+            messagebox.showwarning("Missing Input", "Please enter a Job ID in the GLE entry field")
+            return
+        
+        try:
+            self.update_status("Fetching data from GLE API...")
+            # Fetch data from API
+            excel_data = self.api_client.fetch_project_data(job_id)
+            
+            # Save to temporary file and read
+            import tempfile
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
+                tmp_file.write(excel_data)
+                tmp_path = tmp_file.name
+
+            # Read Excel data
+            df = pd.read_excel(tmp_path)
+            Path(tmp_path).unlink()  # Clean up temp file
+
+            # Store data
+            self.current_data = df
+            self.data_source = 'api'
+
+            #load index column configuration if available
+            if not self.index_column and self.current_account:
+                self.index_column = self.load_index_column(self.current_account)
+
+            # Default to GL Portal No for API pulls if not configured
+            if not self.index_column and "GL Portal No" in df.columns:
+                self.index_column = "GL Portal No"
+
+            # Set current job id from GL Portal No (first row) and pre-filter data
+            if self.index_column and self.index_column in df.columns and len(df) > 0:
+                first_job_id = df.iloc[0][self.index_column]
+                if pd.notna(first_job_id) and str(first_job_id).strip():
+                    self.current_job_id = str(first_job_id).strip()
+                    filtered_df = df[df[self.index_column].astype(str) == self.current_job_id]
+                    if not filtered_df.empty:
+                        self.filtered_job_data = self.aggregate_job_data(filtered_df)
+                        if hasattr(self, "job_id_entry"):
+                            self.job_id_entry.delete(0, "end")
+                            self.job_id_entry.insert(0, self.current_job_id)
+                        if hasattr(self, "filter_status_label"):
+                            self.filter_status_label.configure(
+                                text=f"✅ Showing job: {self.current_job_id} ({len(filtered_df)} rows aggregated)",
+                                text_color="#2ecc71"
+                            )
+            # Update UI
+            self.update_status(f"✅ GLE data pulled for Job ID: {job_id}")
+            self.update_data_info()
+            
+            # Load and display data with default columns if not already configured
+            if not self.visible_columns:
+                # Auto-select first 5 columns as default
+                self.visible_columns = list(self.current_data.columns[:5])
+            
+            self.update_data_display()
+            
+            # Enable configure columns button
+            if hasattr(self, 'config_columns_btn'):
+                self.config_columns_btn.configure(state="normal")
+
+            messagebox.showinfo(
+                "Success",
+                f"Data pulled successfully!\n\nJob ID: {job_id}\nRows: {len(df)}\nColumns: {len(df.columns)}\n\nUse 'Configure Columns' to select which data to display."
+            )
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to pull GLE data:\n{str(e)}")
+            self.update_status("❌ Failed to pull GLE data")
+
+
+    
+
     def refresh_ui(self):
         """Refresh UI components"""
         self.update_data_info()
@@ -1219,49 +1367,19 @@ class OneStopShopMain:
     def setup_ui(self):
         """Setup the user interface"""
         
-        # Create main container (no scroll to allow full height sections)
+        # Create main container
         main_container = ctk.CTkFrame(self.root, fg_color="transparent")
         main_container.pack(fill="both", expand=True)
         
-        # Account info bar - prominent display
-        self.account_frame = ctk.CTkFrame(main_container, fg_color="#1f538d", corner_radius=10)
-        self.account_frame.pack(fill="x", padx=40, pady=(10, 20))
+        # TOP BANNER - Account Selection, GLE API, Import Data
+        self.create_top_banner(main_container)
         
-        account_inner = ctk.CTkFrame(self.account_frame, fg_color="transparent")
-        account_inner.pack(fill="x", padx=15, pady=12)
-        
-        ctk.CTkLabel(
-            account_inner,
-            text="🏢 Active Account:",
-            font=("Arial", 13, "bold"),
-            text_color="white"
-        ).pack(side="left", padx=5)
-        
-        self.account_info_label = ctk.CTkLabel(
-            account_inner,
-            text="None Selected",
-            font=("Arial", 13, "bold"),
-            text_color="#ffeb3b"
-        )
-        self.account_info_label.pack(side="left", padx=10)
-        
-        ctk.CTkButton(
-            account_inner,
-            text="Change Account",
-            command=self.select_account,
-            width=130,
-            height=28,
-            font=("Arial", 10),
-            fg_color="#2b7dbc",
-            hover_color="#1f538d"
-        ).pack(side="right", padx=5)
-        
-        # Main content frame - full height
+        # Main content frame with tabbed interface
         content_frame = ctk.CTkFrame(main_container, fg_color="transparent")
-        content_frame.pack(fill="both", expand=True, padx=40, pady=(0, 10))
+        content_frame.pack(fill="both", expand=True, padx=20, pady=(0, 10))
         
-        # Job Data Display Section
-        self.create_job_data_section(content_frame)
+        # Account-gated tabbed interface (tabs will fill entire content area)
+        self.create_tabbed_interface(content_frame)
         
         # Status bar
         self.status_label = ctk.CTkLabel(
@@ -1272,156 +1390,551 @@ class OneStopShopMain:
         )
         self.status_label.pack(pady=5)
     
-    def create_job_data_section(self, parent):
-        """Create job data display section with buttons on the right - expanded for better visibility"""
-        section_frame = ctk.CTkFrame(parent, fg_color="transparent")
-        section_frame.pack(side="left", fill="both", expand=True, padx=(20, 10), pady=10)
+    def create_top_banner(self, parent):
+        """Create top banner with account selection, GLE API, and import data"""
+        banner_frame = ctk.CTkFrame(parent, fg_color="#1f538d", corner_radius=10, height=80)
+        banner_frame.pack(fill="x", padx=20, pady=(15, 20))
+        banner_frame.pack_propagate(False)
         
-        # Section title
-        title = ctk.CTkLabel(
-            section_frame,
-            text="📊 Job Data",
-            font=("Arial", 16, "bold")
+        # Left section - Account info
+        left_section = ctk.CTkFrame(banner_frame, fg_color="transparent")
+        left_section.pack(side="left", fill="y", padx=(20, 15), pady=10)
+        
+        
+        account_row = ctk.CTkFrame(left_section, fg_color="transparent")
+        account_row.pack(fill="x", pady=(5, 0))
+        
+        self.account_info_label = ctk.CTkLabel(
+            account_row,
+            text="None Selected",
+            font=("Arial", 13, "bold"),
+            text_color="#ffeb3b"
         )
-        title.pack(anchor="w", pady=(0, 10))
-        
-        # Job lookup filter bar
-        filter_bar = ctk.CTkFrame(section_frame, fg_color="#1f538d", corner_radius=8)
-        filter_bar.pack(fill="x", pady=(0, 15))
-        
-        filter_inner = ctk.CTkFrame(filter_bar, fg_color="transparent")
-        filter_inner.pack(fill="x", padx=10, pady=8)
-        
-        ctk.CTkLabel(
-            filter_inner,
-            text="🔍 Job ID:",
-            font=("Arial", 12, "bold"),
-            text_color="white"
-        ).pack(side="left", padx=(5, 10))
-        
-        self.job_id_entry = ctk.CTkEntry(
-            filter_inner,
-            placeholder_text="Enter job ID to filter data...",
-            width=300,
-            height=32,
-            font=("Arial", 11)
-        )
-        self.job_id_entry.pack(side="left", padx=5)
-        self.job_id_entry.bind('<Return>', lambda e: self.filter_by_job_id())
+        self.account_info_label.pack(side="left", padx=(0, 10))
         
         ctk.CTkButton(
-            filter_inner,
-            text="Filter",
-            command=self.filter_by_job_id,
-            width=100,
-            height=32,
-            font=("Arial", 11, "bold"),
-            fg_color="#2ecc71",
-            hover_color="#27ae60"
-        ).pack(side="left", padx=5)
+            account_row,
+            text="Choose Account",
+            command=self.select_account,
+            width=120,
+            height=28,
+            font=("Arial", 10),
+            fg_color="#2b7dbc",
+            hover_color="#1f538d"
+        ).pack(side="left")
         
+        # Center section - GLE API Pull
+        center_section = ctk.CTkFrame(banner_frame, fg_color="transparent")
+        center_section.pack(side="left", fill="y", padx=15, pady=10)
+        
+        
+        gle_row = ctk.CTkFrame(center_section, fg_color="transparent")
+        gle_row.pack(fill="x", pady=(5, 0))
+        
+        self.gle_entry = ctk.CTkEntry(
+            gle_row,
+            placeholder_text="Enter GLE JOB ID...",
+            width=200,
+            height=28,
+            font=("Arial", 10)
+        )
+        self.gle_entry.pack(side="left", padx=(0, 8))
+        self.gle_entry.bind("<Return>", lambda e: self.pull_gle_data_from_entry())
+
         ctk.CTkButton(
-            filter_inner,
-            text="Clear",
-            command=self.clear_job_filter,
+            gle_row,
+            text="Pull GLE Data",
+            command=self.pull_gle_data_from_entry,
             width=80,
-            height=32,
-            font=("Arial", 11),
+            height=28,
+            font=("Arial", 10),
+            fg_color="#27ae60",
+            hover_color="#229954"
+        ).pack(side="left", padx=(0, 5))
+        
+        
+        # Right section - Import Job Data
+        right_section = ctk.CTkFrame(banner_frame, fg_color="transparent")
+        right_section.pack(side="right", fill="y", padx=(15, 20), pady=10)
+        
+        
+        import_row = ctk.CTkFrame(right_section, fg_color="transparent")
+        import_row.pack(fill="x", pady=(5, 0))
+        
+        ctk.CTkButton(
+            import_row,
+            text="Import Job Data",
+            command=self.browse_file,
+            width=150,
+            height=28,
+            font=("Arial", 13, "bold"),
             fg_color="#e74c3c",
             hover_color="#c0392b"
-        ).pack(side="left", padx=5)
+        ).pack()
+    
+    def create_tabbed_interface(self, parent):
+        """Create account-gated tabbed interface"""
+        # Container for tabs - only shows when account is selected
+        self.tabs_container = ctk.CTkFrame(parent, fg_color="transparent")
+        self.tabs_container.pack(fill="both", expand=True)
         
-        self.filter_status_label = ctk.CTkLabel(
-            filter_inner,
-            text="",
-            font=("Arial", 10),
-            text_color="#3498db"
-        )
-        self.filter_status_label.pack(side="left", padx=10)
+        # Account selection prompt (shows when no account selected)
+        self.account_prompt = ctk.CTkFrame(self.tabs_container, fg_color="#34495e", corner_radius=15)
+        self.account_prompt.pack(fill="both", expand=True, padx=50, pady=50)
         
-        # Main container with data display and buttons
-        main_container = ctk.CTkFrame(section_frame, fg_color="transparent")
-        main_container.pack(fill="both", expand=True)
+        prompt_content = ctk.CTkFrame(self.account_prompt, fg_color="transparent")
+        prompt_content.pack(expand=True, pady=80)
         
-        # Left side: Data display area (Excel-like grid)
-        data_display_frame = ctk.CTkFrame(main_container, fg_color="#2b2b2b", corner_radius=10)
-        data_display_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
+        ctk.CTkLabel(
+            prompt_content,
+            text="🏢",
+            font=("Arial", 48)
+        ).pack(pady=(0, 20))
         
-        # Scrollable data display
-        self.data_display_scroll = ctk.CTkScrollableFrame(data_display_frame, fg_color="transparent")
-        self.data_display_scroll.pack(fill="both", expand=True, padx=15, pady=15)
+        ctk.CTkLabel(
+            prompt_content,
+            text="Please select an account to continue",
+            font=("Arial", 18, "bold"),
+            text_color="white"
+        ).pack(pady=(0, 10))
         
-        # Initial message
-        self.no_data_label = ctk.CTkLabel(
-            self.data_display_scroll,
-            text="No data loaded\n\nUse File menu to import job data or pull from GLE API",
-            font=("Arial", 13),
-            text_color="gray"
-        )
-        self.no_data_label.pack(expand=True, pady=50)
+        ctk.CTkLabel(
+            prompt_content,
+            text="Use the 'Choose Account' button in the banner above",
+            font=("Arial", 12),
+            text_color="#95a5a6"
+        ).pack(pady=(0, 20))
         
-        # Right side: Action buttons (vertical)
-        buttons_frame = ctk.CTkFrame(main_container, fg_color="transparent")
-        buttons_frame.pack(side="right", fill="y")
-        
-        # Configure Columns button - PROMINENT at top
-        self.config_columns_btn = ctk.CTkButton(
-            buttons_frame,
-            text="⚙️ Configure Columns",
-            command=self.configure_visible_columns,
-            width=160,
-            height=80,
+        ctk.CTkButton(
+            prompt_content,
+            text="Choose Account",
+            command=self.select_account,
+            width=200,
+            height=40,
             font=("Arial", 14, "bold"),
-            text_color="white",
-            fg_color="#9b59b6",
-            hover_color="#8e44ad",
-            state="disabled",
-            corner_radius=10
-        )
-        self.config_columns_btn.pack(pady=(0, 15))
-        
-        # Separator
-        ctk.CTkFrame(buttons_frame, height=2, fg_color="gray").pack(fill="x", pady=10)
-        
-        # Show Raw Data button (smaller)
-        self.show_data_btn = ctk.CTkButton(
-            buttons_frame,
-            text="📋 Show\nRaw Data",
-            command=self.show_raw_data,
-            width=150,
-            height=60,
-            font=("Arial", 11, "bold"),
-            text_color="white",
             fg_color="#3498db",
-            hover_color="#2980b9",
-            state="disabled"
-        )
-        self.show_data_btn.pack(pady=10)
+            hover_color="#2980b9"
+        ).pack()
         
-        # Clear Data button (smaller)
-        self.clear_data_btn = ctk.CTkButton(
-            buttons_frame,
-            text="🗑️ Clear\nData",
-            command=self.clear_data,
-            width=150,
-            height=60,
-            font=("Arial", 11, "bold"),
-            text_color="white",
-            fg_color="#e74c3c",
-            hover_color="#c0392b",
-            state="disabled"
-        )
-        self.clear_data_btn.pack(pady=10)
+        # Tabbed interface (initially hidden)
+        self.main_tabs = ctk.CTkTabview(self.tabs_container)
+        self.main_tabs.pack(fill="both", expand=True)
+        
+        # Create tabs - Data View first, then QuoteMe, PA Integration and Configuration,
+        self.setup_data_view_tab()
+        self.setup_quoteme_parser_tab()
+        self.setup_pa_integration_tab()
+        self.setup_configuration_tab()
+        
+        # Initially hide tabs until account is selected
+        if not self.current_account:
+            self.main_tabs.pack_forget()
+    
+    def setup_data_view_tab(self):
+        """Setup Data View tab - shows imported/pulled data with configuration options"""
+        data_tab = self.main_tabs.add("Data View")
+        
+        data_content = ctk.CTkFrame(data_tab, fg_color="transparent")
+        data_content.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # Header
+        header_frame = ctk.CTkFrame(data_content, fg_color="transparent")
+        header_frame.pack(fill="x", pady=(0, 15))
+        
+        ctk.CTkLabel(
+            header_frame,
+            text="📊 Data View",
+            font=("Arial", 18, "bold")
+        ).pack(side="left", pady=(0, 10))
         
         # Data info label
         self.data_info_label = ctk.CTkLabel(
-            section_frame,
+            header_frame,
             text="No data loaded",
             font=("Arial", 11),
             text_color="gray"
         )
-        self.data_info_label.pack(pady=10)
+        self.data_info_label.pack(side="left", padx=20)
+        
+        # Configure Columns button
+        self.config_columns_btn = ctk.CTkButton(
+            header_frame,
+            text="⚙️ Configure Columns",
+            command=self.configure_visible_columns,
+            width=180,
+            height=35,
+            font=("Arial", 11, "bold"),
+            fg_color="#9b59b6",
+            hover_color="#8e44ad",
+            state="disabled"
+        )
+        self.config_columns_btn.pack(side="right")
+        
+        # Data display scrollable area
+        self.data_display_scroll = ctk.CTkScrollableFrame(data_content, fg_color="transparent")
+        self.data_display_scroll.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Initial message
+        self.no_data_label = ctk.CTkLabel(
+            self.data_display_scroll,
+            text="No data loaded\n\nPull data from GLE API or import job data using the buttons in the banner above",
+            font=("Arial", 12),
+            text_color="gray"
+        )
+        self.no_data_label.pack(expand=True, pady=50)
     
+    def setup_configuration_tab(self):
+        """Setup Configuration tab with sub-tabs - all UIs embedded inline"""
+        from gui.entity_manager_gui import EntityManagerGUI
+        from gui.workflow_manager_gui import WorkflowManagerGUI
+        from gui.service_mapping_gui import ServiceMappingWindow
+
+        config_tab = self.main_tabs.add("Configuration")
+
+        # Create sub-tabview for configuration options
+        config_subtabs = ctk.CTkTabview(config_tab)
+        config_subtabs.pack(fill="both", expand=True)
+
+        # ── 1.1 Manage Entities ──────────────────────────────────────────────
+        entities_tab = config_subtabs.add("Manage Entities")
+        try:
+            EntityManagerGUI(frame=entities_tab)
+        except Exception as e:
+            ctk.CTkLabel(
+                entities_tab,
+                text=f"⚠️ Failed to load Entity Manager:\n{str(e)}",
+                font=("Arial", 12),
+                text_color="#e74c3c"
+            ).pack(expand=True, pady=50)
+
+        # ── 1.2 Map Services ─────────────────────────────────────────────────
+        services_tab = config_subtabs.add("Map Services")
+
+        # Entity picker header
+        picker_frame = ctk.CTkFrame(services_tab, fg_color="#1f538d", height=60)
+        picker_frame.pack(fill="x", padx=0, pady=(0, 5))
+        picker_frame.pack_propagate(False)
+
+        picker_inner = ctk.CTkFrame(picker_frame, fg_color="transparent")
+        picker_inner.pack(expand=True)
+
+        ctk.CTkLabel(
+            picker_inner,
+            text="Select Entity to Map:",
+            font=("Arial", 12, "bold"),
+            text_color="white"
+        ).pack(side="left", padx=(10, 10), pady=15)
+
+        # Load entity names from WF_Matrix
+        try:
+            import sys
+            sys.path.insert(0, str(Path(__file__).parent.parent / "Core"))
+            from WF_Matrix import PA_SERVICES
+            entity_names = sorted([e for e in PA_SERVICES.keys() if e != "TPUS"])
+        except Exception:
+            entity_names = []
+
+        entity_var = ctk.StringVar(value=entity_names[0] if entity_names else "")
+        entity_dropdown = ctk.CTkComboBox(
+            picker_inner,
+            values=entity_names,
+            variable=entity_var,
+            width=200,
+            font=("Arial", 12)
+        )
+        entity_dropdown.pack(side="left", padx=(0, 10), pady=15)
+
+        # Container for the mapping UI (reloaded when entity changes)
+        mapping_container = ctk.CTkFrame(services_tab, fg_color="transparent")
+        mapping_container.pack(fill="both", expand=True)
+
+        def load_entity_mapping(*_):
+            # Clear previous mapping UI
+            for widget in mapping_container.winfo_children():
+                widget.destroy()
+            entity = entity_var.get()
+            if not entity:
+                return
+            try:
+                ServiceMappingWindow(self.root, entity, frame=mapping_container)
+            except Exception as e:
+                ctk.CTkLabel(
+                    mapping_container,
+                    text=f"⚠️ Failed to load mapping for '{entity}':\n{str(e)}",
+                    font=("Arial", 12),
+                    text_color="#e74c3c"
+                ).pack(expand=True, pady=30)
+
+        entity_dropdown.configure(command=load_entity_mapping)
+
+        # Load first entity by default
+        if entity_names:
+            load_entity_mapping()
+
+        # ── 1.3 Configure Workflows ──────────────────────────────────────────
+        workflows_tab = config_subtabs.add("Configure Workflows")
+        try:
+            WorkflowManagerGUI(frame=workflows_tab)
+        except Exception as e:
+            ctk.CTkLabel(
+                workflows_tab,
+                text=f"⚠️ Failed to load Workflow Manager:\n{str(e)}",
+                font=("Arial", 12),
+                text_color="#e74c3c"
+            ).pack(expand=True, pady=50)
+
+    def setup_quoteme_parser_tab(self):
+        """Setup QuoteMe Email Parser tab - embedded directly in the viewing pane"""
+        parser_tab = self.main_tabs.add("QuoteMe Parser")
+
+        def on_parser_apply(lp_code: str, lp_data):
+            self.update_status(f"✅ QuoteMe parsed: {lp_code}")
+
+        try:
+            create_parser_tab(parser_tab, on_apply_callback=on_parser_apply)
+        except Exception as e:
+            ctk.CTkLabel(
+                parser_tab,
+                text=f"⚠️ Failed to load QuoteMe Parser:\n{str(e)}",
+                font=("Arial", 12),
+                text_color="#e74c3c"
+            ).pack(expand=True, pady=60)
+
+    def setup_pa_integration_tab(self):
+        """Setup PA Integration tab with embedded sub-tabs"""
+        pa_tab = self.main_tabs.add("PA Integration")
+
+        pa_subtabs = ctk.CTkTabview(pa_tab)
+        pa_subtabs.pack(fill="both", expand=True)
+
+        # ── Sub-tab 1: Configure Template (default) ───────────────────────────
+        mapper_tab = pa_subtabs.add("Configure Template")
+
+        # Placeholder shown until account is selected
+        self.pa_mapper_container = ctk.CTkFrame(mapper_tab, fg_color="transparent")
+        self.pa_mapper_container.pack(fill="both", expand=True)
+
+        self._pa_mapper_placeholder = ctk.CTkLabel(
+            self.pa_mapper_container,
+            text="Select an account to load the Template Mapper",
+            font=("Arial", 13),
+            text_color="gray"
+        )
+        self._pa_mapper_placeholder.pack(expand=True, pady=60)
+
+        # ── Sub-tab 2: Data Preview ───────────────────────────────────────────
+        preview_tab = pa_subtabs.add("Data Preview")
+
+        preview_outer = ctk.CTkFrame(preview_tab, fg_color="transparent")
+        preview_outer.pack(fill="both", expand=True, padx=15, pady=10)
+
+        # Run preview button
+        preview_btn_row = ctk.CTkFrame(preview_outer, fg_color="#2c3e50", corner_radius=8)
+        preview_btn_row.pack(fill="x", pady=(0, 10))
+
+        preview_btn_inner = ctk.CTkFrame(preview_btn_row, fg_color="transparent")
+        preview_btn_inner.pack(fill="x", padx=15, pady=12)
+
+        ctk.CTkLabel(
+            preview_btn_inner,
+            text="👁️ Data Preview",
+            font=("Arial", 14, "bold"),
+            text_color="white"
+        ).pack(side="left", padx=(0, 20))
+
+        self.pa_preview_status = ctk.CTkLabel(
+            preview_btn_inner,
+            text="",
+            font=("Arial", 11),
+            text_color="#3498db"
+        )
+        self.pa_preview_status.pack(side="left", padx=(0, 15))
+
+        ctk.CTkButton(
+            preview_btn_inner,
+            text="▶ Run Preview",
+            command=self._run_inline_preview,
+            width=140,
+            height=32,
+            font=("Arial", 11, "bold"),
+            fg_color="#2ecc71",
+            hover_color="#27ae60"
+        ).pack(side="right")
+
+        # Scrollable results area
+        self.pa_preview_scroll = ctk.CTkScrollableFrame(preview_outer, fg_color="#1e1e1e", corner_radius=8)
+        self.pa_preview_scroll.pack(fill="both", expand=True)
+
+        ctk.CTkLabel(
+            self.pa_preview_scroll,
+            text="Click 'Run Preview' to generate a preview of PA integration data.",
+            font=("Arial", 12),
+            text_color="gray"
+        ).pack(expand=True, pady=40)
+
+        # ── Sub-tab 3: Generate Worksheets ────────────────────────────────────
+        generate_tab = pa_subtabs.add("Generate Worksheets")
+
+        gen_outer = ctk.CTkFrame(generate_tab, fg_color="transparent")
+        gen_outer.pack(fill="both", expand=True, padx=15, pady=10)
+
+        # Info card
+        info_card = ctk.CTkFrame(gen_outer, fg_color="#2c3e50", corner_radius=8)
+        info_card.pack(fill="x", pady=(0, 15))
+
+        ctk.CTkLabel(
+            info_card,
+            text="✨ Generate PA Integration Worksheets",
+            font=("Arial", 16, "bold"),
+            text_color="white"
+        ).pack(pady=(15, 5), padx=20, anchor="w")
+
+        ctk.CTkLabel(
+            info_card,
+            text="Generates a multi-sheet Excel file with one worksheet per Sub_ID,\n"
+                 "ready for import into ProjectA.",
+            font=("Arial", 11),
+            text_color="#95a5a6",
+            justify="left"
+        ).pack(pady=(0, 15), padx=20, anchor="w")
+
+        # Generate button
+        gen_btn_frame = ctk.CTkFrame(gen_outer, fg_color="#e74c3c", corner_radius=10)
+        gen_btn_frame.pack(fill="x", pady=(0, 15))
+
+        gen_inner = ctk.CTkFrame(gen_btn_frame, fg_color="transparent")
+        gen_inner.pack(fill="x", padx=20, pady=20)
+
+        ctk.CTkButton(
+            gen_inner,
+            text="✨ Generate PA Integration",
+            command=self.generate_pa_worksheets,
+            width=280,
+            height=55,
+            font=("Arial", 15, "bold"),
+            fg_color="#c0392b",
+            hover_color="#a93226"
+        ).pack(side="left")
+
+        self.pa_generate_status = ctk.CTkLabel(
+            gen_inner,
+            text="",
+            font=("Arial", 11),
+            text_color="#2ecc71"
+        )
+        self.pa_generate_status.pack(side="left", padx=20)
+
+        # Last generated file info
+        self.pa_last_file_label = ctk.CTkLabel(
+            gen_outer,
+            text="No file generated yet",
+            font=("Arial", 10),
+            text_color="gray"
+        )
+        self.pa_last_file_label.pack(anchor="w", pady=(5, 0))
+
+    def refresh_pa_integration_tab(self):
+        """Reload PA Template Mapper in the Configure Template sub-tab for current account"""
+        if not hasattr(self, 'pa_mapper_container'):
+            return
+
+        # Clear existing content
+        for widget in self.pa_mapper_container.winfo_children():
+            widget.destroy()
+
+        if not self.current_account:
+            ctk.CTkLabel(
+                self.pa_mapper_container,
+                text="Select an account to load the Template Mapper",
+                font=("Arial", 13),
+                text_color="gray"
+            ).pack(expand=True, pady=60)
+            return
+
+        try:
+            from gui.pa_template_mapper_gui import PATemplateMapperGUI
+            PATemplateMapperGUI(
+                self.root,
+                self.current_account,
+                dataframe=self.current_data,
+                frame=self.pa_mapper_container
+            )
+        except Exception as e:
+            ctk.CTkLabel(
+                self.pa_mapper_container,
+                text=f"⚠️ Failed to load Template Mapper:\n{str(e)}",
+                font=("Arial", 12),
+                text_color="#e74c3c"
+            ).pack(expand=True, pady=40)
+
+    def _run_inline_preview(self):
+        """Run PA data preview and show results in the Data Preview sub-tab"""
+        source_data = self.filtered_job_data if self.filtered_job_data is not None else self.current_data
+
+        if source_data is None:
+            self.pa_preview_status.configure(text="⚠️ No data loaded", text_color="#e74c3c")
+            return
+        if not self.current_account:
+            self.pa_preview_status.configure(text="⚠️ No account selected", text_color="#e74c3c")
+            return
+
+        template = self.template_manager.get_template(self.current_account)
+        if not template:
+            self.pa_preview_status.configure(text="⚠️ No template configured", text_color="#e74c3c")
+            return
+
+        try:
+            self.pa_preview_status.configure(text="Generating…", text_color="#3498db")
+            self.root.update_idletasks()
+
+            preview_df = self.template_processor.process_dataframe(
+                source_data, source_data, self.current_account, row_index=0
+            )
+
+            # Clear scroll area
+            for widget in self.pa_preview_scroll.winfo_children():
+                widget.destroy()
+
+            if preview_df is None or len(preview_df) == 0:
+                ctk.CTkLabel(
+                    self.pa_preview_scroll,
+                    text="No data returned from preview.",
+                    font=("Arial", 12),
+                    text_color="#e74c3c"
+                ).pack(pady=30)
+                self.pa_preview_status.configure(text="⚠️ Empty result", text_color="#e74c3c")
+                return
+
+            key_col = preview_df.columns[0]
+            data_col = preview_df.columns[1]
+
+            # Header row
+            hdr = ctk.CTkFrame(self.pa_preview_scroll, fg_color="#2b7dbc")
+            hdr.pack(fill="x", pady=(5, 8), padx=5)
+            ctk.CTkLabel(hdr, text=key_col, font=("Arial", 12, "bold"), text_color="white",
+                         width=280, anchor="w").pack(side="left", padx=12, pady=8)
+            ctk.CTkLabel(hdr, text=data_col, font=("Arial", 12, "bold"), text_color="white",
+                         anchor="w").pack(side="left", padx=12, pady=8, fill="x", expand=True)
+
+            # Data rows
+            for idx, row in preview_df.iterrows():
+                bg = "#252525" if idx % 2 == 0 else "#2b2b2b"
+                rf = ctk.CTkFrame(self.pa_preview_scroll, fg_color=bg)
+                rf.pack(fill="x", pady=1, padx=5)
+                ctk.CTkLabel(rf, text=str(row[key_col]), font=("Arial", 11),
+                             text_color="#3498db", width=280, anchor="w").pack(side="left", padx=12, pady=6)
+                val = str(row[data_col]) if pd.notna(row[data_col]) else ""
+                ctk.CTkLabel(rf, text=val, font=("Arial", 11), text_color="white",
+                             anchor="w", wraplength=500, justify="left").pack(
+                    side="left", padx=12, pady=6, fill="x", expand=True)
+
+            self.pa_preview_status.configure(
+                text=f"✅ {len(preview_df)} fields previewed", text_color="#2ecc71"
+            )
+
+        except Exception as e:
+            self.pa_preview_status.configure(text=f"⚠️ Error: {str(e)[:60]}", text_color="#e74c3c")
+
     def load_column_preferences(self, account_name):
         """Load saved column preferences for an account"""
         try:
@@ -1912,12 +2425,17 @@ class OneStopShopMain:
             if self.current_account:
                 self.index_column = self.load_index_column(self.current_account)
             
+            # Load and display data with default columns if not already configured
+            if not self.visible_columns:
+                # Auto-select first 5 columns as default
+                self.visible_columns = list(self.current_data.columns[:5])
+            
+            self.update_data_display()
+            
             # Update UI
             self.update_status(f"✅ File loaded: {Path(file_path).name}")
             self.update_data_info()
             self.enable_data_actions()
-            
-            # File loaded successfully (status shown above)
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load file:\n{str(e)}")

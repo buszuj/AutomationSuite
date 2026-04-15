@@ -12,29 +12,23 @@
     "Currency Code",
     "PO Number",
     "Sponsor",
-    "Workflow"
+    "Workflow",
+    "Proposed Deadline",
+    "Accepted Deadline"
   ],
   "Pfizer": [
     "GL Portal No",
-    "Submitter Username",
-    "Submitter Name",
     "Source Language",
     "Target Language(s)",
-    "Client Requested Deadline",
-    "Proposed Deadline",
-    "Accepted Deadline",
     "Requester's Country",
-    "Additional Instructions",
     "Country",
-    "Blanket PO",
-    "Document Type",
     "If Rush, please enter desired rush deadline here",
     "PO Number",
     "PAREXEL Project Number",
-    "Rush",
-    "Sponsor Protocol Number",
     "Sponsor",
-    "Workflow"
+    "Workflow",
+    "Deadline (actual date & time)",
+    "Currency Code"
   ],
   "IQVIA": [
     "Submission ID",
@@ -51,5 +45,29 @@
     "PO Number",
     "Instructions",
     "SubmissionOwner"
+  ],
+  "testedsgsdf": [
+    "Job Number",
+    "Approved By",
+    "Submission LP",
+    "Source Language",
+    "Department",
+    "Target Language(s)",
+    "Client Requested Deadline",
+    "Proposed Deadline"
+  ],
+  "AMGEN": [
+    "GL Portal No",
+    "Submission Name",
+    "Organization",
+    "Source Language",
+    "Target Language(s)",
+    "Accepted Deadline",
+    "Additional Instructions",
+    "Client Requested Deadline",
+    "Submitter Name",
+    "Source Files",
+    "Submitter Username",
+    "Requester's Country"
   ]
 }

@@ -1,0 +1,1192 @@
+{
+  "languages": [
+    {
+      "code": "af",
+      "language": "Afrikaans",
+      "country": "",
+      "display_name": "Afrikaans"
+    },
+    {
+      "code": "af-NA",
+      "language": "Afrikaans",
+      "country": "Namibia",
+      "display_name": "Afrikaans (Namibia)"
+    },
+    {
+      "code": "af-ZA",
+      "language": "Afrikaans",
+      "country": "South Africa",
+      "display_name": "Afrikaans (South Africa)"
+    },
+    {
+      "code": "am",
+      "language": "Amharic",
+      "country": "",
+      "display_name": "Amharic"
+    },
+    {
+      "code": "am-ET",
+      "language": "Amharic",
+      "country": "Ethiopia",
+      "display_name": "Amharic (Ethiopia)"
+    },
+    {
+      "code": "ar",
+      "language": "Arabic",
+      "country": "",
+      "display_name": "Arabic"
+    },
+    {
+      "code": "ar-AE",
+      "language": "Arabic",
+      "country": "United Arab Emirates",
+      "display_name": "Arabic (United Arab Emirates)"
+    },
+    {
+      "code": "ar-BH",
+      "language": "Arabic",
+      "country": "Bahrain",
+      "display_name": "Arabic (Bahrain)"
+    },
+    {
+      "code": "ar-IL",
+      "language": "Arabic",
+      "country": "Israel",
+      "display_name": "Arabic (Israel)"
+    },
+    {
+      "code": "az",
+      "language": "Azerbaijani",
+      "country": "",
+      "display_name": "Azerbaijani"
+    },
+    {
+      "code": "az-AZ",
+      "language": "Azerbaijani",
+      "country": "Azerbaijan",
+      "display_name": "Azerbaijani (Azerbaijan)"
+    },
+    {
+      "code": "be-BY",
+      "language": "Belarusian",
+      "country": "Belarus",
+      "display_name": "Belarusian (Belarus)"
+    },
+    {
+      "code": "bg",
+      "language": "Bulgarian",
+      "country": "",
+      "display_name": "Bulgarian"
+    },
+    {
+      "code": "bg-BG",
+      "language": "Bulgarian",
+      "country": "Bulgaria",
+      "display_name": "Bulgarian (Bulgaria)"
+    },
+    {
+      "code": "bn",
+      "language": "Bengali",
+      "country": "",
+      "display_name": "Bengali"
+    },
+    {
+      "code": "bn-BD",
+      "language": "Bengali",
+      "country": "Bangladesh",
+      "display_name": "Bengali (Bangladesh)"
+    },
+    {
+      "code": "bn-IN",
+      "language": "Bengali",
+      "country": "India",
+      "display_name": "Bengali (India)"
+    },
+    {
+      "code": "bs",
+      "language": "Bosnian",
+      "country": "Bosnia and Herzegovina",
+      "display_name": "Bosnian (Bosnia and Herzegovina)"
+    },
+    {
+      "code": "bs-BA",
+      "language": "Bosnian",
+      "country": "Bosnia and Herzegovina",
+      "display_name": "Bosnian (Bosnia and Herzegovina)"
+    },
+    {
+      "code": "ca",
+      "language": "Catalan",
+      "country": "",
+      "display_name": "Catalan"
+    },
+    {
+      "code": "ca-ES",
+      "language": "Catalan",
+      "country": "Spain",
+      "display_name": "Catalan (Spain)"
+    },
+    {
+      "code": "cb-DA",
+      "language": "Cebuano",
+      "country": "Davao (Philippines)",
+      "display_name": "Cebuano (Davao (Philippines))"
+    },
+    {
+      "code": "cb-PH",
+      "language": "Cebuano",
+      "country": "Philippines",
+      "display_name": "Cebuano (Philippines)"
+    },
+    {
+      "code": "cs",
+      "language": "Czech",
+      "country": "",
+      "display_name": "Czech"
+    },
+    {
+      "code": "cs-CZ",
+      "language": "Czech",
+      "country": "Czech Republic",
+      "display_name": "Czech (Czech Republic)"
+    },
+    {
+      "code": "da",
+      "language": "Danish",
+      "country": "",
+      "display_name": "Danish"
+    },
+    {
+      "code": "da-DK",
+      "language": "Danish",
+      "country": "Denmark",
+      "display_name": "Danish (Denmark)"
+    },
+    {
+      "code": "de",
+      "language": "German",
+      "country": "",
+      "display_name": "German"
+    },
+    {
+      "code": "de-AT",
+      "language": "German",
+      "country": "Austria",
+      "display_name": "German (Austria)"
+    },
+    {
+      "code": "de-BE",
+      "language": "German",
+      "country": "Belgium",
+      "display_name": "German (Belgium)"
+    },
+    {
+      "code": "de-CH",
+      "language": "German",
+      "country": "Switzerland",
+      "display_name": "German (Switzerland)"
+    },
+    {
+      "code": "de-DE",
+      "language": "German",
+      "country": "Germany",
+      "display_name": "German (Germany)"
+    },
+    {
+      "code": "de-GR",
+      "language": "German",
+      "country": "Greece",
+      "display_name": "German (Greece)"
+    },
+    {
+      "code": "el",
+      "language": "Greek",
+      "country": "",
+      "display_name": "Greek"
+    },
+    {
+      "code": "el-CY",
+      "language": "Greek",
+      "country": "Cyprus",
+      "display_name": "Greek (Cyprus)"
+    },
+    {
+      "code": "el-GR",
+      "language": "Greek",
+      "country": "Greece",
+      "display_name": "Greek (Greece)"
+    },
+    {
+      "code": "en",
+      "language": "English",
+      "country": "",
+      "display_name": "English"
+    },
+    {
+      "code": "en-GB",
+      "language": "English",
+      "country": "Great Britain",
+      "display_name": "English (Great Britain)"
+    },
+    {
+      "code": "en-US",
+      "language": "English",
+      "country": "United States",
+      "display_name": "English (United States)"
+    },
+    {
+      "code": "es-CO",
+      "language": "Spanish",
+      "country": "",
+      "display_name": "Spanish"
+    },
+    {
+      "code": "es-AR",
+      "language": "Spanish",
+      "country": "Argentina",
+      "display_name": "Spanish (Argentina)"
+    },
+    {
+      "code": "es-BO",
+      "language": "Spanish",
+      "country": "Bolivia",
+      "display_name": "Spanish (Bolivia)"
+    },
+    {
+      "code": "es-BZ",
+      "language": "Spanish",
+      "country": "Belize",
+      "display_name": "Spanish (Belize)"
+    },
+    {
+      "code": "es-CL",
+      "language": "Spanish",
+      "country": "Chile",
+      "display_name": "Spanish (Chile)"
+    },
+    {
+      "code": "es-ES",
+      "language": "Spanish",
+      "country": "Spain",
+      "display_name": "Spanish (Spain)"
+    },
+    {
+      "code": "es-LA",
+      "language": "Spanish",
+      "country": "Latin America",
+      "display_name": "Spanish (Latin America)"
+    },
+    {
+      "code": "es-US",
+      "language": "Spanish",
+      "country": "United States",
+      "display_name": "Spanish (United States)"
+    },
+    {
+      "code": "et",
+      "language": "Estonian",
+      "country": "",
+      "display_name": "Estonian"
+    },
+    {
+      "code": "et-EE",
+      "language": "Estonian",
+      "country": "Estonia",
+      "display_name": "Estonian (Estonia)"
+    },
+    {
+      "code": "fi",
+      "language": "Finnish",
+      "country": "",
+      "display_name": "Finnish"
+    },
+    {
+      "code": "fi-FI",
+      "language": "Finnish",
+      "country": "Finland",
+      "display_name": "Finnish (Finland)"
+    },
+    {
+      "code": "fr",
+      "language": "French",
+      "country": "",
+      "display_name": "French"
+    },
+    {
+      "code": "fr-BE",
+      "language": "French",
+      "country": "Belgium",
+      "display_name": "French (Belgium)"
+    },
+    {
+      "code": "fr-BF",
+      "language": "French",
+      "country": "Burkina Faso",
+      "display_name": "French (Burkina Faso)"
+    },
+    {
+      "code": "fr-CA",
+      "language": "French",
+      "country": "Canada",
+      "display_name": "French (Canada)"
+    },
+    {
+      "code": "fr-FR",
+      "language": "French",
+      "country": "France",
+      "display_name": "French (France)"
+    },
+    {
+      "code": "gu",
+      "language": "Gujarati",
+      "country": "",
+      "display_name": "Gujarati"
+    },
+    {
+      "code": "gu-IN",
+      "language": "Gujarati",
+      "country": "India",
+      "display_name": "Gujarati (India)"
+    },
+    {
+      "code": "he",
+      "language": "Hebrew",
+      "country": "",
+      "display_name": "Hebrew"
+    },
+    {
+      "code": "he-IL",
+      "language": "Hebrew",
+      "country": "Israel",
+      "display_name": "Hebrew (Israel)"
+    },
+    {
+      "code": "hi",
+      "language": "Hindi",
+      "country": "",
+      "display_name": "Hindi"
+    },
+    {
+      "code": "hi-IN",
+      "language": "Hindi",
+      "country": "India",
+      "display_name": "Hindi (India)"
+    },
+    {
+      "code": "hr",
+      "language": "Croatian",
+      "country": "",
+      "display_name": "Croatian"
+    },
+    {
+      "code": "hr-HR",
+      "language": "Croatian",
+      "country": "Croatia",
+      "display_name": "Croatian (Croatia)"
+    },
+    {
+      "code": "ht-HT",
+      "language": "Haitian Creole",
+      "country": "Haiti",
+      "display_name": "Haitian Creole (Haiti)"
+    },
+    {
+      "code": "hu",
+      "language": "Hungarian",
+      "country": "",
+      "display_name": "Hungarian"
+    },
+    {
+      "code": "hu-HU",
+      "language": "Hungarian",
+      "country": "Hungary",
+      "display_name": "Hungarian (Hungary)"
+    },
+    {
+      "code": "hy",
+      "language": "Armenian",
+      "country": "",
+      "display_name": "Armenian"
+    },
+    {
+      "code": "ic-PH",
+      "language": "Ilocano",
+      "country": "Philippines",
+      "display_name": "Ilocano (Philippines)"
+    },
+    {
+      "code": "id-ID",
+      "language": "Indonesian",
+      "country": "Indonesia",
+      "display_name": "Indonesian (Indonesia)"
+    },
+    {
+      "code": "il-PH",
+      "language": "Ilonggo",
+      "country": "Philippines",
+      "display_name": "Ilonggo (Philippines)"
+    },
+    {
+      "code": "in",
+      "language": "Indonesian",
+      "country": "",
+      "display_name": "Indonesian"
+    },
+    {
+      "code": "is",
+      "language": "Icelandic",
+      "country": "",
+      "display_name": "Icelandic"
+    },
+    {
+      "code": "is-IS",
+      "language": "Icelandic",
+      "country": "Iceland",
+      "display_name": "Icelandic (Iceland)"
+    },
+    {
+      "code": "it",
+      "language": "Italian",
+      "country": "",
+      "display_name": "Italian"
+    },
+    {
+      "code": "it-CH",
+      "language": "Italian",
+      "country": "Switzerland",
+      "display_name": "Italian (Switzerland)"
+    },
+    {
+      "code": "it-IT",
+      "language": "Italian",
+      "country": "Italy",
+      "display_name": "Italian (Italy)"
+    },
+    {
+      "code": "it-SM",
+      "language": "Italian",
+      "country": "San Marino",
+      "display_name": "Italian (San Marino)"
+    },
+    {
+      "code": "iw",
+      "language": "Hebrew",
+      "country": "",
+      "display_name": "Hebrew"
+    },
+    {
+      "code": "ja",
+      "language": "Japanese",
+      "country": "",
+      "display_name": "Japanese"
+    },
+    {
+      "code": "ja-JP",
+      "language": "Japanese",
+      "country": "Japan",
+      "display_name": "Japanese (Japan)"
+    },
+    {
+      "code": "ka",
+      "language": "Georgian",
+      "country": "",
+      "display_name": "Georgian"
+    },
+    {
+      "code": "ka-GE",
+      "language": "Georgian",
+      "country": "Georgia",
+      "display_name": "Georgian (Georgia)"
+    },
+    {
+      "code": "kk",
+      "language": "Kazakh",
+      "country": "",
+      "display_name": "Kazakh"
+    },
+    {
+      "code": "kk-KZ",
+      "language": "Kazakh",
+      "country": "Kazakhstan",
+      "display_name": "Kazakh (Kazakhstan)"
+    },
+    {
+      "code": "km",
+      "language": "Khmer",
+      "country": "",
+      "display_name": "Khmer"
+    },
+    {
+      "code": "kn",
+      "language": "Kannada",
+      "country": "",
+      "display_name": "Kannada"
+    },
+    {
+      "code": "kn-IN",
+      "language": "Kannada",
+      "country": "India",
+      "display_name": "Kannada (India)"
+    },
+    {
+      "code": "ko",
+      "language": "Korean",
+      "country": "",
+      "display_name": "Korean"
+    },
+    {
+      "code": "ko-KR",
+      "language": "Korean",
+      "country": "South Korea",
+      "display_name": "Korean (South Korea)"
+    },
+    {
+      "code": "ku",
+      "language": "Kurdish",
+      "country": "",
+      "display_name": "Kurdish"
+    },
+    {
+      "code": "ku-TR",
+      "language": "Kurdish",
+      "country": "Turkey",
+      "display_name": "Kurdish (Turkey)"
+    },
+    {
+      "code": "lt",
+      "language": "Lithuanian",
+      "country": "",
+      "display_name": "Lithuanian"
+    },
+    {
+      "code": "lt-LT",
+      "language": "Lithuanian",
+      "country": "Lithuania",
+      "display_name": "Lithuanian (Lithuania)"
+    },
+    {
+      "code": "lv",
+      "language": "Latvian",
+      "country": "",
+      "display_name": "Latvian"
+    },
+    {
+      "code": "lv-LV",
+      "language": "Latvian",
+      "country": "Latvia",
+      "display_name": "Latvian (Latvia)"
+    },
+    {
+      "code": "mk",
+      "language": "Macedonian",
+      "country": "",
+      "display_name": "Macedonian"
+    },
+    {
+      "code": "mk-MK",
+      "language": "Macedonian",
+      "country": "North Macedonia",
+      "display_name": "Macedonian (North Macedonia)"
+    },
+    {
+      "code": "ml",
+      "language": "Malayalam",
+      "country": "",
+      "display_name": "Malayalam"
+    },
+    {
+      "code": "ml-IN",
+      "language": "Malayalam",
+      "country": "India",
+      "display_name": "Malayalam (India)"
+    },
+    {
+      "code": "mn",
+      "language": "Mongolian",
+      "country": "",
+      "display_name": "Mongolian"
+    },
+    {
+      "code": "mn-MN",
+      "language": "Mongolian",
+      "country": "Mongolia",
+      "display_name": "Mongolian (Mongolia)"
+    },
+    {
+      "code": "mr",
+      "language": "Marathi",
+      "country": "",
+      "display_name": "Marathi"
+    },
+    {
+      "code": "mr-IN",
+      "language": "Marathi",
+      "country": "India",
+      "display_name": "Marathi (India)"
+    },
+    {
+      "code": "ms",
+      "language": "Malay",
+      "country": "",
+      "display_name": "Malay"
+    },
+    {
+      "code": "ms-BX",
+      "language": "Malay",
+      "country": "Brunei",
+      "display_name": "Malay (Brunei)"
+    },
+    {
+      "code": "ms-MY",
+      "language": "Malay",
+      "country": "Malaysia",
+      "display_name": "Malay (Malaysia)"
+    },
+    {
+      "code": "mt",
+      "language": "Maltese",
+      "country": "",
+      "display_name": "Maltese"
+    },
+    {
+      "code": "mt-MT",
+      "language": "Maltese",
+      "country": "Malta",
+      "display_name": "Maltese (Malta)"
+    },
+    {
+      "code": "nav",
+      "language": "Navajo",
+      "country": "United States",
+      "display_name": "Navajo (United States)"
+    },
+    {
+      "code": "ne",
+      "language": "Nepali",
+      "country": "",
+      "display_name": "Nepali"
+    },
+    {
+      "code": "ne-NP",
+      "language": "Nepali",
+      "country": "Nepal",
+      "display_name": "Nepali (Nepal)"
+    },
+    {
+      "code": "nl",
+      "language": "Dutch",
+      "country": "",
+      "display_name": "Dutch"
+    },
+    {
+      "code": "nl-BE",
+      "language": "Dutch",
+      "country": "Belgium",
+      "display_name": "Dutch (Belgium)"
+    },
+    {
+      "code": "nl-NL",
+      "language": "Dutch",
+      "country": "Netherlands",
+      "display_name": "Dutch (Netherlands)"
+    },
+    {
+      "code": "no",
+      "language": "Norwegian",
+      "country": "",
+      "display_name": "Norwegian"
+    },
+    {
+      "code": "no-NO",
+      "language": "Norwegian",
+      "country": "Norway",
+      "display_name": "Norwegian (Norway)"
+    },
+    {
+      "code": "no-NO-NY",
+      "language": "Norwegian",
+      "country": "Nynorsk (Norway)",
+      "display_name": "Norwegian (Nynorsk (Norway))"
+    },
+    {
+      "code": "nv",
+      "language": "Navajo",
+      "country": "",
+      "display_name": "Navajo"
+    },
+    {
+      "code": "nv-US",
+      "language": "Navajo",
+      "country": "United States",
+      "display_name": "Navajo (United States)"
+    },
+    {
+      "code": "or",
+      "language": "Oriya",
+      "country": "",
+      "display_name": "Oriya"
+    },
+    {
+      "code": "or-IN",
+      "language": "Oriya",
+      "country": "India",
+      "display_name": "Oriya (India)"
+    },
+    {
+      "code": "pa",
+      "language": "Punjabi",
+      "country": "",
+      "display_name": "Punjabi"
+    },
+    {
+      "code": "pa-IN",
+      "language": "Punjabi",
+      "country": "India",
+      "display_name": "Punjabi (India)"
+    },
+    {
+      "code": "pl",
+      "language": "Polish",
+      "country": "",
+      "display_name": "Polish"
+    },
+    {
+      "code": "pl-PL",
+      "language": "Polish",
+      "country": "Poland",
+      "display_name": "Polish (Poland)"
+    },
+    {
+      "code": "ps",
+      "language": "Pashto",
+      "country": "",
+      "display_name": "Pashto"
+    },
+    {
+      "code": "ps-AF",
+      "language": "Pashto",
+      "country": "Afghanistan",
+      "display_name": "Pashto (Afghanistan)"
+    },
+    {
+      "code": "pt",
+      "language": "Portuguese",
+      "country": "",
+      "display_name": "Portuguese"
+    },
+    {
+      "code": "pt-AO",
+      "language": "Portuguese",
+      "country": "Angola",
+      "display_name": "Portuguese (Angola)"
+    },
+    {
+      "code": "pt-BR",
+      "language": "Portuguese",
+      "country": "Brazil",
+      "display_name": "Portuguese (Brazil)"
+    },
+    {
+      "code": "pt-PT",
+      "language": "Portuguese",
+      "country": "Portugal",
+      "display_name": "Portuguese (Portugal)"
+    },
+    {
+      "code": "ro",
+      "language": "Romanian",
+      "country": "",
+      "display_name": "Romanian"
+    },
+    {
+      "code": "ro-MD",
+      "language": "Romanian",
+      "country": "Moldova",
+      "display_name": "Romanian (Moldova)"
+    },
+    {
+      "code": "ro-RO",
+      "language": "Romanian",
+      "country": "Romania",
+      "display_name": "Romanian (Romania)"
+    },
+    {
+      "code": "ru",
+      "language": "Russian",
+      "country": "",
+      "display_name": "Russian"
+    },
+    {
+      "code": "ru-BY",
+      "language": "Russian",
+      "country": "Belarus",
+      "display_name": "Russian (Belarus)"
+    },
+    {
+      "code": "ru-DE",
+      "language": "Russian",
+      "country": "Germany",
+      "display_name": "Russian (Germany)"
+    },
+    {
+      "code": "ru-MD",
+      "language": "Russian",
+      "country": "Moldova",
+      "display_name": "Russian (Moldova)"
+    },
+    {
+      "code": "ru-RU",
+      "language": "Russian",
+      "country": "Russia",
+      "display_name": "Russian (Russia)"
+    },
+    {
+      "code": "ru-UA",
+      "language": "Russian",
+      "country": "Ukraine",
+      "display_name": "Russian (Ukraine)"
+    },
+    {
+      "code": "sd",
+      "language": "Sindhi",
+      "country": "",
+      "display_name": "Sindhi"
+    },
+    {
+      "code": "si",
+      "language": "Sinhala",
+      "country": "",
+      "display_name": "Sinhala"
+    },
+    {
+      "code": "si-LK",
+      "language": "Sinhalese",
+      "country": "Sri Lanka",
+      "display_name": "Sinhalese (Sri Lanka)"
+    },
+    {
+      "code": "sk",
+      "language": "Slovak",
+      "country": "",
+      "display_name": "Slovak"
+    },
+    {
+      "code": "sk-SK",
+      "language": "Slovak",
+      "country": "Slovakia",
+      "display_name": "Slovak (Slovakia)"
+    },
+    {
+      "code": "sl",
+      "language": "Slovenian",
+      "country": "",
+      "display_name": "Slovenian"
+    },
+    {
+      "code": "sl-SI",
+      "language": "Slovenian",
+      "country": "Slovenia",
+      "display_name": "Slovenian (Slovenia)"
+    },
+    {
+      "code": "sq",
+      "language": "Albanian",
+      "country": "",
+      "display_name": "Albanian"
+    },
+    {
+      "code": "sr",
+      "language": "Serbian",
+      "country": "",
+      "display_name": "Serbian"
+    },
+    {
+      "code": "sr-BA",
+      "language": "Serbian",
+      "country": "Bosnia and Herzegovina",
+      "display_name": "Serbian (Bosnia and Herzegovina)"
+    },
+    {
+      "code": "sr-CS",
+      "language": "Serbian",
+      "country": "Serbia and Montenegro",
+      "display_name": "Serbian (Serbia and Montenegro)"
+    },
+    {
+      "code": "sr-RS",
+      "language": "Serbian",
+      "country": "Serbia",
+      "display_name": "Serbian (Serbia, Cyrllic)"
+    },
+    {
+      "code": "sr-RS-CYRL",
+      "language": "Serbian",
+      "country": "Serbia",
+      "display_name": "Serbian (Serbia)"
+    },
+    {
+      "code": "sr-RS-LATN",
+      "language": "Serbian",
+      "country": "Serbia",
+      "display_name": "Serbian (Serbia, Latin)"
+    },
+    {
+      "code": "st-ZA",
+      "language": "Sesotho",
+      "country": "South Africa",
+      "display_name": "Sesotho (South Africa)"
+    },
+    {
+      "code": "sv",
+      "language": "Swedish",
+      "country": "",
+      "display_name": "Swedish"
+    },
+    {
+      "code": "sv-FI",
+      "language": "Swedish",
+      "country": "Finland",
+      "display_name": "Swedish (Finland)"
+    },
+    {
+      "code": "sv-SE",
+      "language": "Swedish",
+      "country": "Sweden",
+      "display_name": "Swedish (Sweden)"
+    },
+    {
+      "code": "sw-KE",
+      "language": "Swahili",
+      "country": "Kenya",
+      "display_name": "Swahili (Kenya)"
+    },
+    {
+      "code": "ta-MY",
+      "language": "Tamil",
+      "country": "",
+      "display_name": "Tamil"
+    },
+    {
+      "code": "ta-IN",
+      "language": "Tamil",
+      "country": "India",
+      "display_name": "Tamil (India)"
+    },
+    {
+      "code": "ta-LK",
+      "language": "Tamil",
+      "country": "Sri Lanka",
+      "display_name": "Tamil (Sri Lanka)"
+    },
+    {
+      "code": "te",
+      "language": "Telugu",
+      "country": "",
+      "display_name": "Telugu"
+    },
+    {
+      "code": "te-IN",
+      "language": "Telugu",
+      "country": "India",
+      "display_name": "Telugu (India)"
+    },
+    {
+      "code": "th",
+      "language": "Thai",
+      "country": "",
+      "display_name": "Thai"
+    },
+    {
+      "code": "th-TH",
+      "language": "Thai",
+      "country": "Thailand",
+      "display_name": "Thai (Thailand)"
+    },
+    {
+      "code": "th-TH-TH",
+      "language": "Thai",
+      "country": "Thailand",
+      "display_name": "Thai (Thailand)"
+    },
+    {
+      "code": "tl",
+      "language": "Tagalog",
+      "country": "",
+      "display_name": "Tagalog"
+    },
+    {
+      "code": "tl-PH",
+      "language": "Tagalog",
+      "country": "Philippines",
+      "display_name": "Tagalog (Philippines)"
+    },
+    {
+      "code": "tn-ZA",
+      "language": "Tswana",
+      "country": "South Africa",
+      "display_name": "Tswana (South Africa)"
+    },
+    {
+      "code": "to",
+      "language": "Tongan",
+      "country": "",
+      "display_name": "Tongan"
+    },
+    {
+      "code": "tr",
+      "language": "Turkish",
+      "country": "",
+      "display_name": "Turkish"
+    },
+    {
+      "code": "tr-DE",
+      "language": "Turkish",
+      "country": "Germany",
+      "display_name": "Turkish (Germany)"
+    },
+    {
+      "code": "tr-TR",
+      "language": "Turkish",
+      "country": "Turkey",
+      "display_name": "Turkish (Turkey)"
+    },
+    {
+      "code": "ts",
+      "language": "Tsonga",
+      "country": "",
+      "display_name": "Tsonga"
+    },
+    {
+      "code": "ts-ZA",
+      "language": "Tsonga",
+      "country": "South Africa",
+      "display_name": "Tsonga (South Africa)"
+    },
+    {
+      "code": "uk",
+      "language": "Ukrainian",
+      "country": "",
+      "display_name": "Ukrainian"
+    },
+    {
+      "code": "uk-UA",
+      "language": "Ukrainian",
+      "country": "Ukraine",
+      "display_name": "Ukrainian (Ukraine)"
+    },
+    {
+      "code": "ur-IN",
+      "language": "Urdu",
+      "country": "",
+      "display_name": "Urdu"
+    },
+    {
+      "code": "ur-PK",
+      "language": "Urdu",
+      "country": "Pakistan",
+      "display_name": "Urdu (Pakistan)"
+    },
+    {
+      "code": "uz",
+      "language": "Uzbek",
+      "country": "",
+      "display_name": "Uzbek"
+    },
+    {
+      "code": "uz-UZ",
+      "language": "Uzbek",
+      "country": "Uzbekistan",
+      "display_name": "Uzbek (Uzbekistan)"
+    },
+    {
+      "code": "uz-UZ-CYRL",
+      "language": "Uzbek (Cyrillic)",
+      "country": "Uzbekistan",
+      "display_name": "Uzbek (Cyrillic) (Uzbekistan)"
+    },
+    {
+      "code": "vi-VN",
+      "language": "Vietnamese",
+      "country": "",
+      "display_name": "Vietnamese"
+    },
+    {
+      "code": "vi-US",
+      "language": "Vietnamese",
+      "country": "United States",
+      "display_name": "Vietnamese (United States)"
+    },
+    {
+      "code": "vi-VN",
+      "language": "Vietnamese",
+      "country": "Vietnam",
+      "display_name": "Vietnamese (Vietnam)"
+    },
+    {
+      "code": "xh",
+      "language": "Xhosa",
+      "country": "",
+      "display_name": "Xhosa"
+    },
+    {
+      "code": "xh-ZA",
+      "language": "Xhosa",
+      "country": "South Africa",
+      "display_name": "Xhosa (South Africa)"
+    },
+    {
+      "code": "zh",
+      "language": "Chinese",
+      "country": "",
+      "display_name": "Chinese"
+    },
+    {
+      "code": "zh-CN",
+      "language": "Chinese",
+      "country": "Simplified (China)",
+      "display_name": "Chinese (Simplified (China))"
+    },
+    {
+      "code": "zh-HK",
+      "language": "Chinese",
+      "country": "Hong Kong",
+      "display_name": "Chinese (Hong Kong)"
+    },
+    {
+      "code": "zh-MY",
+      "language": "Chinese",
+      "country": "Malaysia",
+      "display_name": "Chinese (Malaysia)"
+    },
+    {
+      "code": "zh-TW",
+      "language": "Chinese (Taiwan)",
+      "country": "Traditional (Taiwan)",
+      "display_name": "Chinese (Taiwan) (Traditional (Taiwan))"
+    },
+    {
+      "code": "zh-US",
+      "language": "Chinese",
+      "country": "United States",
+      "display_name": "Chinese (United States)"
+    },
+    {
+      "code": "zu",
+      "language": "Zulu",
+      "country": "",
+      "display_name": "Zulu"
+    },
+    {
+      "code": "zu-ZA",
+      "language": "Zulu",
+      "country": "South Africa",
+      "display_name": "Zulu (South Africa)"
+    },
+    {
+      "code": "fil-PH",
+      "language": "Filipino",
+      "country": "Philippines",
+      "display_name": "Filipino (Philippines)"
+    }
+  ]
+}

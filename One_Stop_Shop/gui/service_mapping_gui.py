@@ -19,33 +19,35 @@ import WF_Matrix
 class ServiceMappingWindow:
     """Window for mapping entity services to master (TPUS) services"""
     
-    def __init__(self, parent, entity_name):
+    def __init__(self, parent, entity_name, frame=None):
         """
-        Initialize service mapping window
-        
+        Initialize service mapping window.
+
         Args:
             parent: Parent window
             entity_name: Name of entity to map
+            frame: If provided, embeds the UI into this frame instead of a new window.
         """
         self.entity_name = entity_name
         self.mapper = EntityServiceMapper()
-        self.window = ctk.CTkToplevel(parent)
-        self.window.title(f"Service Mapping - {entity_name} → TPUS")
-        self.window.geometry("1000x700")
-        
-        # Keep window on top initially
-        self.window.attributes('-topmost', True)
-        self.window.after(100, lambda: self.window.attributes('-topmost', False))
-        self.window.lift()
-        self.window.focus_force()
+        self.embedded = frame is not None
+
+        if frame is not None:
+            self.window = frame
+        else:
+            self.window = ctk.CTkToplevel(parent)
+            self.window.title(f"Service Mapping - {entity_name} → TPUS")
+            self.window.geometry("1000x700")
+            self.window.attributes('-topmost', True)
+            self.window.after(100, lambda: self.window.attributes('-topmost', False))
+            self.window.lift()
+            self.window.focus_force()
+            self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
         
         # Track modifications
         self.modified = False
         self.mapping_widgets = {}  # Store dropdown references
-        
-        # Prevent window from being garbage collected
-        self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
-        
+
         # Load data
         self.master_services = self.mapper.get_master_services(WF_Matrix.PA_SERVICES)
         self.entity_services = self.mapper.get_entity_services(entity_name, WF_Matrix.PA_SERVICES)
@@ -172,14 +174,15 @@ class ServiceMappingWindow:
         )
         save_btn.pack(side="right", padx=5)
         
-        cancel_btn = ctk.CTkButton(
-            button_frame,
-            text="Cancel",
-            command=self.window.destroy,
-            width=100,
-            height=40
-        )
-        cancel_btn.pack(side="right", padx=5)
+        if not self.embedded:
+            cancel_btn = ctk.CTkButton(
+                button_frame,
+                text="Cancel",
+                command=self.window.destroy,
+                width=100,
+                height=40
+            )
+            cancel_btn.pack(side="right", padx=5)
     
     def create_mapping_row(self, parent, entity_service):
         """Create a single mapping row"""
@@ -267,7 +270,8 @@ class ServiceMappingWindow:
                 "Success",
                 f"Saved {saved_count} service mappings for {self.entity_name}!"
             )
-            self.window.destroy()
+            if not self.embedded:
+                self.window.destroy()
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save mappings:\n{str(e)}")
