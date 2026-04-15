@@ -27,7 +27,6 @@ class RateCardBuilderGUI:
         """
         self.root = root
         self.root.title("Rate Card Builder")
-        self.root.state('zoomed')  # Fullscreen
         
         # Set color theme
         ctk.set_appearance_mode("dark")
@@ -39,6 +38,9 @@ class RateCardBuilderGUI:
         self.global_service_status_label = None
         
         self.setup_ui()
+        
+        # Make window fullscreen after UI is set up
+        self.root.after(100, lambda: self.root.state('zoomed'))
     
     def setup_ui(self):
         """Setup the user interface with main components."""

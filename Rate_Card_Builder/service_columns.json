@@ -1,10 +1,8 @@
 {
   "services": [
-    "Translation",
-    "TM - Fuzzy Match Low",
+    "Translation and Proofreading",
+    "MT full EditProof",
     "TM - Fuzzy Matches",
-    "TM - Fuzzy Match Medium",
-    "TM - Fuzzy Match High",
     "TM - Exact Match"
   ]
 }

@@ -2,11 +2,9 @@
   "name": "Clario",
   "sponsor": "Clario",
   "services": [
-    "Translation",
-    "TM - Fuzzy Match Low",
+    "Translation and Proofreading",
+    "MT full EditProof",
     "TM - Fuzzy Matches",
-    "TM - Fuzzy Match Medium",
-    "TM - Fuzzy Match High",
     "TM - Exact Match"
   ],
   "iso_codes": {
@@ -105,991 +103,811 @@
     "Afrikaans (South Africa)": {
       "iso_code": "af-ZA",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.2"
       }
     },
     "Arabic (Egypt)": {
       "iso_code": "ar",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.15"
       }
     },
     "Arabic (Israel)": {
       "iso_code": "ar-IL",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.15"
       }
     },
     "Arabic (Morocco)": {
       "iso_code": "ar",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.15"
       }
     },
     "Arabic (Tunisia)": {
       "iso_code": "ar",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.15"
       }
     },
     "Armenian (Armenia)": {
       "iso_code": "hy",
       "rates": {
-        "Translation": "0.23",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.23",
+        "MT full EditProof": "0.18"
       }
     },
     "Bengali (India)": {
       "iso_code": "bn-IN",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.2"
       }
     },
     "Bulgarian (Bulgaria)": {
       "iso_code": "bg",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.11"
       }
     },
     "Cebuano (Philippines)": {
       "iso_code": "cb-DA",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.18"
       }
     },
     "Chinese (Traditional)": {
       "iso_code": "zh",
       "rates": {
-        "Translation": "0.15",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.15",
+        "MT full EditProof": "0.11"
       }
     },
     "Chinese (Hong Kong)": {
       "iso_code": "zh-HK",
       "rates": {
-        "Translation": "0.15",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.15",
+        "MT full EditProof": "0.11"
       }
     },
     "Chinese (Taiwan)": {
       "iso_code": "zh",
       "rates": {
-        "Translation": "0.15",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.15",
+        "MT full EditProof": "0.11"
       }
     },
     "Chinese (Simplified)": {
       "iso_code": "zh-CN",
       "rates": {
-        "Translation": "0.15",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.15",
+        "MT full EditProof": "0.11"
       }
     },
     "Chinese (Malaysia)": {
       "iso_code": "zh-MY",
       "rates": {
-        "Translation": "0.15",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.15",
+        "MT full EditProof": "0.11"
       }
     },
     "Chinese (China)": {
       "iso_code": "zh-CN",
       "rates": {
-        "Translation": "0.15",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.15",
+        "MT full EditProof": "0.11"
       }
     },
     "Chinese (Singapore)": {
       "iso_code": "zh",
       "rates": {
-        "Translation": "0.15",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.15",
+        "MT full EditProof": "0.11"
       }
     },
     "Croatian (Croatia)": {
       "iso_code": "hr",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.15"
       }
     },
     "Czech (Czech Republic)": {
       "iso_code": "cs-CZ",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.11"
       }
     },
     "Danish (Denmark)": {
       "iso_code": "da-DK",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.14"
       }
     },
     "Dutch (Belgium)": {
       "iso_code": "nl-BE",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.11"
       }
     },
     "Dutch (Netherlands)": {
       "iso_code": "nl-NL",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.1"
       }
     },
     "Estonian (Estonia)": {
       "iso_code": "et",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.16"
       }
     },
     "Filipino (Philippines)": {
       "iso_code": "fil-PH",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.17"
       }
     },
     "Finnish (Finland)": {
       "iso_code": "fi-FI",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.17"
       }
     },
     "French (Canada)": {
       "iso_code": "fr-CA",
       "rates": {
-        "Translation": "0.16",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.16",
+        "MT full EditProof": "0.11"
       }
     },
     "French (France)": {
       "iso_code": "fr-FR",
       "rates": {
-        "Translation": "0.16",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.16",
+        "MT full EditProof": "0.11"
       }
     },
     "French (Belgium)": {
       "iso_code": "fr-BE",
       "rates": {
-        "Translation": "0.16",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.16",
+        "MT full EditProof": "0.11"
       }
     },
     "French (Morocco)": {
       "iso_code": "fr",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.14"
       }
     },
     "French (Tunisia)": {
       "iso_code": "fr",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.14"
       }
     },
     "Georgian (Georgia)": {
       "iso_code": "ka",
       "rates": {
-        "Translation": "0.23",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.23",
+        "MT full EditProof": "0.17"
       }
     },
     "German (Austria)": {
       "iso_code": "de-AT",
       "rates": {
-        "Translation": "0.16",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.16",
+        "MT full EditProof": "0.11"
       }
     },
     "German (Germany)": {
       "iso_code": "de-DE",
       "rates": {
-        "Translation": "0.16",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.16",
+        "MT full EditProof": "0.11"
       }
     },
     "Greek (Greece)": {
       "iso_code": "el-GR",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.15"
       }
     },
     "Gujarati (India)": {
       "iso_code": "gu-IN",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.2"
       }
     },
     "Hebrew (Israel)": {
       "iso_code": "he-IL",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.14"
       }
     },
     "Hindi (Canada)": {
       "iso_code": "hi",
       "rates": {
-        "Translation": "0.23",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.23",
+        "MT full EditProof": "0.17"
       }
     },
     "Hindi (India)": {
       "iso_code": "hi-IN",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.16"
       }
     },
     "Hungarian (Hungary)": {
       "iso_code": "hu-HU",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.11"
       }
     },
     "Icelandic (Iceland)": {
       "iso_code": "is",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.18"
       }
     },
     "Italian (Italy)": {
       "iso_code": "it-IT",
       "rates": {
-        "Translation": "0.16",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.16",
+        "MT full EditProof": "0.11"
       }
     },
     "Italian (Switzerland)": {
       "iso_code": "it-CH",
       "rates": {
-        "Translation": "0.16",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.16",
+        "MT full EditProof": "0.11"
       }
     },
     "Japanese (Japan)": {
       "iso_code": "ja",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.14"
       }
     },
     "Kannada (India)": {
       "iso_code": "kn-IN",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.2"
       }
     },
     "Korean (South Korea)": {
       "iso_code": "ko-KR",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.11"
       }
     },
     "Latvian (Latvia)": {
       "iso_code": "lv",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.15"
       }
     },
     "Lithuanian (Lithuania)": {
       "iso_code": "lt",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.15"
       }
     },
     "Macedonian (Macedonia)": {
       "iso_code": "mk",
       "rates": {
-        "Translation": "0.23",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.23",
+        "MT full EditProof": "0.18"
       }
     },
     "Malay (Malaysia)": {
       "iso_code": "ms-MY",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.18"
       }
     },
     "Malay (Singapore)": {
       "iso_code": "ms",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.18"
       }
     },
     "Malayalam (India)": {
       "iso_code": "ml-IN",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.2"
       }
     },
     "Marathi (India)": {
       "iso_code": "mr-IN",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.19"
       }
     },
     "Norwegian (Norway)": {
       "iso_code": "no-NO",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.17"
       }
     },
     "Polish (Poland)": {
       "iso_code": "pl-PL",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.11"
       }
     },
     "Portuguese (Portugal)": {
       "iso_code": "pt-PT",
       "rates": {
-        "Translation": "0.16",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.16",
+        "MT full EditProof": "0.1"
       }
     },
     "Portuguese (Brazil)": {
       "iso_code": "pt-BR",
       "rates": {
-        "Translation": "0.16",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.16",
+        "MT full EditProof": "0.1"
       }
     },
     "Punjabi (Canada)": {
       "iso_code": "pa",
       "rates": {
-        "Translation": "0.23",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.23",
+        "MT full EditProof": "0.2"
       }
     },
     "Punjabi (India)": {
       "iso_code": "pa-IN",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.19"
       }
     },
     "Romanian (Romania)": {
       "iso_code": "ro",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.15"
       }
     },
     "Russian": {
       "iso_code": "ru",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.11"
       }
     },
     "Russian (Kaszakhistan)": {
       "iso_code": "ru",
       "rates": {
-        "Translation": "0.23",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.23",
+        "MT full EditProof": "0.17"
       }
     },
     "Serbian (Serbia)": {
       "iso_code": "sr",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.16"
       }
     },
     "Sesotho (South Africa)": {
       "iso_code": "st-ZA",
       "rates": {
-        "Translation": "0.23",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.23",
+        "MT full EditProof": "0.2"
       }
     },
     "Sinhalese (Sri Lanka)": {
       "iso_code": "si-LK",
       "rates": {
-        "Translation": "0.23",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.23",
+        "MT full EditProof": "0.2"
       }
     },
     "Slovak (Slovakia)": {
       "iso_code": "sk-SK",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.15"
       }
     },
     "Slovenian (Slovenia)": {
       "iso_code": "sl",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.15"
       }
     },
     "Spanish (Argentina)": {
       "iso_code": "es-AR",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.11"
       }
     },
     "Spanish (Chile)": {
       "iso_code": "es-CL",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.11"
       }
     },
     "Spanish (Colombia)": {
       "iso_code": "es-CO",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.11"
       }
     },
     "Spanish (Ecuador)": {
       "iso_code": "es-EC",
       "rates": {
-        "Translation": "0.15",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.15",
+        "MT full EditProof": "0.11"
       }
     },
     "Spanish (Guatemala)": {
       "iso_code": "es-GT",
       "rates": {
-        "Translation": "0.15",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.15",
+        "MT full EditProof": "0.11"
       }
     },
     "Spanish (Mexico)": {
       "iso_code": "es-MX",
       "rates": {
-        "Translation": "0.15",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.15",
+        "MT full EditProof": "0.11"
       }
     },
     "Spanish (Panama)": {
       "iso_code": "es-PA",
       "rates": {
-        "Translation": "0.15",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.15",
+        "MT full EditProof": "0.11"
       }
     },
     "Spanish (Peru)": {
       "iso_code": "es-PE",
       "rates": {
-        "Translation": "0.15",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.15",
+        "MT full EditProof": "0.11"
       }
     },
     "Spanish (Puerto Rico)": {
       "iso_code": "es-PR",
       "rates": {
-        "Translation": "0.15",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.15",
+        "MT full EditProof": "0.11"
       }
     },
     "Spanish (Venezuela)": {
       "iso_code": "es-VE",
       "rates": {
-        "Translation": "0.15",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.15",
+        "MT full EditProof": "0.11"
       }
     },
     "Swedish (Sweden)": {
       "iso_code": "sv-SE",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.14"
       }
     },
     "Tamil (India)": {
       "iso_code": "ta-IN",
       "rates": {
-        "Translation": "0.23",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.23",
+        "MT full EditProof": "0.19"
       }
     },
     "Tamil (Singapore)": {
       "iso_code": "ta-SG",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.18"
       }
     },
     "Tamil (Sri Lanka)": {
       "iso_code": "ta-LK",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.2"
       }
     },
     "Telugu (India)": {
       "iso_code": "te-IN",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.19"
       }
     },
     "Thai (Thailand)": {
       "iso_code": "th-TH",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.17"
       }
     },
     "Tswana (South Africa)": {
       "iso_code": "tn-ZA",
       "rates": {
-        "Translation": "0.23",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.23",
+        "MT full EditProof": "0.2"
       }
     },
     "Turkish (Turkey)": {
       "iso_code": "tr-TR",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.11"
       }
     },
     "Ukrainian (Ukraine)": {
       "iso_code": "uk-UA",
       "rates": {
-        "Translation": "0.19",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.19",
+        "MT full EditProof": "0.15"
       }
     },
     "Urdu (India)": {
       "iso_code": "ur-IN",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.19"
       }
     },
     "Vietnamese (Vietnam)": {
       "iso_code": "vi-VN",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.16"
       }
     },
     "Xhosa (South Africa)": {
       "iso_code": "xh-ZA",
       "rates": {
-        "Translation": "0.23",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.23",
+        "MT full EditProof": "0.2"
       }
     },
     "Zulu (South Africa)": {
       "iso_code": "zu-ZA",
       "rates": {
-        "Translation": "0.23",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.23",
+        "MT full EditProof": "0.2"
       }
     },
     "Tamil (Malaysia)": {
       "iso_code": "ta-MY",
       "rates": {
-        "Translation": "0.21",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.1",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.21",
+        "MT full EditProof": "0.19"
       }
     },
     "Spanish (US, ES, LA)": {
       "iso_code": "es",
       "rates": {
-        "Translation": "0.15",
-        "TM - Fuzzy Match Low": "",
         "TM - Fuzzy Matches": "0.08",
-        "TM - Fuzzy Match Medium": "",
-        "TM - Fuzzy Match High": "",
-        "TM - Exact Match": "0.02"
+        "TM - Exact Match": "0.02",
+        "Translation and Proofreading": "0.15",
+        "MT full EditProof": "0.11"
       }
     }
   }

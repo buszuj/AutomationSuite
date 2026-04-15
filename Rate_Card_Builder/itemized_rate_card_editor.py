@@ -58,9 +58,38 @@ class ItemizedRateCardEditor:
         self.language_filter_names = None
         self.language_filter_active = False
         self.language_filter_status_label = None
+        self.undo_stack = []  # Store previous states for undo functionality
+        self.max_undo_steps = 10  # Maximum number of undo steps to keep
         
         self.DEFAULT_SERVICES = self._load_global_services()
         self.setup_ui()
+
+    def _save_state_for_undo(self):
+        """Save the current state for potential undo."""
+        import copy
+        state = {
+            'languages_data': copy.deepcopy(self.languages_data),
+            'DEFAULT_SERVICES': list(self.DEFAULT_SERVICES),
+            'hidden_service_columns': set(self.hidden_service_columns)
+        }
+        self.undo_stack.append(state)
+        if len(self.undo_stack) > self.max_undo_steps:
+            self.undo_stack.pop(0)
+
+    def _restore_state_from_undo(self):
+        """Restore the most recent saved state."""
+        if not self.undo_stack:
+            messagebox.showinfo("No Undo Available", "There are no recent changes to undo.")
+            return
+        
+        state = self.undo_stack.pop()
+        self.languages_data = state['languages_data']
+        self.DEFAULT_SERVICES = state['DEFAULT_SERVICES']
+        self.hidden_service_columns = state['hidden_service_columns']
+        
+        self._refresh_tree_structure()
+        self.update_table()
+        self.edit_status_label.configure(text="✓ Undid last change")
 
     def _service_columns_config_path(self):
         """Return the path used to persist the global service column list."""
@@ -863,7 +892,7 @@ class ItemizedRateCardEditor:
         self.column_menu.add_command(label="Fill Empty Cells in Column", command=self.on_fill_column_empty_cells)
         self.column_menu.add_command(label="Spill Value to Visible Languages", command=self.on_spill_value_to_visible_languages)
         self.column_menu.add_command(label="Overwrite Entire Column", command=self.on_overwrite_service_column)
-        self.column_menu.add_command(label="Add New Service Column", command=self.on_clone_service_column)
+        self.column_menu.add_command(label="Clone Service Column", command=self.on_clone_service_column)
         self.column_menu.add_command(label="Rename Service Column", command=self.on_rename_service_column)
         self.column_menu.add_command(label="Delete Service Column", command=self.on_delete_service_column)
         
@@ -941,25 +970,25 @@ class ItemizedRateCardEditor:
         )
         delete_button.pack(side="left", padx=(0, 10))
 
+        undo_button = ctk.CTkButton(
+            button_frame,
+            text="Undo Last Change",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            fg_color="#8e44ad",
+            hover_color="#9b59b6",
+            command=self._restore_state_from_undo
+        )
+        undo_button.pack(side="left", padx=(0, 10))
+
         filter_button = ctk.CTkButton(
             button_frame,
-            text="Filter Selected Languages",
+            text="Filter/Unfilter Languages",
             font=ctk.CTkFont(size=11, weight="bold"),
-            fg_color="#245c7a",
-            hover_color="#2f7295",
-            command=self.on_filter_selected_languages
+            fg_color="#3498db",
+            hover_color="#2980b9",
+            command=self.toggle_language_filter
         )
         filter_button.pack(side="left", padx=(0, 10))
-
-        unfilter_button = ctk.CTkButton(
-            button_frame,
-            text="Unfilter Languages",
-            font=ctk.CTkFont(size=11, weight="bold"),
-            fg_color="#4c4c4c",
-            hover_color="#5f5f5f",
-            command=self.on_clear_language_filter
-        )
-        unfilter_button.pack(side="left", padx=(0, 10))
 
         self.language_filter_status_label = ctk.CTkLabel(
             button_frame,
@@ -1116,11 +1145,33 @@ class ItemizedRateCardEditor:
         self.language_filter_active = True
         self.update_table()
 
-    def on_clear_language_filter(self):
-        """Remove any active language filter and show all rows."""
-        self.language_filter_names = None
-        self.language_filter_active = False
-        self.update_table()
+    def toggle_language_filter(self):
+        """Toggle language filtering on/off"""
+        if self.language_filter_active:
+            # Unfilter: show all languages
+            self.language_filter_names = None
+            self.language_filter_active = False
+            self.update_table()
+        else:
+            # Filter: use selected languages
+            selected_items = self.tree.selection()
+            if not selected_items:
+                messagebox.showwarning("No Selection", "Please select one or more languages to filter.")
+                return
+            
+            selected_names = []
+            for item in selected_items:
+                values = self.tree.item(item).get("values", [])
+                if values:
+                    selected_names.append(values[0])
+            
+            if not selected_names:
+                messagebox.showwarning("No Selection", "Please select one or more languages to filter.")
+                return
+            
+            self.language_filter_names = set(selected_names)
+            self.language_filter_active = True
+            self.update_table()
 
     def _get_visible_tree_items(self):
         """Return currently visible tree items."""
@@ -1130,8 +1181,22 @@ class ItemizedRateCardEditor:
 
     def _refresh_tree_structure(self):
         """Refresh tree columns and headings after service list changes."""
+        # Clear all items first to avoid column mismatch
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        
+        # Reset displaycolumns to avoid references to old columns
+        self.tree.configure(displaycolumns="#all")
+        
         columns = ["Language", "ISO_CODE"] + self.DEFAULT_SERVICES
         self.tree.configure(columns=columns)
+
+        # Clear all existing headings first
+        for col in self.tree.cget("columns"):
+            try:
+                self.tree.heading(col, text="")
+            except:
+                pass
 
         self.tree.heading("Language", text="Language Name")
         self.tree.column("Language", width=150, anchor="center")
@@ -1145,6 +1210,9 @@ class ItemizedRateCardEditor:
 
         self._normalize_hidden_service_columns()
         self._apply_service_visibility()
+        
+        # Force UI update
+        self.tree.update_idletasks()
 
     def _reset_service_columns(self):
         """Restore the editor to the default service-column set."""
@@ -1233,6 +1301,7 @@ class ItemizedRateCardEditor:
             messagebox.showwarning("Empty Value", "Please enter a non-empty value.")
             return
 
+        self._save_state_for_undo()
         filled_count = 0
         for item in self.tree.get_children():
             values = list(self.tree.item(item)['values'])
@@ -1286,6 +1355,23 @@ class ItemizedRateCardEditor:
                 messagebox.showerror("Invalid Value", f"'{prompt}' is not a valid number. Please enter a numeric value.")
                 return
 
+        # Check if there are any non-empty values that will be overwritten
+        has_existing_data = False
+        for item in self.tree.get_children():
+            values = self.tree.item(item).get('values', [])
+            if value_index < len(values) and str(values[value_index]).strip():
+                has_existing_data = True
+                break
+
+        if has_existing_data:
+            confirm = messagebox.askyesno(
+                "Confirm Overwrite",
+                f"This will overwrite existing data in column '{col_name}'. Are you sure you want to continue?"
+            )
+            if not confirm:
+                return
+
+        self._save_state_for_undo()
         overwritten_count = 0
         for item in self.tree.get_children():
             values = list(self.tree.item(item)['values'])
@@ -1337,6 +1423,24 @@ class ItemizedRateCardEditor:
                 messagebox.showerror("Invalid Value", f"'{prompt}' is not a valid number. Please enter a numeric value.")
                 return
 
+        # Check if there are any non-empty values that will be overwritten
+        has_existing_data = False
+        visible_items = self._get_visible_tree_items()
+        for item in visible_items:
+            values = self.tree.item(item).get('values', [])
+            if value_index < len(values) and str(values[value_index]).strip():
+                has_existing_data = True
+                break
+
+        if has_existing_data:
+            confirm = messagebox.askyesno(
+                "Confirm Overwrite",
+                f"This will overwrite existing data in column '{col_name}' for {len(visible_items)} visible language(s). Are you sure you want to continue?"
+            )
+            if not confirm:
+                return
+
+        self._save_state_for_undo()
         spilled_count = 0
         visible_items = self._get_visible_tree_items()
         if not visible_items:
@@ -1384,6 +1488,7 @@ class ItemizedRateCardEditor:
         if not confirm:
             return
 
+        self._save_state_for_undo()
         if service_name in self.DEFAULT_SERVICES:
             updated_services = [service for service in self.DEFAULT_SERVICES if service != service_name]
             self._set_service_columns(updated_services, persist=False)
@@ -1422,6 +1527,7 @@ class ItemizedRateCardEditor:
             messagebox.showerror("Duplicate", f"Service '{new_service_name}' already exists.")
             return
 
+        self._save_state_for_undo()
         self._update_service_column_data(old_service_name, new_service_name, clone=False)
         if old_service_name in self.hidden_service_columns:
             self.hidden_service_columns.remove(old_service_name)
@@ -1454,6 +1560,7 @@ class ItemizedRateCardEditor:
             messagebox.showerror("Duplicate", f"Service '{new_service_name}' already exists.")
             return
 
+        self._save_state_for_undo()
         self._update_service_column_data(old_service_name, new_service_name, clone=True)
         self.hidden_service_columns.discard(new_service_name)
         self._refresh_tree_structure()
@@ -1536,6 +1643,7 @@ class ItemizedRateCardEditor:
         if not self.current_edit_entry:
             return
         
+        self._save_state_for_undo()
         new_value = self.current_edit_entry.get()
         
         # Validate if it's a rate column (numeric)
@@ -1651,6 +1759,7 @@ class ItemizedRateCardEditor:
         if not confirm:
             return
 
+        self._save_state_for_undo()
         if lang_name in self.languages_data:
             del self.languages_data[lang_name]
 
@@ -1718,6 +1827,7 @@ class ItemizedRateCardEditor:
         if not result:
             return
         
+        self._save_state_for_undo()
         # Fill all empty cells in this column
         filled_count = 0
         for item in self.tree.get_children():
