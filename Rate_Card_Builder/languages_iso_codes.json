@@ -69,11 +69,11 @@
     {
       "code": "be-BY",
       "language": "Belarusian",
-      "country": "Belarus",
-      "display_name": "Belarusian (Belarus)"
+      "country": "",
+      "display_name": "Belarusian"
     },
     {
-      "code": "bg",
+      "code": "bg-BG",
       "language": "Bulgarian",
       "country": "",
       "display_name": "Bulgarian"
@@ -241,7 +241,7 @@
       "display_name": "Spanish"
     },
     {
-      "code": "es-AR",
+      "code": "es-CO",
       "language": "Spanish",
       "country": "Argentina",
       "display_name": "Spanish (Argentina)"
@@ -800,9 +800,9 @@
     },
     {
       "code": "ro-MD",
-      "language": "Romanian",
-      "country": "Moldova",
-      "display_name": "Romanian (Moldova)"
+      "language": "Moldovian",
+      "country": "",
+      "display_name": "Moldovian"
     },
     {
       "code": "ro-RO",
@@ -1135,7 +1135,7 @@
       "display_name": "Xhosa (South Africa)"
     },
     {
-      "code": "zh",
+      "code": "zh-TW",
       "language": "Chinese",
       "country": "",
       "display_name": "Chinese"
@@ -1143,8 +1143,8 @@
     {
       "code": "zh-CN",
       "language": "Chinese",
-      "country": "Simplified (China)",
-      "display_name": "Chinese (Simplified (China))"
+      "country": "Simplified",
+      "display_name": "Chinese (Simplified)"
     },
     {
       "code": "zh-HK",
@@ -1187,6 +1187,36 @@
       "language": "Filipino",
       "country": "Philippines",
       "display_name": "Filipino (Philippines)"
+    },
+    {
+      "code": "mi-NZ",
+      "language": "Te Reo Māori",
+      "country": "",
+      "display_name": "Te Reo Māori"
+    },
+    {
+      "code": "ium",
+      "language": "Iu Mien",
+      "country": "",
+      "display_name": "Iu Mien"
+    },
+    {
+      "code": "prs-AF",
+      "language": "Dari",
+      "country": "",
+      "display_name": "Dari"
+    },
+    {
+      "code": "fa-IR",
+      "language": "Farsi",
+      "country": "",
+      "display_name": "Farsi"
+    },
+    {
+      "code": "be",
+      "language": "Belorussian",
+      "country": "",
+      "display_name": "Belorussian"
     }
   ]
 }

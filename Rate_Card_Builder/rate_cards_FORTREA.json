@@ -1,0 +1,994 @@
+{
+  "name": "FORTREA",
+  "sponsor": "FORTREA",
+  "services": [
+    "Translation and Proofreading",
+    "MT full EditProof",
+    "TM - Fuzzy Matches",
+    "TM - Exact Match",
+    "TM - Repetitions"
+  ],
+  "iso_codes": {
+    "Afrikaans": "af",
+    "Albanian": "sq",
+    "Amharic": "am",
+    "Arabic": "ar",
+    "Armenian": "hy",
+    "Azerbaijani": "az",
+    "Bengali": "bn",
+    "Bosnian": "bs",
+    "Bulgarian": "bg",
+    "Chinese (Traditional)": "zh-TW",
+    "Creole": "ht-HT",
+    "Croatian": "hr",
+    "Czech": "cs",
+    "Danish": "da",
+    "Dutch (NL)": "nl",
+    "Estonian": "et",
+    "Finnish": "fi",
+    "French (CA)": "fr-CA",
+    "French (FR)": "fr",
+    "French (BE)": "fr-BE",
+    "Georgian": "ka",
+    "German": "de",
+    "German (Switzerland)": "de-CH",
+    "German (Belgium)": "de-BE",
+    "German (Austria)": "de-AT",
+    "Greek": "el",
+    "Hebrew": "he",
+    "Hindi": "hi",
+    "Hungarian": "hu",
+    "Icelandic": "is",
+    "Indonesian": "id-ID",
+    "Italian": "it",
+    "Italian (Switzerland)": "it-CH",
+    "Japanese": "ja",
+    "Kannada": "kn",
+    "Kazakh": "kk",
+    "Korean": "ko",
+    "Latin": "es-LA",
+    "Latvian": "lv",
+    "Lithuanian": "lt",
+    "Malay": "ms",
+    "Marathi": "mr",
+    "Norwegian": "no",
+    "Pashto": "ps",
+    "Polish": "pl",
+    "Portuguese (BR)": "pt-BR",
+    "Portuguese (PT)": "pt",
+    "Punjabi": "pa",
+    "Romanian": "ro",
+    "Russian": "ru",
+    "Serbian": "sr",
+    "Sesotho": "st-ZA",
+    "Slovak": "sk",
+    "Slovenian": "sl",
+    "Spanish (US)": "es-AR",
+    "Spanish (ES)": "es-US",
+    "Spanish (LA)": "es-LA",
+    "Spanish (MX)": "es-AR",
+    "Spanish (PR)": "es-AR",
+    "Swahili": "sw-KE",
+    "Swedish": "sv",
+    "Swedish (FI)": "sv-FI",
+    "Tagalog": "tl",
+    "Tamil": "ta-IN",
+    "Thai": "th",
+    "Turkish": "tr",
+    "Ukrainian": "uk",
+    "Urdu": "ur-IN",
+    "Vietnamese": "vi-US",
+    "Xhosa": "xh",
+    "Zulu": "zu",
+    "Assamese": "as",
+    "Burmese": "my",
+    "Flemish": "nld",
+    "Hmong": "hmn",
+    "Kashmiri": "ks",
+    "Kriol": "rop",
+    "Laotian": "lo",
+    "Somali": "so",
+    "Telugu": "te",
+    "Setswana": "tn",
+    "Te Reo Māori": "mi-NZ",
+    "Iu Mien": "ium",
+    "Chinese (Simplified)": "zh-CN",
+    "Khmer": "km",
+    "Dari": "prs-AF",
+    "Farsi": "fa-IR",
+    "Moldovian": "ro-MD",
+    "Belarusian": "be-BY"
+  },
+  "languages": {
+    "Afrikaans": {
+      "iso_code": "af",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Albanian": {
+      "iso_code": "sq",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Amharic": {
+      "iso_code": "am",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Arabic": {
+      "iso_code": "ar",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Armenian": {
+      "iso_code": "hy",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Assamese": {
+      "iso_code": "as",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Azerbaijani": {
+      "iso_code": "az",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Bengali": {
+      "iso_code": "bn",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Bosnian": {
+      "iso_code": "bs",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Bulgarian": {
+      "iso_code": "bg",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Burmese": {
+      "iso_code": "my",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Chinese (Traditional)": {
+      "iso_code": "zh-TW",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "0.052",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Creole": {
+      "iso_code": "ht-HT",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Croatian": {
+      "iso_code": "hr",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Czech": {
+      "iso_code": "cs",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Danish": {
+      "iso_code": "da",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Dutch (NL)": {
+      "iso_code": "nl",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Estonian": {
+      "iso_code": "et",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Farsi": {
+      "iso_code": "fa-IR",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Finnish": {
+      "iso_code": "fi",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Flemish": {
+      "iso_code": "nld",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "French (CA)": {
+      "iso_code": "fr-CA",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "French (FR)": {
+      "iso_code": "fr",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "French (BE)": {
+      "iso_code": "fr-BE",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Georgian": {
+      "iso_code": "ka",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "German": {
+      "iso_code": "de",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "German (Switzerland)": {
+      "iso_code": "de-CH",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "German (Belgium)": {
+      "iso_code": "de-BE",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "German (Austria)": {
+      "iso_code": "de-AT",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Greek": {
+      "iso_code": "el",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Hebrew": {
+      "iso_code": "he",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Hindi": {
+      "iso_code": "hi",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Hmong": {
+      "iso_code": "hmn",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Hungarian": {
+      "iso_code": "hu",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "0.052",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Icelandic": {
+      "iso_code": "is",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Indonesian": {
+      "iso_code": "id-ID",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Italian": {
+      "iso_code": "it",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Italian (Switzerland)": {
+      "iso_code": "it-CH",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Japanese": {
+      "iso_code": "ja",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Kannada": {
+      "iso_code": "kn",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Kashmiri": {
+      "iso_code": "ks",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Kazakh": {
+      "iso_code": "kk",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Korean": {
+      "iso_code": "ko",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Kriol": {
+      "iso_code": "rop",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Laotian": {
+      "iso_code": "lo",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Latin": {
+      "iso_code": "es-LA",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Latvian": {
+      "iso_code": "lv",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Lithuanian": {
+      "iso_code": "lt",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Malay": {
+      "iso_code": "ms",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Marathi": {
+      "iso_code": "mr",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Norwegian": {
+      "iso_code": "no",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Pashto": {
+      "iso_code": "ps",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Polish": {
+      "iso_code": "pl",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "0.052",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Portuguese (BR)": {
+      "iso_code": "pt-BR",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Portuguese (PT)": {
+      "iso_code": "pt",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Punjabi": {
+      "iso_code": "pa",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Romanian": {
+      "iso_code": "ro",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "0.052",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Russian": {
+      "iso_code": "ru",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Serbian": {
+      "iso_code": "sr",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Sesotho": {
+      "iso_code": "st-ZA",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Slovak": {
+      "iso_code": "sk",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Somali": {
+      "iso_code": "so",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Slovenian": {
+      "iso_code": "sl",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Spanish (US)": {
+      "iso_code": "es-AR",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "0.052",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Spanish (ES)": {
+      "iso_code": "es-US",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "0.052",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Spanish (LA)": {
+      "iso_code": "es-LA",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "0.052",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Spanish (MX)": {
+      "iso_code": "es-AR",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "0.052",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Spanish (PR)": {
+      "iso_code": "es-AR",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "0.052",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Swahili": {
+      "iso_code": "sw-KE",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Swedish": {
+      "iso_code": "sv",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Swedish (FI)": {
+      "iso_code": "sv-FI",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Tagalog": {
+      "iso_code": "tl",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Tamil": {
+      "iso_code": "ta-IN",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Thai": {
+      "iso_code": "th",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "0.052",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Turkish": {
+      "iso_code": "tr",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Ukrainian": {
+      "iso_code": "uk",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Urdu": {
+      "iso_code": "ur-IN",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Vietnamese": {
+      "iso_code": "vi-US",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Xhosa": {
+      "iso_code": "xh",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Zulu": {
+      "iso_code": "zu",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Telugu": {
+      "iso_code": "te",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Setswana": {
+      "iso_code": "tn",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Te Reo Māori": {
+      "iso_code": "mi-NZ",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Iu Mien": {
+      "iso_code": "ium",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Khmer": {
+      "iso_code": "km",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Chinese (Simplified)": {
+      "iso_code": "zh-CN",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "0.05",
+        "TM - Exact Match": "0.2",
+        "TM - Repetitions": ""
+      }
+    },
+    "Dari": {
+      "iso_code": "prs-AF",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Moldovian": {
+      "iso_code": "ro-MD",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    },
+    "Belarusian": {
+      "iso_code": "be-BY",
+      "rates": {
+        "Translation and Proofreading": "",
+        "MT full EditProof": "",
+        "TM - Fuzzy Matches": "",
+        "TM - Exact Match": "0.21",
+        "TM - Repetitions": ""
+      }
+    }
+  }
+}

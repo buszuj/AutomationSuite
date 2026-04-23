@@ -22,6 +22,9 @@
 		},
 		{
 			"path": "RATE CARDS"
+		},
+		{
+			"path": "Rate_Card_Builder"
 		}
 	],
 	"settings": {
