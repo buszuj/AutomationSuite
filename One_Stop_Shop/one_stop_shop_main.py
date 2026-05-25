@@ -20,12 +20,22 @@ from datetime import datetime
 core_path = Path(__file__).parent.parent / "Core"
 sys.path.insert(0, str(core_path))
 
+# Add Rate_Card_Builder to path for integration
+rate_card_path = Path(__file__).parent.parent / "Rate_Card_Builder"
+sys.path.insert(0, str(rate_card_path))
+
 from pa_template_manager import PATemplateManager
 from pa_template_processor import PATemplateProcessor
 from quoteme_email_parser import QuoteeMEmailParser, get_parse_cache
 
 # Import the parser UI (from same directory)
 from quoteme_parser_ui import create_parser_tab
+
+# Import Rate Card Builder integrated component
+try:
+    from rate_card_builder_integrated import setup_rate_cards_tab
+except ImportError:
+    setup_rate_cards_tab = None
 
 
 class DataViewerWindow:
@@ -1520,10 +1530,11 @@ class OneStopShopMain:
         self.main_tabs = ctk.CTkTabview(self.tabs_container)
         self.main_tabs.pack(fill="both", expand=True)
         
-        # Create tabs - Data View first, then QuoteMe, PA Integration and Configuration,
+        # Create tabs - Data View first, then QuoteMe, PA Integration, Rate Cards, and Configuration
         self.setup_data_view_tab()
         self.setup_quoteme_parser_tab()
         self.setup_pa_integration_tab()
+        self.setup_rate_cards_tab()
         self.setup_configuration_tab()
         
         # Initially hide tabs until account is selected
@@ -1832,6 +1843,32 @@ class OneStopShopMain:
             text_color="gray"
         )
         self.pa_last_file_label.pack(anchor="w", pady=(5, 0))
+
+    def setup_rate_cards_tab(self):
+        """Setup Rate Cards tab - embedded Rate Card Builder component"""
+        rate_cards_tab = self.main_tabs.add("Rate Cards")
+        
+        if setup_rate_cards_tab is None:
+            # Show error if Rate Card Builder is not available
+            ctk.CTkLabel(
+                rate_cards_tab,
+                text="⚠️ Rate Card Builder not available\n\nThe Rate_Card_Builder module could not be imported.",
+                font=("Arial", 12),
+                text_color="#e74c3c"
+            ).pack(expand=True, pady=60)
+            return
+        
+        try:
+            # Setup the Rate Card Builder component
+            self.rate_card_builder = setup_rate_cards_tab(rate_cards_tab, self.root)
+        except Exception as e:
+            ctk.CTkLabel(
+                rate_cards_tab,
+                text=f"⚠️ Failed to load Rate Cards:\n{str(e)}",
+                font=("Arial", 12),
+                text_color="#e74c3c"
+            ).pack(expand=True, pady=60)
+            print(f"Error setting up Rate Cards tab: {e}")
 
     def refresh_pa_integration_tab(self):
         """Reload PA Template Mapper in the Configure Template sub-tab for current account"""

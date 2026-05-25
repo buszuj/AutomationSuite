@@ -14,7 +14,14 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
+import sys
 from language_loader import get_language_manager
+
+# Try to import Excel rate card loader
+try:
+    from excel_rate_card_loader import load_excel_rate_card
+except ImportError:
+    load_excel_rate_card = None
 
 
 class ItemizedRateCardEditor:
@@ -1976,13 +1983,18 @@ class ItemizedRateCardEditor:
             messagebox.showerror("Error", f"Failed to export CSV:\n{str(e)}")
     
     def on_load_rate_card(self):
-        """Open dialog to load an existing rate card."""
+        """Open dialog to load an existing rate card (JSON or Excel)."""
         from tkinter import filedialog
         
         file_path = filedialog.askopenfilename(
             title="Select Rate Card",
             initialdir=str(Path(__file__).parent),
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+            filetypes=[
+                ("All Supported", ("*.json", "*.xlsx")),
+                ("JSON files", "*.json"),
+                ("Excel files", "*.xlsx"),
+                ("All files", "*.*")
+            ]
         )
         
         if not file_path:
@@ -2000,8 +2012,18 @@ class ItemizedRateCardEditor:
                 return
         
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+            file_path = Path(file_path)
+            
+            # Load based on file type
+            if file_path.suffix.lower() == '.xlsx':
+                if load_excel_rate_card is None:
+                    messagebox.showerror("Error", "Excel support not available.\nPlease install: pip install openpyxl pandas")
+                    return
+                data = load_excel_rate_card(str(file_path))
+            else:
+                # JSON file
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
 
             loaded_iso_codes = data.get("iso_codes", {})
             if isinstance(loaded_iso_codes, dict):
@@ -2069,10 +2091,12 @@ class ItemizedRateCardEditor:
             self.language_text.delete("1.0", "end")
             
             # Show success message
-            messagebox.showinfo("Loaded", f"Loaded: {Path(file_path).name}")
+            messagebox.showinfo("Loaded", f"Loaded: {file_path.name}")
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load rate card:\n{str(e)}")
+            import traceback
+            traceback.print_exc()
     
     def on_create_new(self):
         """Create a new rate card with prompt to save current one."""

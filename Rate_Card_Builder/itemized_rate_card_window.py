@@ -4,12 +4,18 @@ Main editing window for creating itemized rate cards.
 """
 
 import customtkinter as ctk
-from tkinter import messagebox, scrolledtext
+from tkinter import messagebox, scrolledtext, filedialog
 import tkinter.ttk as ttk
 import json
 import re
 from pathlib import Path
 from language_loader import get_language_manager
+
+# Try to import Excel rate card loader
+try:
+    from excel_rate_card_loader import load_excel_rate_card
+except ImportError:
+    load_excel_rate_card = None
 
 
 class ItemizedRateCardWindow:

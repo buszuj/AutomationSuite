@@ -1,6 +1,7 @@
 """
 Load Rate Card Window
 Window for loading and editing existing rate cards.
+Supports both JSON and Excel rate card formats.
 """
 
 import customtkinter as ctk
@@ -9,6 +10,16 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import json
 from pathlib import Path
+import sys
+
+# Add parent directory to path for importing excel_rate_card_loader
+sys.path.insert(0, str(Path(__file__).parent))
+
+try:
+    from excel_rate_card_loader import load_excel_rate_card, find_excel_rate_cards
+except ImportError:
+    load_excel_rate_card = None
+    find_excel_rate_cards = None
 
 
 class LoadRateCardWindow:
@@ -144,15 +155,35 @@ class LoadRateCardWindow:
         close_button.pack(side="left", padx=5)
     
     def populate_file_list(self):
-        """Populate the list of rate card files."""
+        """Populate the list of rate card files (both JSON and Excel)."""
         self.file_listbox.delete(0, "end")
         
         # Get rate card files from the module directory
         module_dir = Path(__file__).parent
-        rate_card_files = list(module_dir.glob("rate_cards_*.json"))
+        rate_card_files = []
         
-        for file_path in sorted(rate_card_files, key=lambda x: x.stat().st_mtime, reverse=True):
-            self.file_listbox.insert("end", file_path.name)
+        # Add JSON files from module directory
+        json_files = list(module_dir.glob("rate_cards_*.json"))
+        for file_path in sorted(json_files, key=lambda x: x.stat().st_mtime, reverse=True):
+            rate_card_files.append((file_path.name, "JSON", str(file_path)))
+        
+        # Add Excel files from TheOneBP/RateCards if available
+        if find_excel_rate_cards:
+            try:
+                excel_files = find_excel_rate_cards()
+                for filename, filepath in excel_files:
+                    rate_card_files.append((filename, "XLSX", filepath))
+            except Exception as e:
+                print(f"Warning: Could not load Excel rate cards: {e}")
+        
+        # Insert into listbox with type indicator
+        for filename, file_type, filepath in rate_card_files:
+            display_name = f"[{file_type}] {filename}"
+            self.file_listbox.insert("end", display_name)
+            # Store the actual filepath in a tag or separate structure
+            if not hasattr(self, '_file_paths'):
+                self._file_paths = []
+            self._file_paths.append(filepath)
     
     def on_file_selected(self, event):
         """Handle file selection."""
@@ -161,14 +192,81 @@ class LoadRateCardWindow:
             return
         
         index = selection[0]
-        filename = self.file_listbox.get(index)
-        file_path = Path(__file__).parent / filename
         
-        if file_path.exists():
-            try:
+        # Get the actual filepath from stored list
+        if not hasattr(self, '_file_paths') or index >= len(self._file_paths):
+            return
+        
+        file_path = self._file_paths[index]
+        file_path = Path(file_path)
+        
+        if not file_path.exists():
+            messagebox.showerror("Error", f"File not found: {file_path}")
+            return
+        
+        try:
+            # Load based on file type
+            if file_path.suffix.lower() == '.xlsx':
+                if load_excel_rate_card is None:
+                    messagebox.showerror("Error", "Excel support not available. Install openpyxl.")
+                    return
+                self.rate_card_data = load_excel_rate_card(str(file_path))
+            else:
+                # JSON file
                 with open(file_path, 'r', encoding='utf-8') as f:
                     self.rate_card_data = json.load(f)
-                    self.current_file = file_path
+            
+            self.current_file = file_path
+            
+            # Display info
+            info = f"""
+Name: {self.rate_card_data.get('name', 'N/A')}
+Sponsor: {self.rate_card_data.get('sponsor', 'N/A')}
+Type: {self.rate_card_data.get('type', 'itemized')}
+Languages: {len(self.rate_card_data.get('languages', {}))}
+Services: {len(self.rate_card_data.get('services', []))}
+Source: {self.rate_card_data.get('source', 'Unknown')}
+            """.strip()
+            
+            self.info_text.configure(text=info)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to read file:\n{str(e)}")
+            import traceback
+            traceback.print_exc()
+    
+    def on_file_double_click(self, event):
+        """Handle double-click to open file."""
+        self.on_open()
+    
+    def on_browse(self):
+        """Open file browser."""
+        file_path = filedialog.askopenfilename(
+            title="Select Rate Card",
+            initialdir=str(Path(__file__).parent),
+            filetypes=[
+                ("All Supported", ("*.json", "*.xlsx")),
+                ("JSON Rate Cards", "*.json"),
+                ("Excel Rate Cards", "*.xlsx"),
+                ("All files", "*.*")
+            ]
+        )
+        
+        if file_path:
+            try:
+                file_path = Path(file_path)
+                
+                # Load based on file type
+                if file_path.suffix.lower() == '.xlsx':
+                    if load_excel_rate_card is None:
+                        messagebox.showerror("Error", "Excel support not available. Install openpyxl and pandas.")
+                        return
+                    self.rate_card_data = load_excel_rate_card(str(file_path))
+                else:
+                    # JSON file
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        self.rate_card_data = json.load(f)
+                
+                self.current_file = file_path
                 
                 # Display info
                 info = f"""
@@ -180,39 +278,11 @@ Services: {len(self.rate_card_data.get('services', []))}
                 """.strip()
                 
                 self.info_text.configure(text=info)
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to read file:\n{str(e)}")
-    
-    def on_file_double_click(self, event):
-        """Handle double-click to open file."""
-        self.on_open()
-    
-    def on_browse(self):
-        """Open file browser."""
-        file_path = filedialog.askopenfilename(
-            title="Select Rate Card",
-            initialdir=str(Path(__file__).parent),
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-        )
-        
-        if file_path:
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    self.rate_card_data = json.load(f)
-                    self.current_file = Path(file_path)
-                
-                # Display info
-                info = f"""
-Name: {self.rate_card_data.get('name', 'N/A')}
-Sponsor: {self.rate_card_data.get('sponsor', 'N/A')}
-Type: {self.rate_card_data.get('type', 'itemized')}
-Languages: {len(self.rate_card_data.get('languages', {}))}
-                """.strip()
-                
-                self.info_text.configure(text=info)
-                messagebox.showinfo("File Loaded", f"Rate card loaded:\n{self.current_file.name}")
+                messagebox.showinfo("File Loaded", f"Rate card loaded:\n{file_path.name}")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to load file:\n{str(e)}")
+                import traceback
+                traceback.print_exc()
     
     def on_open(self):
         """Open selected rate card for editing."""
