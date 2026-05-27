@@ -75,7 +75,7 @@ class AccountWorkflowManager:
         return list(self.accounts.keys())
     
     # Workflow Management
-    def create_workflow(self, account_name: str, workflow_name: str, services: List[str]) -> bool:
+    def create_workflow(self, account_name: str, workflow_name: str, services: List[str], quoteme_mapping: Optional[Dict] = None) -> bool:
         """Create a new workflow for an account"""
         if account_name not in self.accounts:
             return False
@@ -83,11 +83,15 @@ class AccountWorkflowManager:
         if workflow_name in self.accounts[account_name]["workflows"]:
             return False
         
-        self.accounts[account_name]["workflows"][workflow_name] = services
+        # Store workflow with new structure
+        self.accounts[account_name]["workflows"][workflow_name] = {
+            "services": services,
+            "quoteme_mapping": quoteme_mapping or {}
+        }
         self.save_accounts()
         return True
     
-    def update_workflow(self, account_name: str, workflow_name: str, services: List[str]) -> bool:
+    def update_workflow(self, account_name: str, workflow_name: str, services: List[str] = None, quoteme_mapping: Optional[Dict] = None) -> bool:
         """Update an existing workflow"""
         if account_name not in self.accounts:
             return False
@@ -95,7 +99,19 @@ class AccountWorkflowManager:
         if workflow_name not in self.accounts[account_name]["workflows"]:
             return False
         
-        self.accounts[account_name]["workflows"][workflow_name] = services
+        workflow_data = self.accounts[account_name]["workflows"][workflow_name]
+        
+        # Handle both old format (list) and new format (dict)
+        if isinstance(workflow_data, list):
+            # Old format - convert to new format
+            workflow_data = {"services": workflow_data, "quoteme_mapping": {}}
+        
+        if services is not None:
+            workflow_data["services"] = services
+        if quoteme_mapping is not None:
+            workflow_data["quoteme_mapping"] = quoteme_mapping
+        
+        self.accounts[account_name]["workflows"][workflow_name] = workflow_data
         self.save_accounts()
         return True
     
@@ -124,11 +140,20 @@ class AccountWorkflowManager:
         self.save_accounts()
         return True
     
-    def get_workflows(self, account_name: str) -> Dict[str, List[str]]:
+    def get_workflows(self, account_name: str) -> Dict[str, Dict]:
         """Get all workflows for an account"""
         if account_name not in self.accounts:
             return {}
-        return self.accounts[account_name]["workflows"]
+        workflows = self.accounts[account_name]["workflows"]
+        
+        # Convert old format to new format for consistency
+        result = {}
+        for name, data in workflows.items():
+            if isinstance(data, list):
+                result[name] = {"services": data, "quoteme_mapping": {}}
+            else:
+                result[name] = data
+        return result
     
     def get_workflow_services(self, account_name: str, workflow_name: str) -> Optional[List[str]]:
         """Get services for a specific workflow"""
@@ -136,7 +161,41 @@ class AccountWorkflowManager:
             return None
         
         workflows = self.accounts[account_name]["workflows"]
-        return workflows.get(workflow_name)
+        workflow_data = workflows.get(workflow_name)
+        
+        if workflow_data is None:
+            return None
+        
+        # Handle both old format (list) and new format (dict)
+        if isinstance(workflow_data, list):
+            return workflow_data
+        elif isinstance(workflow_data, dict):
+            return workflow_data.get("services", [])
+        
+        return None
+    
+    def get_quoteme_mapping(self, account_name: str, workflow_name: str) -> Optional[Dict]:
+        """Get QuoteMe mapping for a specific workflow"""
+        if account_name not in self.accounts:
+            return None
+        
+        workflows = self.accounts[account_name]["workflows"]
+        workflow_data = workflows.get(workflow_name)
+        
+        if workflow_data is None:
+            return None
+        
+        # Handle both old format (list) and new format (dict)
+        if isinstance(workflow_data, list):
+            return {}
+        elif isinstance(workflow_data, dict):
+            return workflow_data.get("quoteme_mapping", {})
+        
+        return None
+    
+    def set_quoteme_mapping(self, account_name: str, workflow_name: str, quoteme_mapping: Dict) -> bool:
+        """Update QuoteMe mapping for a workflow"""
+        return self.update_workflow(account_name, workflow_name, quoteme_mapping=quoteme_mapping)
     
     def clone_workflow(self, source_account: str, workflow_name: str, target_account: str, new_workflow_name: Optional[str] = None) -> bool:
         """Clone a workflow from one account to another"""

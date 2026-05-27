@@ -1217,6 +1217,12 @@
       "language": "Belorussian",
       "country": "",
       "display_name": "Belorussian"
+    },
+    {
+      "code": "ar-al",
+      "language": "Arabic",
+      "country": "Algeria",
+      "display_name": "Arabic (Algeria)"
     }
   ]
 }

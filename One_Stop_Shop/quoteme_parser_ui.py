@@ -51,7 +51,7 @@ def create_labeled_frame(parent, text: str, **kwargs):
 class QuoteParserTab:
     """UI Tab for QuoteMe email parsing"""
     
-    def __init__(self, parent_frame, on_apply_callback=None):
+    def __init__(self, parent_frame, on_apply_callback=None, on_parse_complete_callback=None):
         """
         Initialize the parser tab
         
@@ -59,9 +59,12 @@ class QuoteParserTab:
             parent_frame: Parent CTk frame
             on_apply_callback: Callback function when user applies parsed data
                              Should accept (lp_code: str, lp_data: LanguagePairData)
+            on_parse_complete_callback: Callback function when parsing completes
+                                       Should accept (parse_result: ParseResult)
         """
         self.parent = parent_frame
         self.on_apply_callback = on_apply_callback
+        self.on_parse_complete_callback = on_parse_complete_callback
         self.parser = QuoteeMEmailParser()
         self.parse_cache = get_parse_cache()
         self.current_parse_result: Optional[ParseResult] = None
@@ -139,35 +142,33 @@ class QuoteParserTab:
                                          text_color="gray", font=ctk.CTkFont(size=10))
         self.status_label.pack(side="left", padx=(12, 0))
 
-        # ── Left panel: Parsed data (read-only) ───────────────────────────────
-        left_panel = ctk.CTkFrame(results_section, fg_color="#1a1a2e", corner_radius=6)
+        # ── Results display frames (row 1, two-column split) ──────────────────────
+        left_panel = ctk.CTkFrame(results_section, fg_color="transparent")
         left_panel.grid(row=1, column=0, sticky="nsew", padx=(8, 3), pady=(0, 4))
         left_panel.grid_rowconfigure(1, weight=1)
         left_panel.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(left_panel, text="Parsed Data",
-                     font=ctk.CTkFont(size=11, weight="bold")).grid(
-            row=0, column=0, sticky="w", padx=8, pady=(5, 2))
+                     font=ctk.CTkFont(size=11, weight="bold")).grid(row=0, column=0, sticky="w", padx=5)
 
         self.data_display_frame = ctk.CTkScrollableFrame(
             left_panel, fg_color="#1e1e1e", corner_radius=4
         )
-        self.data_display_frame.grid(row=1, column=0, sticky="nsew", padx=4, pady=(0, 4))
+        self.data_display_frame.grid(row=1, column=0, sticky="nsew")
 
-        # ── Right panel: Review / edit entry boxes ────────────────────────────
-        right_panel = ctk.CTkFrame(results_section, fg_color="#1a2e1a", corner_radius=6)
+        # ── Right panel: Review / edit entry boxes ───────────────────────────────
+        right_panel = ctk.CTkFrame(results_section, fg_color="transparent")
         right_panel.grid(row=1, column=1, sticky="nsew", padx=(3, 8), pady=(0, 4))
         right_panel.grid_rowconfigure(1, weight=1)
         right_panel.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(right_panel, text="Review & Edit",
-                     font=ctk.CTkFont(size=11, weight="bold")).grid(
-            row=0, column=0, sticky="w", padx=8, pady=(5, 2))
+                     font=ctk.CTkFont(size=11, weight="bold")).grid(row=0, column=0, sticky="w", padx=5)
 
         self.review_frame = ctk.CTkScrollableFrame(
             right_panel, fg_color="#1e1e1e", corner_radius=4
         )
-        self.review_frame.grid(row=1, column=0, sticky="nsew", padx=4, pady=(0, 4))
+        self.review_frame.grid(row=1, column=0, sticky="nsew")
 
         # ── Action buttons (row 2, spans both columns) ────────────────────────
         action_frame = ctk.CTkFrame(results_section, fg_color="transparent")
@@ -203,6 +204,13 @@ class QuoteParserTab:
         
         # Update UI
         self._update_results_display()
+        
+        # Notify Job Data tab of parsed language pairs
+        if self.on_parse_complete_callback:
+            try:
+                self.on_parse_complete_callback(self.current_parse_result)
+            except Exception as e:
+                print(f"Error calling parse complete callback: {e}")
         
         # Show warnings if any
         if self.current_parse_result.warnings:
@@ -480,6 +488,6 @@ class QuoteParserTab:
             messagebox.showerror("Export Error", f"Failed to export: {str(e)}")
 
 
-def create_parser_tab(parent_frame, on_apply_callback=None) -> QuoteParserTab:
+def create_parser_tab(parent_frame, on_apply_callback=None, on_parse_complete_callback=None) -> QuoteParserTab:
     """Factory function to create a parser tab"""
-    return QuoteParserTab(parent_frame, on_apply_callback)
+    return QuoteParserTab(parent_frame, on_apply_callback, on_parse_complete_callback)

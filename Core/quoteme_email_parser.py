@@ -146,25 +146,39 @@ class QuoteeMEmailParser:
             result.errors.append("Could not find 'Quote Breakdown' section in email")
             return result
         
-        # Find all language pairs
-        lp_matches = list(re.finditer(r'([^>]+)\s*>\s*([^>]+)', breakdown_section))
+        # Find all language pair headers using a more specific pattern
+        # Pattern: "Language (Region) > Language (Region)" at the start of a line
+        # Language names can contain letters, spaces, parentheses, and hyphens
+        lp_header_pattern = r'^\s*([A-Z][A-Za-z\s\(\)\-]+)\s*>\s*([A-Z][A-Za-z\s\(\)\-]+?)\s*$'
         
-        if not lp_matches:
+        lp_headers = []
+        for match in re.finditer(lp_header_pattern, breakdown_section, re.MULTILINE):
+            lp_headers.append({
+                'header': match.group(0).strip(),
+                'source': match.group(1).strip(),
+                'target': match.group(2).strip(),
+                'start': match.start(),
+                'end': match.end()
+            })
+        
+        if not lp_headers:
             result.errors.append("No language pairs found in Quote Breakdown section")
             return result
         
         # Extract data for each language pair
-        for i, lp_match in enumerate(lp_matches):
-            lp_start = lp_match.start()
-            lp_end = lp_matches[i + 1].start() if i + 1 < len(lp_matches) else len(breakdown_section)
-            lp_section = breakdown_section[lp_start:lp_end]
+        for i, header_info in enumerate(lp_headers):
+            # Get the section from this header to the next one (or end of section)
+            section_start = header_info['end']
+            section_end = lp_headers[i + 1]['start'] if i + 1 < len(lp_headers) else len(breakdown_section)
+            lp_section = breakdown_section[section_start:section_end]
             
             try:
-                lp_data = self._parse_language_pair(lp_match.group(0).strip(), lp_section)
+                lp_code = f"{header_info['source']} > {header_info['target']}"
+                lp_data = self._parse_language_pair(lp_code, lp_section)
                 if lp_data:
                     result.language_pairs.append(lp_data)
             except Exception as e:
-                result.warnings.append(f"Error parsing {lp_match.group(0)}: {str(e)}")
+                result.warnings.append(f"Error parsing {header_info['header']}: {str(e)}")
         
         if result.language_pairs:
             result.success = True

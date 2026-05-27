@@ -27,6 +27,9 @@ sys.path.insert(0, str(rate_card_path))
 from pa_template_manager import PATemplateManager
 from pa_template_processor import PATemplateProcessor
 from quoteme_email_parser import QuoteeMEmailParser, get_parse_cache
+from account_workflow_manager import AccountWorkflowManager
+from language_normalizer import LanguageNormalizer
+from excel_rate_card_loader import load_excel_rate_card
 
 # Import the parser UI (from same directory)
 from quoteme_parser_ui import create_parser_tab
@@ -429,6 +432,19 @@ class OneStopShopMain:
         # API client
         self.api_client = GLEAPIClient()
         
+        # Account & Workflow Manager
+        self.account_workflow_manager = AccountWorkflowManager()
+        
+        # Language Normalizer
+        self.language_normalizer = LanguageNormalizer()
+        
+        # Rate card and workflow tracking
+        self.selected_workflow = None
+        self.selected_rate_card = None
+        self.quoteme_data = None  # Stores parsed QuoteMe data
+        self.language_pairs = []  # Language pairs from QuoteMe
+        self.workflow_service_data = {}  # Stores service data: {service_name: {lp: {quantity, rate}}}
+        
         # Setup menu bar BEFORE UI
         self.setup_menu_bar()
         
@@ -639,6 +655,9 @@ class OneStopShopMain:
                     # Account set as active
                     dialog.destroy()
                     self.refresh_ui()
+                    # Refresh workflow and rate card dropdowns for Job Data tab
+                    self.refresh_workflow_dropdown()
+                    self.refresh_rate_card_dropdown()
                 else:
                     messagebox.showwarning("No Selection", "Please select an account")
             
@@ -684,6 +703,14 @@ class OneStopShopMain:
                 """Callback when parser applies data"""
                 messagebox.showinfo("Success", f"Parsed data for:\n{lp_code}\n\nData cached and ready for use.")
             
+            def on_parser_complete(parse_result):
+                """Callback when parsing completes - update Job Data tab"""
+                if parse_result and parse_result.success and parse_result.language_pairs:
+                    try:
+                        self.set_language_pairs_from_quoteme(parse_result.language_pairs)
+                    except Exception as e:
+                        print(f"Error updating Job Data with parsed language pairs: {e}")
+            
             # Create floating window
             parser_window = ctk.CTkToplevel(self.root)
             parser_window.title("QuoteMe Email Parser")
@@ -694,7 +721,7 @@ class OneStopShopMain:
             
             try:
                 # Create parser tab
-                parser_tab = create_parser_tab(parser_window, on_apply_callback=on_parser_apply)
+                parser_tab = create_parser_tab(parser_window, on_apply_callback=on_parser_apply, on_parse_complete_callback=on_parser_complete)
                 
                 # FIXED: Proper window close handling
                 def on_closing():
@@ -1542,39 +1569,49 @@ class OneStopShopMain:
             self.main_tabs.pack_forget()
     
     def setup_data_view_tab(self):
-        """Setup Data View tab - shows imported/pulled data with configuration options"""
-        data_tab = self.main_tabs.add("Data View")
+        """Setup Job Data tab - split layout with data preview (25%) and workflow services (75%)"""
+        data_tab = self.main_tabs.add("Job Data")
         
-        data_content = ctk.CTkFrame(data_tab, fg_color="transparent")
-        data_content.pack(fill="both", expand=True, padx=20, pady=20)
+        # Main container with grid layout for 25-75 split
+        main_container = ctk.CTkFrame(data_tab, fg_color="transparent")
+        main_container.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Header
-        header_frame = ctk.CTkFrame(data_content, fg_color="transparent")
-        header_frame.pack(fill="x", pady=(0, 15))
+        # Configure grid columns: left=1 weight (25%), right=3 weight (75%)
+        main_container.grid_columnconfigure(0, weight=1)
+        main_container.grid_columnconfigure(1, weight=3)
+        main_container.grid_rowconfigure(0, weight=1)
+        
+        # ─── LEFT PANE: Data Preview (25%) ───────────────────────────────────────
+        left_pane = ctk.CTkFrame(main_container, fg_color="transparent")
+        left_pane.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        
+        # Header for left pane
+        left_header = ctk.CTkFrame(left_pane, fg_color="transparent")
+        left_header.pack(fill="x", pady=(0, 10))
         
         ctk.CTkLabel(
-            header_frame,
-            text="📊 Data View",
-            font=("Arial", 18, "bold")
+            left_header,
+            text="📊 Job Data Preview",
+            font=("Arial", 16, "bold")
         ).pack(side="left", pady=(0, 10))
         
         # Data info label
         self.data_info_label = ctk.CTkLabel(
-            header_frame,
+            left_header,
             text="No data loaded",
-            font=("Arial", 11),
+            font=("Arial", 10),
             text_color="gray"
         )
-        self.data_info_label.pack(side="left", padx=20)
+        self.data_info_label.pack(side="left", padx=15)
         
         # Configure Columns button
         self.config_columns_btn = ctk.CTkButton(
-            header_frame,
+            left_header,
             text="⚙️ Configure Columns",
             command=self.configure_visible_columns,
-            width=180,
-            height=35,
-            font=("Arial", 11, "bold"),
+            width=160,
+            height=30,
+            font=("Arial", 10, "bold"),
             fg_color="#9b59b6",
             hover_color="#8e44ad",
             state="disabled"
@@ -1582,8 +1619,8 @@ class OneStopShopMain:
         self.config_columns_btn.pack(side="right")
         
         # Data display scrollable area
-        self.data_display_scroll = ctk.CTkScrollableFrame(data_content, fg_color="transparent")
-        self.data_display_scroll.pack(fill="both", expand=True, padx=10, pady=10)
+        self.data_display_scroll = ctk.CTkScrollableFrame(left_pane, fg_color="transparent")
+        self.data_display_scroll.pack(fill="both", expand=True)
         
         # Initial message
         self.no_data_label = ctk.CTkLabel(
@@ -1593,6 +1630,116 @@ class OneStopShopMain:
             text_color="gray"
         )
         self.no_data_label.pack(expand=True, pady=50)
+        
+        # ─── RIGHT PANE: Workflow Services (75%) ────────────────────────────────────
+        right_pane = ctk.CTkFrame(main_container, fg_color="gray20", corner_radius=10)
+        right_pane.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
+        right_pane.grid_columnconfigure(0, weight=1)
+        right_pane.grid_rowconfigure(4, weight=1)  # Services table gets remaining space
+        
+        # Right pane header
+        right_header = ctk.CTkFrame(right_pane, fg_color="transparent")
+        right_header.grid(row=0, column=0, sticky="ew", padx=15, pady=(15, 10))
+        
+        ctk.CTkLabel(
+            right_header,
+            text="⚙️ Workflow Configuration",
+            font=("Arial", 14, "bold")
+        ).pack(anchor="w")
+        
+        # Workflow selector section
+        wf_frame = ctk.CTkFrame(right_pane, fg_color="transparent")
+        wf_frame.grid(row=1, column=0, sticky="ew", padx=15, pady=10)
+        
+        ctk.CTkLabel(
+            wf_frame,
+            text="Choose Workflow:",
+            font=("Arial", 11, "bold")
+        ).pack(anchor="w", pady=(0, 5))
+        
+        self.workflow_dropdown = ctk.CTkComboBox(
+            wf_frame,
+            values=[],
+            command=self.on_workflow_selected,
+            state="readonly",
+            font=("Arial", 11),
+            height=32
+        )
+        self.workflow_dropdown.pack(fill="x")
+        
+        # Rate card selector section
+        rc_frame = ctk.CTkFrame(right_pane, fg_color="transparent")
+        rc_frame.grid(row=2, column=0, sticky="ew", padx=15, pady=10)
+        
+        ctk.CTkLabel(
+            rc_frame,
+            text="Select Rate Card:",
+            font=("Arial", 11, "bold")
+        ).pack(anchor="w", pady=(0, 5))
+        
+        rc_dropdown_frame = ctk.CTkFrame(rc_frame, fg_color="transparent")
+        rc_dropdown_frame.pack(fill="x", pady=(0, 5))
+        
+        self.rate_card_dropdown = ctk.CTkComboBox(
+            rc_dropdown_frame,
+            values=[],
+            command=self.on_rate_card_selected,
+            state="readonly",
+            font=("Arial", 11),
+            height=32
+        )
+        self.rate_card_dropdown.pack(side="left", fill="x", expand=True)
+        
+        # Browse button to load rate card files
+        ctk.CTkButton(
+            rc_dropdown_frame,
+            text="📁 Browse",
+            command=self.browse_rate_card_file,
+            width=80,
+            height=32,
+            font=("Arial", 10, "bold"),
+            fg_color="#27ae60",
+            hover_color="#229954"
+        ).pack(side="left", padx=(5, 0))
+        
+        # Rate card info message (inside rc_frame)
+        self.rate_card_info = ctk.CTkLabel(
+            rc_frame,
+            text="ℹ️ No rate card loaded. Select from dropdown or browse for a file.",
+            font=("Arial", 9),
+            text_color="#f39c12",
+            wraplength=350,
+            justify="left"
+        )
+        self.rate_card_info.pack(fill="x", pady=(5, 0))
+        
+        # Services table section
+        table_label = ctk.CTkLabel(
+            right_pane,
+            text="Services by Language Pair:",
+            font=("Arial", 11, "bold")
+        )
+        table_label.grid(row=3, column=0, sticky="ew", padx=15, pady=(15, 5))
+        
+        # Create scrollable table frame
+        self.services_table_frame = ctk.CTkScrollableFrame(
+            right_pane,
+            fg_color="gray25",
+            corner_radius=5
+        )
+        self.services_table_frame.grid(row=4, column=0, sticky="nsew", padx=15, pady=(0, 15))
+        
+        # Initial message for services table
+        self.services_empty_label = ctk.CTkLabel(
+            self.services_table_frame,
+            text="Select a workflow to view services",
+            font=("Arial", 10),
+            text_color="gray"
+        )
+        self.services_empty_label.pack(expand=True, pady=20)
+        
+        # Store references for workflow management
+        self.workflow_service_widgets = {}  # Maps service_name to {lp: {quantity_entry, rate_entry}}
     
     def setup_configuration_tab(self):
         """Setup Configuration tab with sub-tabs - all UIs embedded inline"""
@@ -1701,8 +1848,17 @@ class OneStopShopMain:
         def on_parser_apply(lp_code: str, lp_data):
             self.update_status(f"✅ QuoteMe parsed: {lp_code}")
 
+        def on_parser_complete(parse_result):
+            """Callback when parsing completes - update Job Data tab"""
+            if parse_result and parse_result.success and parse_result.language_pairs:
+                try:
+                    self.set_language_pairs_from_quoteme(parse_result.language_pairs)
+                    self.update_status(f"✅ Job Data updated with {len(parse_result.language_pairs)} language pair(s)")
+                except Exception as e:
+                    print(f"Error updating Job Data with parsed language pairs: {e}")
+
         try:
-            create_parser_tab(parser_tab, on_apply_callback=on_parser_apply)
+            create_parser_tab(parser_tab, on_apply_callback=on_parser_apply, on_parse_complete_callback=on_parser_complete)
         except Exception as e:
             ctk.CTkLabel(
                 parser_tab,
@@ -1869,6 +2025,358 @@ class OneStopShopMain:
                 text_color="#e74c3c"
             ).pack(expand=True, pady=60)
             print(f"Error setting up Rate Cards tab: {e}")
+
+    # ──────────────────── Workflow & Rate Card Management ────────────────────
+    
+    def get_available_workflows(self) -> list:
+        """Get workflows for current account"""
+        if not self.current_account:
+            return []
+        workflows = self.account_workflow_manager.get_workflows(self.current_account)
+        return list(workflows.keys()) if workflows else []
+    
+    def get_available_rate_cards(self) -> list:
+        """Get list of available rate card files"""
+        try:
+            rate_card_path = Path(__file__).parent.parent / "Rate_Card_Builder"
+            rate_card_files = list(rate_card_path.glob("rate_cards_*.json"))
+            return sorted([f.stem.replace("rate_cards_", "") for f in rate_card_files])
+        except Exception as e:
+            print(f"Error loading rate cards: {e}")
+            return []
+    
+    def load_rate_card(self, rate_card_name: str) -> dict:
+        """Load a rate card JSON file"""
+        try:
+            rate_card_path = Path(__file__).parent.parent / "Rate_Card_Builder" / f"rate_cards_{rate_card_name}.json"
+            if rate_card_path.exists():
+                with open(rate_card_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            return {}
+        except Exception as e:
+            print(f"Error loading rate card {rate_card_name}: {e}")
+            return {}
+    
+    def get_rate_from_card(self, rate_card: dict, service: str, target_language: str = None) -> str:
+        """
+        Get rate for a service from a loaded rate card
+        
+        Args:
+            rate_card: Loaded rate card data
+            service: Service name
+            target_language: Target language from language pair (e.g., "Polish (Poland)")
+            
+        Returns:
+            Rate as string or empty string if not found
+        """
+        if not rate_card or "languages" not in rate_card:
+            return ""
+        
+        if not target_language:
+            return ""
+        
+        # Normalize the target language
+        iso_code, lang_name, display_name = self.language_normalizer.normalize(target_language)
+        
+        # Try to find the language in the rate card
+        for lang_key, lang_data in rate_card.get("languages", {}).items():
+            # Try exact match on language name
+            if lang_key.lower() == (lang_name or "").lower():
+                if "rates" in lang_data and service in lang_data["rates"]:
+                    rate = lang_data["rates"][service]
+                    return str(rate) if rate else ""
+            
+            # Try match on display name
+            if lang_key.lower() == display_name.lower():
+                if "rates" in lang_data and service in lang_data["rates"]:
+                    rate = lang_data["rates"][service]
+                    return str(rate) if rate else ""
+        
+        return ""
+    
+    def refresh_workflow_dropdown(self):
+        """Refresh workflow dropdown for current account"""
+        workflows = self.get_available_workflows()
+        self.workflow_dropdown.configure(values=workflows)
+        if workflows:
+            self.workflow_dropdown.set(workflows[0])
+            self.on_workflow_selected(workflows[0])
+        else:
+            self.workflow_dropdown.set("")
+            self.services_empty_label.pack(expand=True, pady=20)
+    
+    def refresh_rate_card_dropdown(self):
+        """Refresh rate card dropdown - allows user to choose"""
+        rate_cards = self.get_available_rate_cards()
+        self.rate_card_dropdown.configure(values=rate_cards)
+        # Don't auto-select; let user choose manually or use Browse button
+        self.rate_card_dropdown.set("")
+        self.selected_rate_card = None
+        self.rate_card_info.configure(text="ℹ️ No rate card loaded. Select from dropdown or browse for a file.")
+    
+    def on_workflow_selected(self, workflow_name: str):
+        """Handle workflow selection - populate services table"""
+        if not workflow_name or not self.current_account:
+            return
+        
+        self.selected_workflow = workflow_name
+        services = self.account_workflow_manager.get_workflow_services(
+            self.current_account,
+            workflow_name
+        )
+        
+        self.populate_services_table(services)
+    
+    def set_language_pairs_from_quoteme(self, quoteme_data):
+        """
+        Set language pairs from parsed QuoteMe data
+        
+        Args:
+            quoteme_data: List of LanguagePairData objects from QuoteMe parser
+        """
+        self.quoteme_data = quoteme_data
+        self.language_pairs = []
+        
+        if quoteme_data:
+            for lp_data in quoteme_data:
+                if lp_data.lp_code:
+                    # Extract only the language pair name ("Source > Target") without parsed data
+                    lp_name = self._extract_lp_name(lp_data.lp_code)
+                    self.language_pairs.append(lp_name)
+        
+        # Refresh the services table to show the new language pairs
+        if self.selected_workflow and self.current_account:
+            services = self.account_workflow_manager.get_workflow_services(
+                self.current_account,
+                self.selected_workflow
+            )
+            if services:
+                self.populate_services_table(services)
+    
+    @staticmethod
+    def _extract_lp_name(lp_code: str) -> str:
+        """
+        Extract only the 'Source > Target' part from an lp_code string
+        Handles multi-line lp_code that may contain parsed data
+        Preserves full language names including regions in parentheses
+        """
+        import re
+        first_line = lp_code.split('\n')[0].strip()
+        
+        # Split on > separator and reconstruct with proper handling of regions
+        parts = first_line.split('>')
+        if len(parts) >= 2:
+            source = parts[0].strip()
+            # Join remaining parts (in case of multiple >)
+            target = '>'.join(parts[1:]).strip()
+            # Remove any trailing metadata that starts with double-space or common keywords
+            target = re.split(r'\s{2,}|Context|Remote|TM Configuration', target)[0].strip()
+            return f"{source} > {target}"
+        
+        # Fallback: return first line if it contains >
+        if '>' in first_line:
+            return first_line.split(':')[0].strip()
+        
+        return first_line[:80]
+
+    def on_rate_card_selected(self, rate_card_name: str):
+        """Handle rate card selection - update rates in table"""
+        if not rate_card_name:
+            return
+        
+        self.selected_rate_card = rate_card_name
+        rate_card = self.load_rate_card(rate_card_name)
+        
+        if rate_card:
+            self.rate_card_info.configure(text=f"✓ Using rate card: {rate_card_name}")
+            # Update rates in the table
+            self.update_rates_in_table(rate_card)
+        else:
+            self.rate_card_info.configure(text=f"⚠️ Failed to load rate card: {rate_card_name}")
+    
+    def browse_rate_card_file(self):
+        """Open file dialog to browse and load a rate card JSON or XLSX file"""
+        rate_card_dir = Path(__file__).parent.parent / "Rate_Card_Builder"
+        
+        file_path = filedialog.askopenfilename(
+            title="Select a Rate Card File",
+            initialdir=str(rate_card_dir),
+            filetypes=[("Rate Card Files", "*.json *.xlsx"), ("JSON files", "*.json"), ("Excel files", "*.xlsx"), ("All files", "*.*")]
+        )
+        
+        if file_path:
+            try:
+                file_ext = Path(file_path).suffix.lower()
+                
+                # Load rate card based on file format
+                if file_ext == ".xlsx":
+                    # Load Excel rate card
+                    rate_card = load_excel_rate_card(file_path)
+                elif file_ext == ".json":
+                    # Load JSON rate card
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        rate_card = json.load(f)
+                else:
+                    messagebox.showerror("Error", f"Unsupported file format: {file_ext}\nSupported formats: .json, .xlsx")
+                    return
+                
+                # Extract rate card name from filename
+                filename = Path(file_path).stem
+                if filename.startswith("rate_cards_"):
+                    rate_card_name = filename.replace("rate_cards_", "")
+                else:
+                    rate_card_name = filename
+                
+                # Update selection and load
+                self.selected_rate_card = rate_card_name
+                self.rate_card_dropdown.set(rate_card_name)
+                
+                # Update rates in table
+                if rate_card:
+                    self.rate_card_info.configure(text=f"✓ Using rate card: {rate_card_name}")
+                    self.update_rates_in_table(rate_card)
+                else:
+                    self.rate_card_info.configure(text=f"⚠️ Failed to load rate card: {rate_card_name}")
+                    
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load rate card file:\n{str(e)}")
+                self.rate_card_info.configure(text=f"⚠️ Error loading rate card: {str(e)[:50]}")
+    
+    def populate_services_table(self, services: list):
+        """Populate the services table with workflow services and language pair columns"""
+        # Clear existing widgets
+        for widget in self.services_table_frame.winfo_children():
+            widget.destroy()
+        
+        self.workflow_service_widgets = {}
+        
+        if not services or not self.language_pairs:
+            msg_text = "Select a workflow to view services"
+            if not self.language_pairs:
+                msg_text = "No language pairs available. Parse QuoteMe data first."
+            
+            self.services_empty_label = ctk.CTkLabel(
+                self.services_table_frame,
+                text=msg_text,
+                font=("Arial", 10),
+                text_color="gray"
+            )
+            self.services_empty_label.pack(expand=True, pady=20)
+            return
+        
+        # Create header row with language pairs
+        header_frame = ctk.CTkFrame(self.services_table_frame, fg_color="gray30", corner_radius=5)
+        header_frame.pack(fill="x", padx=5, pady=(0, 5))
+        
+        # Service column header
+        ctk.CTkLabel(
+            header_frame,
+            text="Service",
+            font=("Arial", 9, "bold"),
+            text_color="white",
+            width=180
+        ).pack(side="left", padx=5, pady=5)
+        
+        # Language pair headers (Quantity | Rate for each LP)
+        for lp in self.language_pairs:
+            lp_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
+            lp_frame.pack(side="left", padx=2, pady=5)
+            
+            ctk.CTkLabel(
+                lp_frame,
+                text=lp,
+                font=("Arial", 8, "bold"),
+                text_color="#3498db",
+                width=150,
+                wraplength=150,
+                justify="center"
+            ).pack()
+            
+            sub_header = ctk.CTkFrame(lp_frame, fg_color="transparent")
+            sub_header.pack()
+            
+            ctk.CTkLabel(
+                sub_header,
+                text="Qty | Rate",
+                font=("Arial", 7),
+                text_color="#95a5a6"
+            ).pack()
+        
+        # Create service rows
+        for idx, service in enumerate(services):
+            row_frame = ctk.CTkFrame(
+                self.services_table_frame,
+                fg_color="gray25" if idx % 2 == 0 else "gray28",
+                corner_radius=3
+            )
+            row_frame.pack(fill="x", padx=5, pady=2)
+            
+            # Service name (read-only)
+            ctk.CTkLabel(
+                row_frame,
+                text=service,
+                font=("Arial", 9),
+                width=180,
+                anchor="w",
+                wraplength=170,
+                justify="left"
+            ).pack(side="left", padx=5, pady=5)
+            
+            # Create entries for each language pair
+            service_data = {}
+            for lp in self.language_pairs:
+                lp_container = ctk.CTkFrame(row_frame, fg_color="transparent")
+                lp_container.pack(side="left", padx=2, pady=5)
+                
+                # Quantity entry
+                quantity_entry = ctk.CTkEntry(
+                    lp_container,
+                    width=40,
+                    height=24,
+                    font=("Arial", 8),
+                    placeholder_text="0"
+                )
+                quantity_entry.pack(side="left", padx=2)
+                
+                # Rate entry
+                rate_entry = ctk.CTkEntry(
+                    lp_container,
+                    width=50,
+                    height=24,
+                    font=("Arial", 8),
+                    placeholder_text="0.00"
+                )
+                rate_entry.pack(side="left", padx=2)
+                
+                service_data[lp] = {
+                    "quantity": quantity_entry,
+                    "rate": rate_entry
+                }
+            
+            self.workflow_service_widgets[service] = service_data
+        
+        # Try to populate rates from current rate card
+        if self.selected_rate_card:
+            rate_card = self.load_rate_card(self.selected_rate_card)
+            if rate_card:
+                self.update_rates_in_table(rate_card)
+    
+    def update_rates_in_table(self, rate_card: dict):
+        """Update rate values in the services table from a rate card"""
+        for service, service_data in self.workflow_service_widgets.items():
+            for lp, widgets in service_data.items():
+                # Extract target language from language pair (e.g., "Polish" from "English > Polish")
+                if ">" in lp:
+                    _, target_lang = lp.split(">", 1)
+                    target_lang = target_lang.strip()
+                else:
+                    target_lang = lp
+                
+                # Get rate based on target language
+                rate = self.get_rate_from_card(rate_card, service, target_lang)
+                if rate:
+                    widgets["rate"].delete(0, "end")
+                    widgets["rate"].insert(0, rate)
 
     def refresh_pa_integration_tab(self):
         """Reload PA Template Mapper in the Configure Template sub-tab for current account"""

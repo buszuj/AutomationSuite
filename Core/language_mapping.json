@@ -1,0 +1,20 @@
+{
+  "description": "Custom language mappings for QuoteMe and Rate Card normalization. Users can add mappings here to handle non-standard language names or custom aliases.",
+  "custom_mappings": {
+    "Polish (Poland)": {
+      "iso_code": "pl-PL",
+      "language_name": "Polish",
+      "display_name": "Polish (Poland)"
+    },
+    "German (Germany)": {
+      "iso_code": "de-DE",
+      "language_name": "German",
+      "display_name": "German (Germany)"
+    },
+    "Spanish (Spain)": {
+      "iso_code": "es-ES",
+      "language_name": "Spanish",
+      "display_name": "Spanish (Spain)"
+    }
+  }
+}
