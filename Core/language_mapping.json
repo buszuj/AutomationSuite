@@ -15,6 +15,22 @@
       "iso_code": "es-ES",
       "language_name": "Spanish",
       "display_name": "Spanish (Spain)"
+    },
+    "Chinese (Taiwan)": {
+      "iso_code": "zh-TW",
+      "language_name": "Traditional Chinese",
+      "display_name": "Traditional Chinese (Taiwan)",
+      "aliases": ["Traditional Chinese (Taiwan)", "Traditional Chinese (Tawain)"]
+    },
+    "Traditional Chinese (Taiwan)": {
+      "iso_code": "zh-TW",
+      "language_name": "Traditional Chinese",
+      "display_name": "Traditional Chinese (Taiwan)"
+    },
+    "Traditional Chinese (Tawain)": {
+      "iso_code": "zh-TW",
+      "language_name": "Traditional Chinese",
+      "display_name": "Traditional Chinese (Taiwan)"
     }
   }
 }

@@ -29,6 +29,7 @@ from pa_template_processor import PATemplateProcessor
 from quoteme_email_parser import QuoteeMEmailParser, get_parse_cache
 from account_workflow_manager import AccountWorkflowManager
 from language_normalizer import LanguageNormalizer
+from service_mapper import ServiceMapper
 from excel_rate_card_loader import load_excel_rate_card
 
 # Import the parser UI (from same directory)
@@ -438,9 +439,13 @@ class OneStopShopMain:
         # Language Normalizer
         self.language_normalizer = LanguageNormalizer()
         
+        # Service Mapper for rate card normalization
+        self.service_mapper = ServiceMapper()
+        
         # Rate card and workflow tracking
         self.selected_workflow = None
         self.selected_rate_card = None
+        self.cached_rate_card = None  # Cache normalized rate card to persist across workflow changes
         self.quoteme_data = None  # Stores parsed QuoteMe data
         self.language_pairs = []  # Language pairs from QuoteMe
         self.workflow_service_data = {}  # Stores service data: {service_name: {lp: {quantity, rate}}}
@@ -453,7 +458,7 @@ class OneStopShopMain:
     def setup_menu_bar(self):
         """Setup menu bar with configuration options"""
         menubar = Menu(self.root, bg="#1f538d", fg="white", activebackground="#2b7dbc", activeforeground="white", font=("Arial", 11, "bold"))
-        self.root.config(menu=menubar)
+        self.root.configure(menu=menubar)
         
         # Configuration menu
         config_menu = Menu(menubar, tearoff=0, bg="#2b2b2b", fg="white", activebackground="#1f538d", activeforeground="white", font=("Arial", 10))
@@ -650,6 +655,9 @@ class OneStopShopMain:
             def confirm_selection():
                 if selected_account.get():
                     self.current_account = selected_account.get()
+                    # Clear rate card cache when account changes
+                    self.selected_rate_card = None
+                    self.cached_rate_card = None
                     self.update_account_display()
                     self.update_status(f"Active account: {self.current_account}")
                     # Account set as active
@@ -788,20 +796,135 @@ class OneStopShopMain:
             messagebox.showerror("Error", f"Failed to open Entity Manager: {str(e)}")
     
     def open_service_mapper(self):
-        """Launch Service Mapper in modal mode"""
-        try:
-            launch_path = Path(__file__).parent / "launch_service_mapper.py"
+        """Open service mapping management dialog"""
+        if not self.current_account:
+            messagebox.showwarning("Warning", "Please select an account first")
+            return
+        
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title(f"Service Mapper - {self.current_account}")
+        dialog.geometry("700x600")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Title
+        title_label = ctk.CTkLabel(
+            dialog,
+            text=f"Manage Service Mappings for {self.current_account}",
+            font=("Arial", 14, "bold")
+        )
+        title_label.pack(pady=15, padx=20)
+        
+        # Info
+        info_text = ctk.CTkLabel(
+            dialog,
+            text="Select a rate card to view and edit its service mappings.",
+            font=("Arial", 10),
+            text_color="#888"
+        )
+        info_text.pack(pady=5, padx=20)
+        
+        # Rate card selection frame
+        selection_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        selection_frame.pack(fill="x", padx=20, pady=10)
+        
+        selection_label = ctk.CTkLabel(selection_frame, text="Rate Card:", font=("Arial", 10, "bold"))
+        selection_label.pack(side="left", padx=(0, 10))
+        
+        available_rate_cards = self.get_available_rate_cards()
+        rate_card_dropdown = ctk.CTkComboBox(
+            selection_frame,
+            values=available_rate_cards,
+            state="readonly",
+            width=300,
+            font=("Arial", 10)
+        )
+        rate_card_dropdown.pack(side="left")
+        
+        # Mappings frame
+        mappings_frame = ctk.CTkFrame(dialog, fg_color="#2b2b2b")
+        mappings_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        
+        mappings_label = ctk.CTkLabel(
+            mappings_frame,
+            text="Service Mappings:",
+            font=("Arial", 11, "bold")
+        )
+        mappings_label.pack(anchor="w", padx=10, pady=(10, 5))
+        
+        # Scrollable area for mappings
+        scroll_frame = ctk.CTkScrollableFrame(mappings_frame, fg_color="transparent")
+        scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        def on_rate_card_select(rc_name: str):
+            """Update mappings display when rate card is selected"""
+            # Clear current mappings display
+            for widget in scroll_frame.winfo_children():
+                widget.destroy()
             
-            if not launch_path.exists():
-                messagebox.showerror("Error", "Service Mapper not found")
+            if not rc_name:
                 return
             
-            # Run as subprocess
-            subprocess.Popen([sys.executable, str(launch_path)])
-            self.root.after(500, self.refresh_ui)
+            # Load mappings for this rate card
+            mappings = self.service_mapper.load_mapping(self.current_account, rc_name)
             
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to open Service Mapper: {str(e)}")
+            if not mappings:
+                no_mappings_label = ctk.CTkLabel(
+                    scroll_frame,
+                    text="No custom mappings for this rate card. Services are using canonical names.",
+                    font=("Arial", 10),
+                    text_color="#888"
+                )
+                no_mappings_label.pack(pady=20)
+                return
+            
+            # Display mappings
+            for rate_card_service, canonical_service in sorted(mappings.items()):
+                mapping_frame = ctk.CTkFrame(scroll_frame, fg_color="#3b3b3b", corner_radius=5)
+                mapping_frame.pack(fill="x", pady=5)
+                
+                # Rate card service name
+                rc_label = ctk.CTkLabel(
+                    mapping_frame,
+                    text=f"Rate Card: {rate_card_service}",
+                    font=("Arial", 10),
+                    text_color="#aaa",
+                    anchor="w"
+                )
+                rc_label.pack(fill="x", padx=10, pady=(8, 2))
+                
+                # Arrow
+                arrow_label = ctk.CTkLabel(
+                    mapping_frame,
+                    text="↓",
+                    font=("Arial", 12),
+                    text_color="#2b7dbc"
+                )
+                arrow_label.pack()
+                
+                # Canonical name
+                canonical_label = ctk.CTkLabel(
+                    mapping_frame,
+                    text=f"Canonical: {canonical_service}",
+                    font=("Arial", 10, "bold"),
+                    text_color="#fff",
+                    anchor="w"
+                )
+                canonical_label.pack(fill="x", padx=10, pady=(2, 8))
+        
+        # Bind selection change
+        rate_card_dropdown.configure(command=on_rate_card_select)
+        
+        # Close button
+        close_btn = ctk.CTkButton(
+            dialog,
+            text="Close",
+            command=dialog.destroy,
+            fg_color="#555",
+            width=120
+        )
+        close_btn.pack(pady=15)
+
     
     def open_workflow_manager(self):
         """Launch Workflow Manager in modal mode"""
@@ -1572,14 +1695,17 @@ class OneStopShopMain:
         """Setup Job Data tab - split layout with data preview (25%) and workflow services (75%)"""
         data_tab = self.main_tabs.add("Job Data")
         
-        # Main container with grid layout for 25-75 split
+        # Main container with grid layout - now resizable
         main_container = ctk.CTkFrame(data_tab, fg_color="transparent")
         main_container.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Configure grid columns: left=1 weight (25%), right=3 weight (75%)
-        main_container.grid_columnconfigure(0, weight=1)
-        main_container.grid_columnconfigure(1, weight=3)
+        # Configure grid columns with initial split (1:3) - left gets 25%, right gets 75%
+        main_container.grid_columnconfigure(0, weight=1, minsize=200)  # Min 200px for left pane
+        main_container.grid_columnconfigure(2, weight=3, minsize=300)  # Min 300px for right pane
         main_container.grid_rowconfigure(0, weight=1)
+        
+        # Store references for resizing
+        self._pane_weights = [1, 3]  # Track column weights for resizing
         
         # ─── LEFT PANE: Data Preview (25%) ───────────────────────────────────────
         left_pane = ctk.CTkFrame(main_container, fg_color="transparent")
@@ -1631,9 +1757,30 @@ class OneStopShopMain:
         )
         self.no_data_label.pack(expand=True, pady=50)
         
+        # ─── RESIZABLE SEPARATOR ───────────────────────────────────────
+        separator = ctk.CTkFrame(main_container, fg_color="gray40", width=3)
+        separator.grid(row=0, column=1, sticky="ns", padx=0)
+        
+        # Make separator draggable for resizing
+        def on_separator_drag(event):
+            """Handle dragging the separator to resize panes"""
+            # Calculate new weights based on mouse position
+            total_width = main_container.winfo_width()
+            left_width = event.x
+            
+            # Update column weights to maintain aspect ratio
+            if left_width > 200 and (total_width - left_width) > 300:  # Respect minimums
+                new_left_weight = max(1, left_width // 50)
+                new_right_weight = max(1, (total_width - left_width) // 50)
+                main_container.grid_columnconfigure(0, weight=new_left_weight)
+                main_container.grid_columnconfigure(2, weight=new_right_weight)
+        
+        separator.bind("<B1-Motion>", on_separator_drag)
+        separator.configure(cursor="sb_h_double_arrow")
+        
         # ─── RIGHT PANE: Workflow Services (75%) ────────────────────────────────────
         right_pane = ctk.CTkFrame(main_container, fg_color="gray20", corner_radius=10)
-        right_pane.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
+        right_pane.grid(row=0, column=2, sticky="nsew", padx=(10, 0))
         right_pane.grid_columnconfigure(0, weight=1)
         right_pane.grid_rowconfigure(4, weight=1)  # Services table gets remaining space
         
@@ -1641,11 +1788,25 @@ class OneStopShopMain:
         right_header = ctk.CTkFrame(right_pane, fg_color="transparent")
         right_header.grid(row=0, column=0, sticky="ew", padx=15, pady=(15, 10))
         
+        header_left = ctk.CTkFrame(right_header, fg_color="transparent")
+        header_left.pack(side="left", fill="x", expand=True)
+        
         ctk.CTkLabel(
-            right_header,
+            header_left,
             text="⚙️ Workflow Configuration",
             font=("Arial", 14, "bold")
         ).pack(anchor="w")
+        
+        ctk.CTkButton(
+            right_header,
+            text="✏️ Edit Workflows",
+            command=self.open_current_account_workflow_editor,
+            width=140,
+            height=30,
+            font=("Arial", 10, "bold"),
+            fg_color="#3498db",
+            hover_color="#2980b9"
+        ).pack(side="right", padx=(5, 0))
         
         # Workflow selector section
         wf_frame = ctk.CTkFrame(right_pane, fg_color="transparent")
@@ -2036,25 +2197,67 @@ class OneStopShopMain:
         return list(workflows.keys()) if workflows else []
     
     def get_available_rate_cards(self) -> list:
-        """Get list of available rate card files"""
+        """Get list of available rate card files and master rate cards"""
         try:
+            available = []
+            
+            # Get file-based rate cards
             rate_card_path = Path(__file__).parent.parent / "Rate_Card_Builder"
             rate_card_files = list(rate_card_path.glob("rate_cards_*.json"))
-            return sorted([f.stem.replace("rate_cards_", "") for f in rate_card_files])
+            available.extend(sorted([f.stem.replace("rate_cards_", "") for f in rate_card_files]))
+            
+            # Get master rate cards
+            master_data = self.load_master_rate_cards()
+            master_names = list(master_data.get("rate_cards", {}).keys())
+            # Prefix master cards with [Master] for clarity
+            available.extend(sorted([f"[Master] {name}" for name in master_names]))
+            
+            return available
         except Exception as e:
             print(f"Error loading rate cards: {e}")
             return []
     
     def load_rate_card(self, rate_card_name: str) -> dict:
-        """Load a rate card JSON file"""
+        """Load a rate card JSON file or from master rate cards"""
         try:
-            rate_card_path = Path(__file__).parent.parent / "Rate_Card_Builder" / f"rate_cards_{rate_card_name}.json"
-            if rate_card_path.exists():
-                with open(rate_card_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            return {}
+            print(f"\n=== DEBUG: Loading Rate Card ===")
+            print(f"Rate Card Name: {rate_card_name}")
+            
+            # Check if loading from master rate cards
+            if rate_card_name.startswith("[Master] "):
+                # Load from master rate cards
+                master_name = rate_card_name.replace("[Master] ", "")
+                master_data = self.load_master_rate_cards()
+                if master_name in master_data.get("rate_cards", {}):
+                    print(f"Loading from master: {master_name}")
+                    return master_data["rate_cards"][master_name]
+                else:
+                    print(f"Master rate card not found: {master_name}")
+                    return {}
+            else:
+                # Load from file
+                rate_card_path = Path(__file__).parent.parent / "Rate_Card_Builder" / f"rate_cards_{rate_card_name}.json"
+                
+                print(f"Looking for file: {rate_card_path}")
+                print(f"File exists: {rate_card_path.exists()}")
+                
+                if rate_card_path.exists():
+                    with open(rate_card_path, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    print(f"Successfully loaded from: {rate_card_path}")
+                    return data
+                else:
+                    print(f"File not found at: {rate_card_path}")
+                    # List what files are available
+                    rate_card_dir = rate_card_path.parent
+                    if rate_card_dir.exists():
+                        available_files = list(rate_card_dir.glob("rate_cards_*.json"))
+                        print(f"Available rate card files: {[f.name for f in available_files]}")
+                return {}
         except Exception as e:
             print(f"Error loading rate card {rate_card_name}: {e}")
+            import traceback
+            traceback.print_exc()
             return {}
     
     def get_rate_from_card(self, rate_card: dict, service: str, target_language: str = None) -> str:
@@ -2064,7 +2267,7 @@ class OneStopShopMain:
         Args:
             rate_card: Loaded rate card data
             service: Service name
-            target_language: Target language from language pair (e.g., "Polish (Poland)")
+            target_language: Target language from language pair (e.g., "Polish (Poland)" or "Polish")
             
         Returns:
             Rate as string or empty string if not found
@@ -2075,22 +2278,80 @@ class OneStopShopMain:
         if not target_language:
             return ""
         
-        # Normalize the target language
+        # Normalize the target language using language normalizer
         iso_code, lang_name, display_name = self.language_normalizer.normalize(target_language)
         
         # Try to find the language in the rate card
-        for lang_key, lang_data in rate_card.get("languages", {}).items():
-            # Try exact match on language name
-            if lang_key.lower() == (lang_name or "").lower():
-                if "rates" in lang_data and service in lang_data["rates"]:
-                    rate = lang_data["rates"][service]
+        languages_dict = rate_card.get("languages", {})
+        
+        # Build list of potential language key matches to try in order
+        potential_keys = []
+        
+        # Add normalized variants
+        if display_name:
+            potential_keys.append(display_name)
+        if lang_name:
+            potential_keys.append(lang_name)
+        potential_keys.append(target_language)
+        
+        # Add fuzzy matches for common language variants (e.g., Traditional Chinese with typos)
+        if "Taiwan" in target_language or "Tawain" in target_language:
+            potential_keys.extend([
+                "Traditional Chinese (Taiwan)",
+                "Traditional Chinese (Tawain)",  # Handle typo in rate card
+                "Traditional Chinese",
+                "Chinese (Taiwan)",
+                "Chinese (Tawain)"
+            ])
+        
+        # Try each potential key
+        matched_lang = None
+        for potential_key in potential_keys:
+            # Exact match (case-insensitive)
+            for lang_key in languages_dict.keys():
+                if lang_key.lower() == potential_key.lower():
+                    matched_lang = lang_key
+                    break
+            if matched_lang:
+                break
+        
+        # If still no match, try partial/fuzzy matching
+        if not matched_lang:
+            for lang_key, lang_data in languages_dict.items():
+                # Partial match - if lang_key starts with any of our potential keys
+                for potential_key in potential_keys:
+                    if lang_key.lower().startswith(potential_key.lower()):
+                        matched_lang = lang_key
+                        break
+                if matched_lang:
+                    break
+        
+        # Try reverse match - if potential key contains the language key
+        if not matched_lang:
+            for lang_key in languages_dict.keys():
+                if lang_key.lower() in target_language.lower():
+                    matched_lang = lang_key
+                    break
+        
+        if matched_lang:
+            lang_data = languages_dict[matched_lang]
+            if isinstance(lang_data, dict) and "rates" in lang_data:
+                rates = lang_data["rates"]
+                
+                # Try exact service match first
+                if service in rates:
+                    rate = rates[service]
                     return str(rate) if rate else ""
-            
-            # Try match on display name
-            if lang_key.lower() == display_name.lower():
-                if "rates" in lang_data and service in lang_data["rates"]:
-                    rate = lang_data["rates"][service]
-                    return str(rate) if rate else ""
+                
+                # Try case-insensitive match
+                for rate_service, rate_value in rates.items():
+                    if rate_service.lower() == service.lower():
+                        return str(rate_value) if rate_value else ""
+                
+                # Debug: print available services for this language
+                print(f"DEBUG: Language '{matched_lang}' found for target '{target_language}'")
+                print(f"  Services available: {list(rates.keys())}")
+                print(f"  Looking for service: '{service}'")
         
         return ""
     
@@ -2113,6 +2374,755 @@ class OneStopShopMain:
         self.rate_card_dropdown.set("")
         self.selected_rate_card = None
         self.rate_card_info.configure(text="ℹ️ No rate card loaded. Select from dropdown or browse for a file.")
+    
+    def open_current_account_workflow_editor(self):
+        """Open simplified workflow editor for current account only"""
+        if not self.current_account:
+            messagebox.showwarning("No Account", "Please select an account first")
+            return
+        
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title(f"Edit Workflows - {self.current_account}")
+        dialog.geometry("600x500")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Center dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (600 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (500 // 2)
+        dialog.geometry(f'600x500+{x}+{y}')
+        
+        # Header
+        header = ctk.CTkFrame(dialog, fg_color="transparent")
+        header.pack(pady=15, padx=15, fill="x")
+        
+        ctk.CTkLabel(
+            header,
+            text=f"Workflows for {self.current_account}",
+            font=("Arial", 14, "bold")
+        ).pack(anchor="w")
+        
+        ctk.CTkLabel(
+            header,
+            text="Create, edit, or delete workflows. Select services for each workflow.",
+            font=("Arial", 9),
+            text_color="gray"
+        ).pack(anchor="w", pady=(5, 0))
+        
+        # Main content frame with scrollable workflows list
+        content_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True, padx=15, pady=10)
+        
+        # Workflows list label and button frame
+        list_header = ctk.CTkFrame(content_frame, fg_color="transparent")
+        list_header.pack(fill="x", pady=(0, 10))
+        
+        ctk.CTkLabel(
+            list_header,
+            text="Workflows:",
+            font=("Arial", 11, "bold")
+        ).pack(anchor="w", side="left")
+        
+        ctk.CTkButton(
+            list_header,
+            text="➕ Add New",
+            command=lambda: self._add_workflow_dialog(dialog),
+            width=100,
+            height=28,
+            font=("Arial", 9, "bold"),
+            fg_color="green"
+        ).pack(anchor="e", side="right")
+        
+        # Scrollable workflows list
+        workflows_scroll = ctk.CTkScrollableFrame(
+            content_frame,
+            fg_color="gray25",
+            corner_radius=8
+        )
+        workflows_scroll.pack(fill="both", expand=True, pady=(0, 10))
+        
+        # Bind mouse wheel to scrollable frame
+        def on_mousewheel(event):
+            workflows_scroll._parent_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        workflows_scroll.bind("<MouseWheel>", on_mousewheel)
+        
+        # Get workflows for current account
+        workflows = self.account_workflow_manager.get_workflows(self.current_account)
+        
+        if not workflows:
+            ctk.CTkLabel(
+                workflows_scroll,
+                text="No workflows yet. Create one with the button above.",
+                text_color="orange"
+            ).pack(pady=20)
+        else:
+            for workflow_name in workflows:
+                wf_frame = ctk.CTkFrame(workflows_scroll, fg_color="gray20", corner_radius=6)
+                wf_frame.pack(fill="x", pady=5, padx=5)
+                
+                wf_info_frame = ctk.CTkFrame(wf_frame, fg_color="transparent")
+                wf_info_frame.pack(fill="both", expand=True, padx=10, pady=8)
+                
+                # Workflow name and service count
+                services = self.account_workflow_manager.get_workflow_services(
+                    self.current_account,
+                    workflow_name
+                )
+                
+                ctk.CTkLabel(
+                    wf_info_frame,
+                    text=f"📋 {workflow_name}",
+                    font=("Arial", 11, "bold")
+                ).pack(anchor="w")
+                
+                ctk.CTkLabel(
+                    wf_info_frame,
+                    text=f"Services: {', '.join(services) if services else 'None'}",
+                    font=("Arial", 9),
+                    text_color="gray",
+                    wraplength=400,
+                    justify="left"
+                ).pack(anchor="w", pady=(3, 0))
+                
+                # Edit and Delete buttons
+                btn_frame = ctk.CTkFrame(wf_frame, fg_color="transparent")
+                btn_frame.pack(fill="x", padx=10, pady=(0, 8))
+                
+                ctk.CTkButton(
+                    btn_frame,
+                    text="✏️ Edit",
+                    command=lambda wf=workflow_name: self._edit_workflow_dialog(dialog, wf),
+                    width=80,
+                    height=26,
+                    font=("Arial", 9),
+                    fg_color="#3498db"
+                ).pack(side="left", padx=(0, 5))
+                
+                ctk.CTkButton(
+                    btn_frame,
+                    text="🗑️ Delete",
+                    command=lambda wf=workflow_name: self._delete_workflow(dialog, wf),
+                    width=80,
+                    height=26,
+                    font=("Arial", 9),
+                    fg_color="#e74c3c"
+                ).pack(side="left")
+        
+        # Bottom buttons
+        btn_footer = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_footer.pack(pady=15, padx=15, fill="x")
+        
+        ctk.CTkButton(
+            btn_footer,
+            text="Close",
+            command=dialog.destroy,
+            width=150,
+            height=32,
+            font=("Arial", 11, "bold")
+        ).pack()
+    
+    def _add_workflow_dialog(self, parent_dialog):
+        """Dialog to add new workflow for current account"""
+        add_dialog = ctk.CTkToplevel(parent_dialog)
+        add_dialog.title("Add Workflow")
+        add_dialog.geometry("600x500")
+        add_dialog.transient(parent_dialog)
+        add_dialog.grab_set()
+        
+        # Center on parent
+        add_dialog.update_idletasks()
+        x = (add_dialog.winfo_screenwidth() // 2) - (600 // 2)
+        y = (add_dialog.winfo_screenheight() // 2) - (500 // 2)
+        add_dialog.geometry(f'600x500+{x}+{y}')
+        
+        # Workflow name
+        ctk.CTkLabel(add_dialog, text="Workflow Name:", font=("Arial", 11, "bold")).pack(pady=(15, 5), padx=15, anchor="w")
+        name_entry = ctk.CTkEntry(add_dialog, width=400, font=("Arial", 11))
+        name_entry.pack(padx=15, pady=(0, 15))
+        
+        # Main content frame with two columns
+        content = ctk.CTkFrame(add_dialog, fg_color="transparent")
+        content.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+        
+        # LEFT: Available services with search
+        left_frame = ctk.CTkFrame(content, fg_color="transparent")
+        left_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
+        
+        ctk.CTkLabel(left_frame, text="Available Services:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(0, 5))
+        
+        # Search entry for filtering
+        search_var = ctk.StringVar()
+        search_entry = ctk.CTkEntry(
+            left_frame,
+            textvariable=search_var,
+            placeholder_text="🔍 Search services...",
+            font=("Arial", 9),
+            height=28
+        )
+        search_entry.pack(fill="x", pady=(0, 8))
+        search_entry.focus()
+        
+        services_scroll = ctk.CTkScrollableFrame(left_frame, fg_color="gray25", corner_radius=6)
+        services_scroll.pack(fill="both", expand=True)
+        
+        def on_mousewheel(event):
+            services_scroll._parent_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        services_scroll.bind("<MouseWheel>", on_mousewheel)
+        
+        # Get canonical services
+        canonical_services = self.service_mapper.canonical_services
+        selected_services_list = []  # Track order
+        service_widgets = {}
+        service_frames = {}  # Track frames for visibility toggling
+        
+        def on_search_change(*args):
+            """Filter services based on search query"""
+            query = search_var.get().lower().strip()
+            
+            for service, frame in service_frames.items():
+                if query == "":
+                    # Show all if search is empty
+                    frame.pack(anchor="w", padx=10, pady=2, fill="x")
+                elif query in service.lower():
+                    # Show if service name contains query
+                    frame.pack(anchor="w", padx=10, pady=2, fill="x")
+                else:
+                    # Hide if doesn't match
+                    frame.pack_forget()
+        
+        search_var.trace("w", on_search_change)
+        
+        def on_service_selected(service_name, cb_var):
+            """Handle service checkbox - add/remove from selected list"""
+            if cb_var.get():
+                selected_services_list.append(service_name)
+                update_selected_list()
+            else:
+                if service_name in selected_services_list:
+                    selected_services_list.remove(service_name)
+                update_selected_list()
+        
+        # Create checkboxes for all canonical services
+        for service in canonical_services:
+            var = ctk.BooleanVar(value=False)
+            
+            def make_callback(svc, v):
+                return lambda: on_service_selected(svc, v)
+            
+            cb_frame = ctk.CTkFrame(services_scroll, fg_color="transparent")
+            cb_frame.pack(anchor="w", padx=10, pady=2, fill="x")
+            service_frames[service] = cb_frame  # Store frame for search filtering
+            
+            cb = ctk.CTkCheckBox(
+                cb_frame,
+                text=service,
+                variable=var,
+                command=make_callback(service, var),
+                font=("Arial", 9)
+            )
+            cb.pack(anchor="w", side="left")
+            service_widgets[service] = (cb, var)
+        
+        # RIGHT: Selected services (ordered)
+        right_frame = ctk.CTkFrame(content, fg_color="transparent")
+        right_frame.pack(side="right", fill="both", expand=True, padx=(10, 0))
+        
+        ctk.CTkLabel(right_frame, text="Selected (Order):", font=("Arial", 10, "bold")).pack(anchor="w", pady=(0, 5))
+        selected_scroll = ctk.CTkScrollableFrame(right_frame, fg_color="gray25", corner_radius=6)
+        selected_scroll.pack(fill="both", expand=True)
+        selected_scroll.bind("<MouseWheel>", on_mousewheel)
+        
+        selected_widgets = []
+        drag_data = {"source_idx": None, "source_widget": None, "dragging": False}
+        
+        def update_selected_list():
+            """Refresh the selected services list with drag-and-drop support"""
+            for widget in selected_widgets:
+                widget.destroy()
+            selected_widgets.clear()
+            
+            for idx, service in enumerate(selected_services_list):
+                # Container frame for the service item
+                item_frame = ctk.CTkFrame(selected_scroll, fg_color="gray20", corner_radius=4, height=40)
+                item_frame.pack(fill="x", padx=5, pady=3)
+                item_frame.pack_propagate(False)
+                selected_widgets.append(item_frame)
+                
+                # Inner content frame
+                content_frame = ctk.CTkFrame(item_frame, fg_color="transparent")
+                content_frame.pack(fill="both", expand=True, padx=2, pady=2)
+                
+                # Drag handle
+                drag_handle = ctk.CTkLabel(
+                    content_frame,
+                    text="⋮⋮",
+                    font=("Arial", 12, "bold"),
+                    text_color="#666",
+                    width=30
+                )
+                drag_handle.pack(side="left", padx=(4, 8), pady=5)
+                
+                # Service label
+                service_label = ctk.CTkLabel(
+                    content_frame,
+                    text=f"{idx + 1}. {service}",
+                    font=("Arial", 10),
+                    justify="left"
+                )
+                service_label.pack(side="left", fill="x", expand=True, pady=5)
+                
+                # Create closure for this index
+                def make_drag_handlers(current_idx, frame, handle):
+                    def on_press(event):
+                        drag_data["source_idx"] = current_idx
+                        drag_data["source_widget"] = frame
+                        drag_data["dragging"] = True
+                        frame.configure(fg_color="#3498db")
+                        handle.configure(text_color="#ffffff")
+                        # Bind motion to root window for global tracking
+                        add_dialog.bind("<Motion>", on_motion)
+                    
+                    def on_motion(event):
+                        if not drag_data["dragging"] or drag_data["source_idx"] is None:
+                            return
+                        
+                        # Find which service we're hovering over
+                        y_pos = event.y
+                        for check_idx, check_widget in enumerate(selected_widgets):
+                            widget_y = check_widget.winfo_y()
+                            widget_height = check_widget.winfo_height()
+                            if widget_y <= y_pos <= widget_y + widget_height:
+                                if check_idx != drag_data["source_idx"]:
+                                    check_widget.configure(fg_color="#2ecc71")
+                                else:
+                                    check_widget.configure(fg_color="#3498db")
+                            elif check_widget != drag_data["source_widget"]:
+                                check_widget.configure(fg_color="gray20")
+                    
+                    def on_release(event):
+                        if not drag_data["dragging"] or drag_data["source_idx"] is None:
+                            return
+                        
+                        drag_data["dragging"] = False
+                        # Find target index
+                        y_pos = event.y
+                        target_idx = drag_data["source_idx"]
+                        for check_idx, check_widget in enumerate(selected_widgets):
+                            widget_y = check_widget.winfo_y()
+                            widget_height = check_widget.winfo_height()
+                            if widget_y <= y_pos <= widget_y + widget_height:
+                                target_idx = check_idx
+                                break
+                        
+                        # Perform swap if different positions
+                        if target_idx != drag_data["source_idx"]:
+                            src = drag_data["source_idx"]
+                            # Swap items in the list
+                            selected_services_list[src], selected_services_list[target_idx] = (
+                                selected_services_list[target_idx], 
+                                selected_services_list[src]
+                            )
+                        
+                        # Reset drag state
+                        drag_data["source_idx"] = None
+                        drag_data["source_widget"] = None
+                        add_dialog.unbind("<Motion>")
+                        
+                        # Refresh display
+                        update_selected_list()
+                    
+                    return on_press, on_release
+                
+                on_press_fn, on_release_fn = make_drag_handlers(idx, item_frame, drag_handle)
+                
+                # Bind to multiple elements for better drag capture
+                for element in [item_frame, content_frame, drag_handle, service_label]:
+                    element.bind("<Button-1>", on_press_fn)
+                    element.bind("<ButtonRelease-1>", on_release_fn)
+                
+                # Controls on the right
+                ctrl_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+                ctrl_frame.pack(side="right", padx=5, pady=2)
+                
+                # Remove button
+                def make_remove_cmd(service_name):
+                    def remove_service():
+                        selected_services_list.remove(service_name)
+                        service_widgets[service_name][1].set(False)
+                        update_selected_list()
+                    return remove_service
+                
+                ctk.CTkButton(
+                    ctrl_frame,
+                    text="✕",
+                    command=make_remove_cmd(service),
+                    width=24,
+                    height=24,
+                    font=("Arial", 10),
+                    fg_color="#e74c3c"
+                ).pack(side="left", padx=2)
+        
+        # Initial population of selected list
+        update_selected_list()
+        
+        # Buttons
+        btn_frame = ctk.CTkFrame(add_dialog, fg_color="transparent")
+        btn_frame.pack(pady=15, padx=15)
+        
+        def save_workflow():
+            wf_name = name_entry.get().strip()
+            if not wf_name:
+                messagebox.showwarning("Invalid", "Workflow name cannot be empty")
+                return
+            
+            if not selected_services_list:
+                messagebox.showwarning("Invalid", "Select at least one service")
+                return
+            
+            if self.account_workflow_manager.create_workflow(
+                self.current_account,
+                wf_name,
+                selected_services_list  # Preserves order
+            ):
+                add_dialog.destroy()
+                messagebox.showinfo("Success", f"Workflow '{wf_name}' created successfully")
+                # Refresh parent dialog
+                parent_dialog.destroy()
+                self.open_current_account_workflow_editor()
+                self.refresh_workflow_dropdown()
+            else:
+                messagebox.showerror("Error", f"Workflow '{wf_name}' already exists")
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Create",
+            command=save_workflow,
+            width=120,
+            height=32,
+            font=("Arial", 11, "bold"),
+            fg_color="green"
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Cancel",
+            command=add_dialog.destroy,
+            width=120,
+            height=32,
+            font=("Arial", 11),
+            fg_color="gray"
+        ).pack(side="left", padx=5)
+    
+    def _edit_workflow_dialog(self, parent_dialog, workflow_name):
+        """Dialog to edit existing workflow for current account"""
+        edit_dialog = ctk.CTkToplevel(parent_dialog)
+        edit_dialog.title(f"Edit Workflow: {workflow_name}")
+        edit_dialog.geometry("600x500")
+        edit_dialog.transient(parent_dialog)
+        edit_dialog.grab_set()
+        
+        # Center on parent
+        edit_dialog.update_idletasks()
+        x = (edit_dialog.winfo_screenwidth() // 2) - (600 // 2)
+        y = (edit_dialog.winfo_screenheight() // 2) - (500 // 2)
+        edit_dialog.geometry(f'600x500+{x}+{y}')
+        
+        # Title
+        ctk.CTkLabel(edit_dialog, text=f"Workflow: {workflow_name}", font=("Arial", 12, "bold")).pack(pady=(15, 15), padx=15)
+        
+        # Main content frame with two columns
+        content = ctk.CTkFrame(edit_dialog, fg_color="transparent")
+        content.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+        
+        # LEFT: Available services with search
+        left_frame = ctk.CTkFrame(content, fg_color="transparent")
+        left_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
+        
+        ctk.CTkLabel(left_frame, text="Available Services:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(0, 5))
+        
+        # Search entry for filtering
+        search_var = ctk.StringVar()
+        search_entry = ctk.CTkEntry(
+            left_frame,
+            textvariable=search_var,
+            placeholder_text="🔍 Search services...",
+            font=("Arial", 9),
+            height=28
+        )
+        search_entry.pack(fill="x", pady=(0, 8))
+        search_entry.focus()
+        
+        services_scroll = ctk.CTkScrollableFrame(left_frame, fg_color="gray25", corner_radius=6)
+        services_scroll.pack(fill="both", expand=True)
+        
+        def on_mousewheel(event):
+            services_scroll._parent_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        services_scroll.bind("<MouseWheel>", on_mousewheel)
+        
+        # Get current workflow services
+        current_services = self.account_workflow_manager.get_workflow_services(
+            self.current_account,
+            workflow_name
+        )
+        
+        # Get canonical services
+        canonical_services = self.service_mapper.canonical_services
+        selected_services_list = list(current_services)  # Maintain current order
+        service_widgets = {}
+        service_frames = {}  # Track frames for visibility toggling
+        
+        def on_search_change(*args):
+            """Filter services based on search query"""
+            query = search_var.get().lower().strip()
+            
+            for service, frame in service_frames.items():
+                if query == "":
+                    # Show all if search is empty
+                    frame.pack(anchor="w", padx=10, pady=2, fill="x")
+                elif query in service.lower():
+                    # Show if service name contains query
+                    frame.pack(anchor="w", padx=10, pady=2, fill="x")
+                else:
+                    # Hide if doesn't match
+                    frame.pack_forget()
+        
+        search_var.trace("w", on_search_change)
+        
+        def on_service_selected(service_name, cb_var):
+            """Handle service checkbox - add/remove from selected list"""
+            if cb_var.get():
+                if service_name not in selected_services_list:
+                    selected_services_list.append(service_name)
+                update_selected_list()
+            else:
+                if service_name in selected_services_list:
+                    selected_services_list.remove(service_name)
+                update_selected_list()
+        
+        # Create checkboxes for all canonical services
+        for service in canonical_services:
+            var = ctk.BooleanVar(value=service in current_services)
+            
+            def make_callback(svc, v):
+                return lambda: on_service_selected(svc, v)
+            
+            cb_frame = ctk.CTkFrame(services_scroll, fg_color="transparent")
+            cb_frame.pack(anchor="w", padx=10, pady=2, fill="x")
+            service_frames[service] = cb_frame  # Store frame for search filtering
+            
+            cb = ctk.CTkCheckBox(
+                cb_frame,
+                text=service,
+                variable=var,
+                command=make_callback(service, var),
+                font=("Arial", 9)
+            )
+            cb.pack(anchor="w", side="left")
+            service_widgets[service] = (cb, var)
+        
+        # RIGHT: Selected services (ordered)
+        right_frame = ctk.CTkFrame(content, fg_color="transparent")
+        right_frame.pack(side="right", fill="both", expand=True, padx=(10, 0))
+        
+        ctk.CTkLabel(right_frame, text="Selected (Order):", font=("Arial", 10, "bold")).pack(anchor="w", pady=(0, 5))
+        selected_scroll = ctk.CTkScrollableFrame(right_frame, fg_color="gray25", corner_radius=6)
+        selected_scroll.pack(fill="both", expand=True)
+        selected_scroll.bind("<MouseWheel>", on_mousewheel)
+        
+        selected_widgets = []
+        drag_data = {"source_idx": None, "source_widget": None, "dragging": False}
+        
+        def update_selected_list():
+            """Refresh the selected services list with drag-and-drop support"""
+            for widget in selected_widgets:
+                widget.destroy()
+            selected_widgets.clear()
+            
+            for idx, service in enumerate(selected_services_list):
+                # Container frame for the service item
+                item_frame = ctk.CTkFrame(selected_scroll, fg_color="gray20", corner_radius=4, height=40)
+                item_frame.pack(fill="x", padx=5, pady=3)
+                item_frame.pack_propagate(False)
+                selected_widgets.append(item_frame)
+                
+                # Inner content frame
+                content_frame = ctk.CTkFrame(item_frame, fg_color="transparent")
+                content_frame.pack(fill="both", expand=True, padx=2, pady=2)
+                
+                # Drag handle
+                drag_handle = ctk.CTkLabel(
+                    content_frame,
+                    text="⋮⋮",
+                    font=("Arial", 12, "bold"),
+                    text_color="#666",
+                    width=30
+                )
+                drag_handle.pack(side="left", padx=(4, 8), pady=5)
+                
+                # Service label
+                service_label = ctk.CTkLabel(
+                    content_frame,
+                    text=f"{idx + 1}. {service}",
+                    font=("Arial", 10),
+                    justify="left"
+                )
+                service_label.pack(side="left", fill="x", expand=True, pady=5)
+                
+                # Create closure for this index
+                def make_drag_handlers(current_idx, frame, handle):
+                    def on_press(event):
+                        drag_data["source_idx"] = current_idx
+                        drag_data["source_widget"] = frame
+                        drag_data["dragging"] = True
+                        frame.configure(fg_color="#3498db")
+                        handle.configure(text_color="#ffffff")
+                        # Bind motion to root window for global tracking
+                        edit_dialog.bind("<Motion>", on_motion)
+                    
+                    def on_motion(event):
+                        if not drag_data["dragging"] or drag_data["source_idx"] is None:
+                            return
+                        
+                        # Find which service we're hovering over
+                        y_pos = event.y
+                        for check_idx, check_widget in enumerate(selected_widgets):
+                            widget_y = check_widget.winfo_y()
+                            widget_height = check_widget.winfo_height()
+                            if widget_y <= y_pos <= widget_y + widget_height:
+                                if check_idx != drag_data["source_idx"]:
+                                    check_widget.configure(fg_color="#2ecc71")
+                                else:
+                                    check_widget.configure(fg_color="#3498db")
+                            elif check_widget != drag_data["source_widget"]:
+                                check_widget.configure(fg_color="gray20")
+                    
+                    def on_release(event):
+                        if not drag_data["dragging"] or drag_data["source_idx"] is None:
+                            return
+                        
+                        drag_data["dragging"] = False
+                        # Find target index
+                        y_pos = event.y
+                        target_idx = drag_data["source_idx"]
+                        for check_idx, check_widget in enumerate(selected_widgets):
+                            widget_y = check_widget.winfo_y()
+                            widget_height = check_widget.winfo_height()
+                            if widget_y <= y_pos <= widget_y + widget_height:
+                                target_idx = check_idx
+                                break
+                        
+                        # Perform swap if different positions
+                        if target_idx != drag_data["source_idx"]:
+                            src = drag_data["source_idx"]
+                            # Swap items in the list
+                            selected_services_list[src], selected_services_list[target_idx] = (
+                                selected_services_list[target_idx], 
+                                selected_services_list[src]
+                            )
+                        
+                        # Reset drag state
+                        drag_data["source_idx"] = None
+                        drag_data["source_widget"] = None
+                        edit_dialog.unbind("<Motion>")
+                        
+                        # Refresh display
+                        update_selected_list()
+                    
+                    return on_press, on_release
+                
+                on_press_fn, on_release_fn = make_drag_handlers(idx, item_frame, drag_handle)
+                
+                # Bind to multiple elements for better drag capture
+                for element in [item_frame, content_frame, drag_handle, service_label]:
+                    element.bind("<Button-1>", on_press_fn)
+                    element.bind("<ButtonRelease-1>", on_release_fn)
+                
+                # Controls on the right
+                ctrl_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+                ctrl_frame.pack(side="right", padx=5, pady=2)
+                
+                # Remove button
+                def make_remove_cmd(service_name):
+                    def remove_service():
+                        selected_services_list.remove(service_name)
+                        service_widgets[service_name][1].set(False)
+                        update_selected_list()
+                    return remove_service
+                
+                ctk.CTkButton(
+                    ctrl_frame,
+                    text="✕",
+                    command=make_remove_cmd(service),
+                    width=24,
+                    height=24,
+                    font=("Arial", 10),
+                    fg_color="#e74c3c"
+                ).pack(side="left", padx=2)
+        
+        # Initial population of selected list
+        update_selected_list()
+        
+        # Buttons
+        btn_frame = ctk.CTkFrame(edit_dialog, fg_color="transparent")
+        btn_frame.pack(pady=15, padx=15)
+        
+        def save_changes():
+            if not selected_services_list:
+                messagebox.showwarning("Invalid", "Select at least one service")
+                return
+            
+            if self.account_workflow_manager.update_workflow(
+                self.current_account,
+                workflow_name,
+                selected_services_list  # Preserves order
+            ):
+                edit_dialog.destroy()
+                messagebox.showinfo("Success", f"Workflow '{workflow_name}' updated successfully")
+                # Refresh parent dialog
+                parent_dialog.destroy()
+                self.open_current_account_workflow_editor()
+                self.refresh_workflow_dropdown()
+            else:
+                messagebox.showerror("Error", "Failed to update workflow")
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Save",
+            command=save_changes,
+            width=120,
+            height=32,
+            font=("Arial", 11, "bold"),
+            fg_color="#27ae60"
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Cancel",
+            command=edit_dialog.destroy,
+            width=120,
+            height=32,
+            font=("Arial", 11),
+            fg_color="gray"
+        ).pack(side="left", padx=5)
+    
+    def _delete_workflow(self, parent_dialog, workflow_name):
+        """Delete workflow for current account"""
+        confirm = messagebox.askyesno(
+            "Confirm Delete",
+            f"Delete workflow '{workflow_name}'?\n\nThis cannot be undone."
+        )
+        
+        if confirm:
+            if self.account_workflow_manager.delete_workflow(self.current_account, workflow_name):
+                messagebox.showinfo("Success", f"Workflow '{workflow_name}' deleted")
+                # Refresh parent dialog
+                parent_dialog.destroy()
+                self.open_current_account_workflow_editor()
+                self.refresh_workflow_dropdown()
+            else:
+                messagebox.showerror("Error", "Failed to delete workflow")
     
     def on_workflow_selected(self, workflow_name: str):
         """Handle workflow selection - populate services table"""
@@ -2188,11 +3198,17 @@ class OneStopShopMain:
         rate_card = self.load_rate_card(rate_card_name)
         
         if rate_card:
-            self.rate_card_info.configure(text=f"✓ Using rate card: {rate_card_name}")
+            # Get clean name for display (remove [Master] prefix if present)
+            display_name = rate_card_name.replace("[Master] ", "")
+            
+            # Normalize rate card services and cache it
+            rate_card = self.normalize_rate_card_services(rate_card, display_name)
+            self.rate_card_info.configure(text=f"✓ Using rate card: {display_name}")
             # Update rates in the table
             self.update_rates_in_table(rate_card)
         else:
-            self.rate_card_info.configure(text=f"⚠️ Failed to load rate card: {rate_card_name}")
+            display_name = rate_card_name.replace("[Master] ", "")
+            self.rate_card_info.configure(text=f"⚠️ Failed to load rate card: {display_name}")
     
     def browse_rate_card_file(self):
         """Open file dialog to browse and load a rate card JSON or XLSX file"""
@@ -2208,14 +3224,20 @@ class OneStopShopMain:
             try:
                 file_ext = Path(file_path).suffix.lower()
                 
+                print(f"\n=== DEBUG: Browsing Rate Card File ===")
+                print(f"Selected file path: {file_path}")
+                print(f"File extension: {file_ext}")
+                
                 # Load rate card based on file format
                 if file_ext == ".xlsx":
                     # Load Excel rate card
                     rate_card = load_excel_rate_card(file_path)
+                    print(f"Loaded from Excel file")
                 elif file_ext == ".json":
                     # Load JSON rate card
                     with open(file_path, 'r', encoding='utf-8') as f:
                         rate_card = json.load(f)
+                    print(f"Loaded from JSON file")
                 else:
                     messagebox.showerror("Error", f"Unsupported file format: {file_ext}\nSupported formats: .json, .xlsx")
                     return
@@ -2227,6 +3249,11 @@ class OneStopShopMain:
                 else:
                     rate_card_name = filename
                 
+                print(f"Extracted rate card name: {rate_card_name}")
+                # Normalize services to canonical names
+                if rate_card:
+                    rate_card = self.normalize_rate_card_services(rate_card, rate_card_name)
+                
                 # Update selection and load
                 self.selected_rate_card = rate_card_name
                 self.rate_card_dropdown.set(rate_card_name)
@@ -2235,6 +3262,21 @@ class OneStopShopMain:
                 if rate_card:
                     self.rate_card_info.configure(text=f"✓ Using rate card: {rate_card_name}")
                     self.update_rates_in_table(rate_card)
+                    
+                    # Offer to save as master rate card
+                    save_master = messagebox.askyesno(
+                        "Save to Master",
+                        f"Would you like to save '{rate_card_name}' to your master rate cards?\n\n(You can then load it directly from the dropdown without browsing)"
+                    )
+                    if save_master:
+                        saved_name = self.save_master_rate_card(rate_card, rate_card_name)
+                        if saved_name:
+                            # Update dropdown and selection to the new master card
+                            self.refresh_rate_card_dropdown()
+                            master_card_name = f"[Master] {saved_name}"
+                            self.selected_rate_card = master_card_name
+                            self.rate_card_dropdown.set(master_card_name)
+                            self.rate_card_info.configure(text=f"✓ Using rate card: {saved_name} (Master)")
                 else:
                     self.rate_card_info.configure(text=f"⚠️ Failed to load rate card: {rate_card_name}")
                     
@@ -2242,8 +3284,365 @@ class OneStopShopMain:
                 messagebox.showerror("Error", f"Failed to load rate card file:\n{str(e)}")
                 self.rate_card_info.configure(text=f"⚠️ Error loading rate card: {str(e)[:50]}")
     
+    def normalize_rate_card_services(self, rate_card: dict, rate_card_name: str) -> dict:
+        """
+        Normalize rate card services to canonical names.
+        Prompts user to map any unmapped services.
+        Caches the normalized rate card for use across workflow changes.
+        
+        Args:
+            rate_card: Loaded rate card dictionary
+            rate_card_name: Name of the rate card (for saving mappings)
+            
+        Returns:
+            Rate card with normalized service names
+        """
+        if "languages" not in rate_card:
+            return rate_card
+        
+        # Columns to ignore (metadata, not services)
+        ignore_columns = {"Iso Code", "iso code", "ISO Code", "ISO CODE"}
+        
+        # Extract services from rate card
+        rate_card_services = []
+        for lang_data in rate_card.get("languages", {}).values():
+            if isinstance(lang_data, dict) and "rates" in lang_data:
+                for service in lang_data["rates"].keys():
+                    # Skip ignored columns
+                    if service not in ignore_columns:
+                        rate_card_services.append(service)
+        
+        rate_card_services = list(set(rate_card_services))  # Unique services
+        
+        # Normalize services using service mapper
+        mapping, unmapped = self.service_mapper.normalize_services(
+            rate_card_services,
+            account_name=self.current_account,
+            rate_card_name=rate_card_name
+        )
+        
+        # If there are unmapped services, show mapping dialog
+        if unmapped and self.current_account:
+            self._show_service_mapping_dialog(
+                unmapped, 
+                mapping,
+                rate_card_name
+            )
+        
+        # Apply mapping to rate card
+        normalized_card = self.service_mapper.apply_service_mapping(rate_card, mapping)
+        
+        # Save mapping for future use
+        if self.current_account and mapping:
+            self.service_mapper.save_mapping(
+                self.current_account,
+                rate_card_name,
+                mapping
+            )
+        
+        # Cache the normalized rate card for use across workflow changes
+        self.cached_rate_card = normalized_card
+        
+        return normalized_card
+    
+    def get_master_rate_cards_path(self) -> Path:
+        """Get path to master rate cards file"""
+        core_path = Path(__file__).parent.parent / "Core"
+        return core_path / "master_rate_cards.json"
+    
+    def load_master_rate_cards(self) -> dict:
+        """Load all master rate cards from JSON file"""
+        master_path = self.get_master_rate_cards_path()
+        try:
+            if master_path.exists():
+                with open(master_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            return {"rate_cards": {}}
+        except Exception as e:
+            print(f"Error loading master rate cards: {e}")
+            return {"rate_cards": {}}
+    
+    def save_master_rate_card(self, rate_card: dict, suggested_name: str):
+        """
+        Save rate card to master list.
+        Opens dialog for user to confirm name and optionally overwrite.
+        Returns the saved name if successful, None otherwise.
+        """
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title("Save to Master Rate Cards")
+        dialog.geometry("450x230")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Center dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (450 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (230 // 2)
+        dialog.geometry(f'450x230+{x}+{y}')
+        
+        saved_name = [None]  # Use list to capture in closure
+        
+        ctk.CTkLabel(
+            dialog,
+            text="Save as Master Rate Card",
+            font=("Arial", 12, "bold")
+        ).pack(pady=(15, 10), padx=15)
+        
+        ctk.CTkLabel(
+            dialog,
+            text="Enter a name for this rate card:",
+            font=("Arial", 10)
+        ).pack(anchor="w", padx=15, pady=(0, 5))
+        
+        name_entry = ctk.CTkEntry(dialog, font=("Arial", 11))
+        name_entry.insert(0, suggested_name)
+        name_entry.pack(fill="x", padx=15, pady=(0, 15))
+        name_entry.select_range(0, len(suggested_name))
+        name_entry.focus()
+        
+        # Existing names info
+        master_data = self.load_master_rate_cards()
+        existing_names = list(master_data.get("rate_cards", {}).keys())
+        
+        existing_label = ctk.CTkLabel(
+            dialog,
+            text=f"Existing: {', '.join(existing_names) if existing_names else 'None'}",
+            font=("Arial", 9),
+            text_color="gray"
+        )
+        existing_label.pack(anchor="w", padx=15, pady=(0, 10))
+        
+        # Status label for feedback
+        status_label = ctk.CTkLabel(
+            dialog,
+            text="",
+            font=("Arial", 9),
+            text_color="orange"
+        )
+        status_label.pack(anchor="w", padx=15, pady=(0, 5))
+        
+        # Buttons
+        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(pady=15, padx=15)
+        
+        def do_save():
+            name = name_entry.get().strip()
+            if not name:
+                messagebox.showwarning("Invalid Name", "Please enter a name for the rate card")
+                return
+            
+            # Load current master data
+            master_data = self.load_master_rate_cards()
+            
+            # Check if name exists
+            if name in master_data.get("rate_cards", {}):
+                overwrite = messagebox.askyesno(
+                    "Overwrite Existing",
+                    f"'{name}' already exists.\n\nDo you want to overwrite it?"
+                )
+                if not overwrite:
+                    status_label.configure(text="❌ Save cancelled. You can edit the name and try again.")
+                    return
+            
+            # Save the rate card
+            master_data["rate_cards"][name] = rate_card
+            
+            master_path = self.get_master_rate_cards_path()
+            try:
+                master_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(master_path, 'w', encoding='utf-8') as f:
+                    json.dump(master_data, f, indent=2, ensure_ascii=False)
+                
+                saved_name[0] = name
+                messagebox.showinfo("Success", f"Rate card '{name}' saved successfully!")
+                dialog.destroy()
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to save rate card: {str(e)}")
+        
+        def do_cancel():
+            saved_name[0] = None
+            dialog.destroy()
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Save",
+            command=do_save,
+            width=120,
+            height=32,
+            font=("Arial", 11, "bold"),
+            fg_color="green"
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Cancel",
+            command=do_cancel,
+            width=120,
+            height=32,
+            font=("Arial", 11),
+            fg_color="gray"
+        ).pack(side="left", padx=5)
+        
+        dialog.wait_window()
+        return saved_name[0]
+    
+    def _show_service_mapping_dialog(self, unmapped_services: list, current_mapping: dict, rate_card_name: str):
+        """
+        Show dialog for user to map unmapped services to canonical names.
+        
+        Args:
+            unmapped_services: List of services from rate card that don't have exact matches
+            current_mapping: Current mapping dict (will be updated)
+            rate_card_name: Name of the rate card
+        """
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title(f"Map Services - {rate_card_name}")
+        dialog.geometry("700x600")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Title
+        title_label = ctk.CTkLabel(
+            dialog,
+            text=f"Map Unmapped Services from {rate_card_name}",
+            font=("Arial", 14, "bold")
+        )
+        title_label.pack(pady=10, padx=20)
+        
+        # Info text
+        info_label = ctk.CTkLabel(
+            dialog,
+            text=f"The following {len(unmapped_services)} service(s) need to be mapped to canonical names:\n(Select a canonical name from the dropdown for each service)",
+            font=("Arial", 10),
+            text_color="#888",
+            wraplength=650
+        )
+        info_label.pack(pady=5, padx=20)
+        
+        # Main content frame with custom scrolling
+        content_frame = ctk.CTkFrame(dialog, fg_color="#2b2b2b")
+        content_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        
+        # Use Canvas + Frame for scrolling to avoid CTkScrollableFrame issues
+        canvas = ctk.CTkCanvas(content_frame, bg="#2b2b2b", highlightthickness=0)
+        scrollbar = ctk.CTkScrollbar(content_frame, orientation="vertical", command=canvas.yview)
+        scrollable_frame = ctk.CTkFrame(canvas, fg_color="#2b2b2b")
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Pack canvas and scrollbar
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Create dropdown for each unmapped service
+        service_dropdowns = {}
+        for idx, unmapped_service in enumerate(unmapped_services):
+            frame = ctk.CTkFrame(scrollable_frame, fg_color="#3b3b3b", corner_radius=5)
+            frame.pack(fill="x", pady=8, padx=5)
+            
+            # Service name label
+            service_label = ctk.CTkLabel(
+                frame,
+                text=f"{idx + 1}. {unmapped_service}",
+                font=("Arial", 11, "bold"),
+                text_color="#fff",
+                anchor="w"
+            )
+            service_label.pack(fill="x", padx=10, pady=(8, 4))
+            
+            # Dropdown for canonical names
+            dropdown_frame = ctk.CTkFrame(frame, fg_color="transparent")
+            dropdown_frame.pack(fill="x", padx=10, pady=(0, 8))
+            
+            dropdown_label = ctk.CTkLabel(
+                dropdown_frame,
+                text="Map to:",
+                font=("Arial", 9),
+                text_color="#aaa"
+            )
+            dropdown_label.pack(side="left", padx=(0, 10))
+            
+            # Use StringVar to track dropdown value
+            var = ctk.StringVar(value="")
+            
+            dropdown = ctk.CTkComboBox(
+                dropdown_frame,
+                variable=var,
+                values=self.service_mapper.canonical_services,
+                state="readonly",
+                width=400,
+                font=("Arial", 10)
+            )
+            dropdown.pack(side="left", fill="x", expand=True)
+            service_dropdowns[unmapped_service] = var
+        
+        # Enable mouse wheel scrolling
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        dialog.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        # Skip/Cancel buttons
+        button_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        button_frame.pack(pady=15, padx=20, fill="x")
+        
+        def on_skip():
+            """Skip mapping for now"""
+            dialog.destroy()
+        
+        def on_save():
+            """Save the mappings"""
+            mapped_count = 0
+            for service, var in service_dropdowns.items():
+                selected = var.get()
+                if selected:
+                    current_mapping[service] = selected
+                    mapped_count += 1
+            
+            # Save to file
+            if self.current_account:
+                self.service_mapper.save_mapping(
+                    self.current_account,
+                    rate_card_name,
+                    current_mapping
+                )
+                messagebox.showinfo(
+                    "Success",
+                    f"Service mappings saved for {rate_card_name}\n({mapped_count} service(s) mapped)"
+                )
+            
+            dialog.destroy()
+        
+        skip_btn = ctk.CTkButton(
+            button_frame,
+            text="Skip for Now",
+            command=on_skip,
+            fg_color="#555",
+            width=150
+        )
+        skip_btn.pack(side="right", padx=5)
+        
+        save_btn = ctk.CTkButton(
+            button_frame,
+            text="Save Mappings",
+            command=on_save,
+            fg_color="#2b7dbc",
+            width=150
+        )
+        save_btn.pack(side="right", padx=5)
+
+    
     def populate_services_table(self, services: list):
-        """Populate the services table with workflow services and language pair columns"""
+        """
+        Populate the services table with workflow services and language pair columns.
+        Uses pure grid layout for perfect alignment of LP headers with Qty/Rate columns.
+        """
         # Clear existing widgets
         for widget in self.services_table_frame.winfo_children():
             widget.destroy()
@@ -2264,89 +3663,117 @@ class OneStopShopMain:
             self.services_empty_label.pack(expand=True, pady=20)
             return
         
-        # Create header row with language pairs
-        header_frame = ctk.CTkFrame(self.services_table_frame, fg_color="gray30", corner_radius=5)
-        header_frame.pack(fill="x", padx=5, pady=(0, 5))
+        # Create a main table frame using grid layout
+        table_frame = ctk.CTkFrame(self.services_table_frame, fg_color="transparent")
+        table_frame.pack(fill="both", expand=True, padx=0, pady=0)
         
-        # Service column header
-        ctk.CTkLabel(
-            header_frame,
-            text="Service",
+        # Configure columns: Service column (column 0) + LP columns (2 per LP)
+        table_frame.grid_columnconfigure(0, minsize=150, weight=0)  # Service column - fixed
+        for lp_idx in range(len(self.language_pairs)):
+            col_qty = 1 + lp_idx * 2
+            col_rate = 2 + lp_idx * 2
+            table_frame.grid_columnconfigure(col_qty, minsize=50, weight=1)
+            table_frame.grid_columnconfigure(col_rate, minsize=60, weight=1)
+        
+        # Create header row (row 0) - Service column header
+        service_header = ctk.CTkLabel(
+            table_frame,
+            text="Services",
             font=("Arial", 9, "bold"),
             text_color="white",
-            width=180
-        ).pack(side="left", padx=5, pady=5)
+            fg_color="gray30"
+        )
+        service_header.grid(row=0, column=0, sticky="ew", padx=1, pady=1)
         
-        # Language pair headers (Quantity | Rate for each LP)
-        for lp in self.language_pairs:
-            lp_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
-            lp_frame.pack(side="left", padx=2, pady=5)
+        # Create LP header containers (row 0, spanning columns for each LP)
+        for lp_idx, lp in enumerate(self.language_pairs):
+            col_start = 1 + lp_idx * 2
+            col_span = 2
             
+            # Container frame for this LP (spans 2 columns: Qty and Rate)
+            lp_header_container = ctk.CTkFrame(
+                table_frame,
+                fg_color="#2b5f8f",
+                corner_radius=3,
+                border_width=1,
+                border_color="#1f4470"
+            )
+            lp_header_container.grid(
+                row=0,
+                column=col_start,
+                columnspan=col_span,
+                sticky="ew",
+                padx=1,
+                pady=1
+            )
+            lp_header_container.grid_columnconfigure(0, weight=1)
+            lp_header_container.grid_rowconfigure(0, weight=1)
+            lp_header_container.grid_rowconfigure(1, weight=1)
+            
+            # LP name (top part of container)
             ctk.CTkLabel(
-                lp_frame,
+                lp_header_container,
                 text=lp,
-                font=("Arial", 8, "bold"),
-                text_color="#3498db",
-                width=150,
-                wraplength=150,
+                font=("Arial", 7, "bold"),
+                text_color="white",
+                wraplength=105,
                 justify="center"
-            ).pack()
+            ).grid(row=0, column=0, sticky="ew", padx=3, pady=(2, 1))
             
-            sub_header = ctk.CTkFrame(lp_frame, fg_color="transparent")
-            sub_header.pack()
-            
+            # Qty | Rate sub-header (bottom part of container)
             ctk.CTkLabel(
-                sub_header,
+                lp_header_container,
                 text="Qty | Rate",
-                font=("Arial", 7),
-                text_color="#95a5a6"
-            ).pack()
+                font=("Arial", 6),
+                text_color="#b0c4de"
+            ).grid(row=1, column=0, sticky="ew", padx=3, pady=(1, 2))
         
         # Create service rows
-        for idx, service in enumerate(services):
-            row_frame = ctk.CTkFrame(
-                self.services_table_frame,
-                fg_color="gray25" if idx % 2 == 0 else "gray28",
-                corner_radius=3
-            )
-            row_frame.pack(fill="x", padx=5, pady=2)
+        for row_idx, service in enumerate(services, start=1):
+            row_bg = "gray22" if row_idx % 2 == 1 else "gray20"
             
-            # Service name (read-only)
-            ctk.CTkLabel(
-                row_frame,
+            # Service name cell
+            service_label = ctk.CTkLabel(
+                table_frame,
                 text=service,
                 font=("Arial", 9),
-                width=180,
+                text_color="white",
+                fg_color=row_bg,
                 anchor="w",
-                wraplength=170,
+                wraplength=140,
                 justify="left"
-            ).pack(side="left", padx=5, pady=5)
+            )
+            service_label.grid(row=row_idx, column=0, sticky="ew", padx=1, pady=1)
             
             # Create entries for each language pair
             service_data = {}
-            for lp in self.language_pairs:
-                lp_container = ctk.CTkFrame(row_frame, fg_color="transparent")
-                lp_container.pack(side="left", padx=2, pady=5)
+            for lp_idx, lp in enumerate(self.language_pairs):
+                col_qty = 1 + lp_idx * 2
+                col_rate = 2 + lp_idx * 2
                 
                 # Quantity entry
                 quantity_entry = ctk.CTkEntry(
-                    lp_container,
+                    table_frame,
                     width=40,
-                    height=24,
+                    height=28,
                     font=("Arial", 8),
-                    placeholder_text="0"
+                    placeholder_text="0",
+                    fg_color="#3a3a3a",
+                    border_color="#505050"
                 )
-                quantity_entry.pack(side="left", padx=2)
+                quantity_entry.grid(row=row_idx, column=col_qty, sticky="ew", padx=1, pady=1)
                 
                 # Rate entry
                 rate_entry = ctk.CTkEntry(
-                    lp_container,
+                    table_frame,
                     width=50,
-                    height=24,
+                    height=28,
                     font=("Arial", 8),
-                    placeholder_text="0.00"
+                    placeholder_text="0.00",
+                    fg_color="#3a3a3a",
+                    border_color="#505050"
                 )
-                rate_entry.pack(side="left", padx=2)
+                rate_entry.grid(row=row_idx, column=col_rate, sticky="ew", padx=1, pady=1)
                 
                 service_data[lp] = {
                     "quantity": quantity_entry,
@@ -2355,14 +3782,32 @@ class OneStopShopMain:
             
             self.workflow_service_widgets[service] = service_data
         
-        # Try to populate rates from current rate card
+        # Try to populate rates from current rate card (use cached version if available)
         if self.selected_rate_card:
-            rate_card = self.load_rate_card(self.selected_rate_card)
+            # Use cached normalized rate card if available
+            if self.cached_rate_card:
+                rate_card = self.cached_rate_card
+            else:
+                # Fall back to loading from file (will be normalized on next selection)
+                rate_card = self.load_rate_card(self.selected_rate_card)
+            
             if rate_card:
                 self.update_rates_in_table(rate_card)
     
     def update_rates_in_table(self, rate_card: dict):
         """Update rate values in the services table from a rate card"""
+        if not self.workflow_service_widgets:
+            return
+        
+        # Debug: Print rate card structure
+        print("\n=== DEBUG: Rate Card Structure ===")
+        if "languages" in rate_card:
+            print(f"Languages in rate card: {list(rate_card['languages'].keys())}")
+            # Show first language's structure
+            for lang_name, lang_data in list(rate_card['languages'].items())[:1]:
+                if isinstance(lang_data, dict) and "rates" in lang_data:
+                    print(f"Services in {lang_name}: {list(lang_data['rates'].keys())}")
+        
         for service, service_data in self.workflow_service_widgets.items():
             for lp, widgets in service_data.items():
                 # Extract target language from language pair (e.g., "Polish" from "English > Polish")
@@ -2374,6 +3819,8 @@ class OneStopShopMain:
                 
                 # Get rate based on target language
                 rate = self.get_rate_from_card(rate_card, service, target_lang)
+                print(f"DEBUG: Service='{service}', LP='{lp}', Target='{target_lang}' -> Rate='{rate}'")
+                
                 if rate:
                     widgets["rate"].delete(0, "end")
                     widgets["rate"].insert(0, rate)

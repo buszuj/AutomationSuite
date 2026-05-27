@@ -10,23 +10,39 @@
     },
     "PXL": {
       "workflows": {
-        "TEP": [
-          "Translation and Proofreading",
-          "TM - Fuzzy Matches",
-          "TM - Exact Matches",
-          "Formatting",
-          "Desktop Publishing"
-        ],
-        "Tracked Changes Only": [
-          "Translation and Proofreading",
-          "Formatting"
-        ],
-        "Desktop Publishing": [
-          "Translation and Proofreading",
-          "TM - Fuzzy Matches",
-          "TM - Exact Matches",
-          "Desktop Publishing"
-        ]
+        "Full Document: Translation + Proofreading": {
+          "services": [
+            "Trans./Edit/Proof.",
+            "TM - Exact Matches",
+            "TM - Fuzzy Matches",
+            "Formatting",
+            "Project Management"
+          ],
+          "quoteme_mapping": {}
+        },
+        "Full Document: Translation + Notarization": {
+          "services": [
+            "Trans./Edit/Proof.",
+            "TM - Fuzzy Matches",
+            "TM - Exact Matches",
+            "Formatting",
+            "Notary Service",
+            "Courier",
+            "Project Management"
+          ],
+          "quoteme_mapping": {}
+        },
+        "Full Document: Translation + Proofreading + Redaction": {
+          "services": [
+            "Trans./Edit/Proof.",
+            "TM - Fuzzy Matches",
+            "TM - Exact Matches",
+            "Formatting",
+            "Redaction",
+            "Project Management"
+          ],
+          "quoteme_mapping": {}
+        }
       }
     },
     "Pfizer": {

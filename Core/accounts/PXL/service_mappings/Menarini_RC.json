@@ -1,0 +1,11 @@
+{
+  "description": "Service mapping for Menarini_RC under account PXL",
+  "account": "PXL",
+  "rate_card": "Menarini_RC",
+  "mappings": {
+    "TM - Fuzzy Matches": "TM - Fuzzy Matches",
+    "Translation and Proofreading": "Translation and Proofreading",
+    "TM - Exact Matches": "TM - Exact Matches",
+    "Trans./Edit/Proof. (>FOR)": "Trans./Edit/Proof."
+  }
+}

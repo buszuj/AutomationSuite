@@ -1,0 +1,11 @@
+{
+  "description": "Service mapping for Menarini_SPONSOR MANDATE_RC under account PXL",
+  "account": "PXL",
+  "rate_card": "Menarini_SPONSOR MANDATE_RC",
+  "mappings": {
+    "Trans./Edit/Proof.": "Trans./Edit/Proof.",
+    "Translation and Proofreading": "Translation and Proofreading",
+    "TM - Exact Matches": "TM - Exact Matches",
+    "TM - Fuzzy Matches": "TM - Fuzzy Matches"
+  }
+}

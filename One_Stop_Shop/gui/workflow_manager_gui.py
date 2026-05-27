@@ -11,6 +11,7 @@ from pathlib import Path
 # Add Core to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "Core"))
 from account_workflow_manager import AccountWorkflowManager
+from service_mapper import ServiceMapper
 
 
 class WorkflowManagerGUI:
@@ -36,6 +37,7 @@ class WorkflowManagerGUI:
             ctk.set_default_color_theme("blue")
         
         self.manager = AccountWorkflowManager()
+        self.service_mapper = ServiceMapper()
         self.selected_account = None
         self.selected_workflow = None
         
@@ -383,26 +385,32 @@ class WorkflowManagerGUI:
         # Create dialog window
         dialog = ctk.CTkToplevel(self.window)
         dialog.title("Create Workflow")
-        dialog.geometry("500x600")
+        dialog.geometry("600x700")
         dialog.transient(self.window)
         dialog.grab_set()
         
         # Workflow name
-        ctk.CTkLabel(dialog, text="Workflow Name:", font=("Arial", 14)).pack(pady=(20, 5))
-        name_entry = ctk.CTkEntry(dialog, width=400)
-        name_entry.pack(pady=5)
+        ctk.CTkLabel(dialog, text="Workflow Name:", font=("Arial", 14, "bold")).pack(pady=(20, 5), padx=20)
+        name_entry = ctk.CTkEntry(dialog, width=400, placeholder_text="Enter workflow name...")
+        name_entry.pack(pady=5, padx=20)
         
         # Services selection
-        ctk.CTkLabel(dialog, text="Select Services:", font=("Arial", 14)).pack(pady=(20, 5))
+        info_label = ctk.CTkLabel(
+            dialog,
+            text="Select canonical services for this workflow:",
+            font=("Arial", 12),
+            text_color="#aaa"
+        )
+        info_label.pack(pady=(20, 10), padx=20)
         
-        services_frame = ctk.CTkScrollableFrame(dialog, width=400, height=350)
+        services_frame = ctk.CTkScrollableFrame(dialog, width=500, height=400)
         services_frame.pack(pady=10, padx=20, fill="both", expand=True)
         
         checkboxes = {}
-        for service in self.manager.tpus_services:
+        for service in self.service_mapper.canonical_services:
             var = ctk.BooleanVar()
-            cb = ctk.CTkCheckBox(services_frame, text=service, variable=var)
-            cb.pack(anchor="w", pady=2)
+            cb = ctk.CTkCheckBox(services_frame, text=service, variable=var, font=("Arial", 11))
+            cb.pack(anchor="w", pady=3, padx=10)
             checkboxes[service] = var
         
         # Buttons
@@ -427,7 +435,7 @@ class WorkflowManagerGUI:
             else:
                 messagebox.showerror("Error", f"Workflow '{workflow_name}' already exists!")
         
-        ctk.CTkButton(btn_frame, text="Create", command=save_workflow, width=100).pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="Create", command=save_workflow, width=100, fg_color="#2b7dbc").pack(side="left", padx=5)
         ctk.CTkButton(btn_frame, text="Cancel", command=dialog.destroy, width=100).pack(side="left", padx=5)
     
     def edit_workflow(self, workflow_name):
@@ -437,23 +445,30 @@ class WorkflowManagerGUI:
         # Create dialog
         dialog = ctk.CTkToplevel(self.window)
         dialog.title(f"Edit Workflow: {workflow_name}")
-        dialog.geometry("500x600")
+        dialog.geometry("600x700")
         dialog.transient(self.window)
         dialog.grab_set()
         
         ctk.CTkLabel(dialog, text=f"Editing: {workflow_name}", font=("Arial", 16, "bold")).pack(pady=20)
         
-        # Services selection
-        ctk.CTkLabel(dialog, text="Select Services:", font=("Arial", 14)).pack(pady=(10, 5))
+        # Info text
+        info_label = ctk.CTkLabel(
+            dialog,
+            text="Select canonical services for this workflow:",
+            font=("Arial", 12),
+            text_color="#aaa"
+        )
+        info_label.pack(pady=(5, 10))
         
-        services_frame = ctk.CTkScrollableFrame(dialog, width=400, height=400)
+        # Services selection - use canonical services
+        services_frame = ctk.CTkScrollableFrame(dialog, width=500, height=450)
         services_frame.pack(pady=10, padx=20, fill="both", expand=True)
         
         checkboxes = {}
-        for service in self.manager.tpus_services:
+        for service in self.service_mapper.canonical_services:
             var = ctk.BooleanVar(value=(service in services))
-            cb = ctk.CTkCheckBox(services_frame, text=service, variable=var)
-            cb.pack(anchor="w", pady=2)
+            cb = ctk.CTkCheckBox(services_frame, text=service, variable=var, font=("Arial", 11))
+            cb.pack(anchor="w", pady=3, padx=10)
             checkboxes[service] = var
         
         # Buttons
@@ -473,8 +488,8 @@ class WorkflowManagerGUI:
             if self.selected_workflow == workflow_name:
                 self.refresh_services()
         
-        ctk.CTkButton(btn_frame, text="Save", command=save_changes, width=100).pack(side="left", padx=5)
-        ctk.CTkButton(btn_frame, text="Cancel", command=dialog.destroy, width=100).pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="Save", command=save_changes, width=100, fg_color="#2b7dbc").pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="Cancel", command=dialog.destroy, width=100, fg_color="#555").pack(side="left", padx=5)
     
     def clone_workflow_dialog(self, workflow_name):
         """Show dialog to clone workflow to another account"""
