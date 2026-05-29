@@ -30,6 +30,7 @@ from quoteme_email_parser import QuoteeMEmailParser, get_parse_cache
 from account_workflow_manager import AccountWorkflowManager
 from language_normalizer import LanguageNormalizer
 from service_mapper import ServiceMapper
+from quoteme_value_mapper import QuoteMeValueMapper
 from excel_rate_card_loader import load_excel_rate_card
 
 # Import the parser UI (from same directory)
@@ -441,6 +442,9 @@ class OneStopShopMain:
         
         # Service Mapper for rate card normalization
         self.service_mapper = ServiceMapper()
+        
+        # QuoteMe Value Mapper for word count field mapping
+        self.quoteme_value_mapper = QuoteMeValueMapper()
         
         # Rate card and workflow tracking
         self.selected_workflow = None
@@ -3125,7 +3129,7 @@ class OneStopShopMain:
                 messagebox.showerror("Error", "Failed to delete workflow")
     
     def on_workflow_selected(self, workflow_name: str):
-        """Handle workflow selection - populate services table"""
+        """Handle workflow selection - populate services table and check for QuoteMe mapping"""
         if not workflow_name or not self.current_account:
             return
         
@@ -3135,7 +3139,338 @@ class OneStopShopMain:
             workflow_name
         )
         
+        # Check if we have QuoteMe data and need to map values to services
+        if self.quoteme_data and services:
+            existing_mapping = self.quoteme_value_mapper.load_mapping(
+                self.current_account
+            )
+            # Show dialog if new services exist that aren't in the mapping
+            unmapped_services = [s for s in services if s not in existing_mapping]
+            if unmapped_services:
+                # New services need mapping
+                self._show_quoteme_mapping_dialog(services, workflow_name)
+            elif not existing_mapping:
+                # No mapping exists at all for this account
+                self._show_quoteme_mapping_dialog(services, workflow_name)
+        
         self.populate_services_table(services)
+    
+    def _show_quoteme_mapping_dialog(self, services: List[str], workflow_name: str):
+        """
+        Show dialog to map QuoteMe word count fields to workflow services.
+        Allows users to assign one or more QuoteMe fields to each service.
+        Supports hourly service configuration (divider, increment, minimum).
+        Loads existing account-level mappings (services mapped in other workflows).
+        """
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title(f"Map QuoteMe Values - {self.current_account}")
+        dialog.geometry("800x650")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Center dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (800 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (650 // 2)
+        dialog.geometry(f'800x650+{x}+{y}')
+        
+        # Header
+        ctk.CTkLabel(
+            dialog,
+            text=f"Map QuoteMe Word Count Fields to Services",
+            font=("Arial", 12, "bold")
+        ).pack(pady=(15, 5), padx=15)
+        
+        ctk.CTkLabel(
+            dialog,
+            text=f"For each service, select which QuoteMe fields to use (can combine multiple)\nMappings are account-level and reused across all workflows",
+            font=("Arial", 9),
+            text_color="gray"
+        ).pack(padx=15, pady=(0, 15))
+        
+        # Load existing account-level mapping
+        existing_mapping = self.quoteme_value_mapper.load_mapping(self.current_account)
+        
+        # Main scrollable frame
+        main_scroll = ctk.CTkScrollableFrame(dialog, fg_color="gray25", corner_radius=6)
+        main_scroll.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+        
+        def on_mousewheel(event):
+            main_scroll._parent_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        main_scroll.bind("<MouseWheel>", on_mousewheel)
+        
+        # Track configuration for each service
+        service_configs = {}
+        
+        # Create a frame for each service
+        for service in services:
+            service_frame = ctk.CTkFrame(main_scroll, fg_color="gray20", corner_radius=4)
+            service_frame.pack(fill="x", padx=5, pady=5)
+            
+            # Header with service name and config button
+            header_frame = ctk.CTkFrame(service_frame, fg_color="transparent")
+            header_frame.pack(fill="x", padx=10, pady=(8, 3))
+            
+            ctk.CTkLabel(
+                header_frame,
+                text=f"📌 {service}",
+                font=("Arial", 10, "bold"),
+                text_color="white"
+            ).pack(anchor="w", side="left", expand=True)
+            
+            # Config button for hourly settings
+            def make_config_button(svc_name):
+                def open_config():
+                    self._show_service_config_dialog(dialog, svc_name, service_configs)
+                return open_config
+            
+            ctk.CTkButton(
+                header_frame,
+                text="⚙️ Config",
+                command=make_config_button(service),
+                width=80,
+                height=24,
+                font=("Arial", 9),
+                fg_color="#555"
+            ).pack(side="right", padx=5)
+            
+            # Checkboxes for QuoteMe fields
+            field_vars = {}
+            fields_frame = ctk.CTkFrame(service_frame, fg_color="transparent")
+            fields_frame.pack(fill="x", padx=20, pady=(3, 8))
+            
+            # Load existing fields for this service if available
+            existing_fields = []
+            if service in existing_mapping:
+                existing_fields = existing_mapping[service].get("fields", [])
+            
+            for field in self.quoteme_value_mapper.available_fields:
+                var = ctk.BooleanVar(value=(field in existing_fields))
+                field_vars[field] = var
+                
+                cb = ctk.CTkCheckBox(
+                    fields_frame,
+                    text=field,
+                    variable=var,
+                    font=("Arial", 9),
+                    onvalue=True,
+                    offvalue=False
+                )
+                cb.pack(anchor="w", side="left", padx=5, pady=2)
+            
+            # Initialize service config
+            if service in existing_mapping:
+                service_configs[service] = existing_mapping[service].copy()
+            else:
+                service_configs[service] = {
+                    "fields": [],
+                    "hourly": False,
+                    "divider": 1.0,
+                    "increment": 1.0,
+                    "minimum": 0
+                }
+            
+            service_configs[service]["field_vars"] = field_vars
+        
+        # Buttons
+        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(pady=15, padx=15)
+        
+        def save_mapping():
+            # Build mapping dict from checkbox states
+            mapping = {}
+            for service, config in service_configs.items():
+                field_vars = config.pop("field_vars", {})
+                selected_fields = [field for field, var in field_vars.items() if var.get()]
+                
+                if selected_fields or config.get("hourly", False):
+                    # Save config even if no fields selected (might be pre-filled with hourly settings)
+                    config["fields"] = selected_fields
+                    mapping[service] = config
+            
+            if not mapping:
+                messagebox.showwarning(
+                    "No Fields Selected",
+                    "Please select at least one field for at least one service"
+                )
+                return
+            
+            # Save the account-level mapping
+            self.quoteme_value_mapper.save_mapping(
+                self.current_account,
+                mapping
+            )
+            
+            messagebox.showinfo(
+                "Mapping Saved",
+                f"QuoteMe value mapping saved for account {self.current_account}\n(applies to all workflows)"
+            )
+            dialog.destroy()
+        
+        def skip_mapping():
+            dialog.destroy()
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Save Mapping",
+            command=save_mapping,
+            width=150,
+            height=32,
+            font=("Arial", 11, "bold"),
+            fg_color="green"
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Skip for Now",
+            command=skip_mapping,
+            width=150,
+            height=32,
+            font=("Arial", 11),
+            fg_color="gray"
+        ).pack(side="left", padx=5)
+    
+    def _show_service_config_dialog(self, parent_dialog, service_name: str, service_configs: dict):
+        """
+        Show configuration dialog for hourly service settings.
+        Allows setting divider, increment, and minimum values.
+        """
+        config_dialog = ctk.CTkToplevel(parent_dialog)
+        config_dialog.title(f"Configure: {service_name}")
+        config_dialog.geometry("400x350")
+        config_dialog.transient(parent_dialog)
+        config_dialog.grab_set()
+        
+        # Center dialog
+        config_dialog.update_idletasks()
+        x = (config_dialog.winfo_screenwidth() // 2) - (400 // 2)
+        y = (config_dialog.winfo_screenheight() // 2) - (350 // 2)
+        config_dialog.geometry(f'400x350+{x}+{y}')
+        
+        current_config = service_configs[service_name]
+        
+        # Header
+        ctk.CTkLabel(
+            config_dialog,
+            text=f"Service Configuration: {service_name}",
+            font=("Arial", 11, "bold")
+        ).pack(pady=(15, 20), padx=15)
+        
+        # Hourly checkbox
+        hourly_var = ctk.BooleanVar(value=current_config.get("hourly", False))
+        
+        hourly_check = ctk.CTkCheckBox(
+            config_dialog,
+            text="Hourly Service (apply hourly calculations)",
+            variable=hourly_var,
+            font=("Arial", 10),
+            onvalue=True,
+            offvalue=False
+        )
+        hourly_check.pack(anchor="w", padx=30, pady=10)
+        
+        # Divider field
+        divider_frame = ctk.CTkFrame(config_dialog, fg_color="transparent")
+        divider_frame.pack(fill="x", padx=30, pady=10)
+        
+        ctk.CTkLabel(
+            divider_frame,
+            text="Divider (e.g., 8 for 8-hour day):",
+            font=("Arial", 10)
+        ).pack(anchor="w")
+        
+        divider_entry = ctk.CTkEntry(
+            divider_frame,
+            placeholder_text="1.0"
+        )
+        divider_entry.pack(fill="x", pady=(5, 0))
+        divider_entry.insert(0, str(current_config.get("divider", 1.0)))
+        
+        # Increment field
+        increment_frame = ctk.CTkFrame(config_dialog, fg_color="transparent")
+        increment_frame.pack(fill="x", padx=30, pady=10)
+        
+        ctk.CTkLabel(
+            increment_frame,
+            text="Increment (e.g., 0.5 for rounding):",
+            font=("Arial", 10)
+        ).pack(anchor="w")
+        
+        increment_entry = ctk.CTkEntry(
+            increment_frame,
+            placeholder_text="1.0"
+        )
+        increment_entry.pack(fill="x", pady=(5, 0))
+        increment_entry.insert(0, str(current_config.get("increment", 1.0)))
+        
+        # Minimum field
+        minimum_frame = ctk.CTkFrame(config_dialog, fg_color="transparent")
+        minimum_frame.pack(fill="x", padx=30, pady=10)
+        
+        ctk.CTkLabel(
+            minimum_frame,
+            text="Minimum Value:",
+            font=("Arial", 10)
+        ).pack(anchor="w")
+        
+        minimum_entry = ctk.CTkEntry(
+            minimum_frame,
+            placeholder_text="0"
+        )
+        minimum_entry.pack(fill="x", pady=(5, 0))
+        minimum_entry.insert(0, str(current_config.get("minimum", 0)))
+        
+        # Help text
+        help_label = ctk.CTkLabel(
+            config_dialog,
+            text="Formula: ((base_value / divider) rounded to increment) with minimum",
+            font=("Arial", 8),
+            text_color="gray"
+        )
+        help_label.pack(padx=30, pady=(15, 0))
+        
+        # Buttons
+        btn_frame = ctk.CTkFrame(config_dialog, fg_color="transparent")
+        btn_frame.pack(pady=15)
+        
+        def save_config():
+            try:
+                divider = float(divider_entry.get() or 1.0)
+                increment = float(increment_entry.get() or 1.0)
+                minimum = int(minimum_entry.get() or 0)
+                
+                if divider <= 0:
+                    messagebox.showerror("Invalid", "Divider must be greater than 0")
+                    return
+                if increment <= 0:
+                    messagebox.showerror("Invalid", "Increment must be greater than 0")
+                    return
+                
+                service_configs[service_name]["hourly"] = hourly_var.get()
+                service_configs[service_name]["divider"] = divider
+                service_configs[service_name]["increment"] = increment
+                service_configs[service_name]["minimum"] = minimum
+                
+                config_dialog.destroy()
+            except ValueError:
+                messagebox.showerror("Invalid Input", "Please enter valid numbers")
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Save Config",
+            command=save_config,
+            width=120,
+            fg_color="#2b7dbc"
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Close",
+            command=config_dialog.destroy,
+            width=120,
+            fg_color="gray"
+        ).pack(side="left", padx=5)
+    
     
     def set_language_pairs_from_quoteme(self, quoteme_data):
         """
@@ -3366,19 +3701,20 @@ class OneStopShopMain:
         """
         Save rate card to master list.
         Opens dialog for user to confirm name and optionally overwrite.
+        Shows existing rate cards as clickable options.
         Returns the saved name if successful, None otherwise.
         """
         dialog = ctk.CTkToplevel(self.root)
         dialog.title("Save to Master Rate Cards")
-        dialog.geometry("450x230")
+        dialog.geometry("500x450")
         dialog.transient(self.root)
         dialog.grab_set()
         
         # Center dialog
         dialog.update_idletasks()
-        x = (dialog.winfo_screenwidth() // 2) - (450 // 2)
-        y = (dialog.winfo_screenheight() // 2) - (230 // 2)
-        dialog.geometry(f'450x230+{x}+{y}')
+        x = (dialog.winfo_screenwidth() // 2) - (500 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (450 // 2)
+        dialog.geometry(f'500x450+{x}+{y}')
         
         saved_name = [None]  # Use list to capture in closure
         
@@ -3388,10 +3724,11 @@ class OneStopShopMain:
             font=("Arial", 12, "bold")
         ).pack(pady=(15, 10), padx=15)
         
+        # Name entry section
         ctk.CTkLabel(
             dialog,
-            text="Enter a name for this rate card:",
-            font=("Arial", 10)
+            text="Rate Card Name:",
+            font=("Arial", 10, "bold")
         ).pack(anchor="w", padx=15, pady=(0, 5))
         
         name_entry = ctk.CTkEntry(dialog, font=("Arial", 11))
@@ -3400,17 +3737,60 @@ class OneStopShopMain:
         name_entry.select_range(0, len(suggested_name))
         name_entry.focus()
         
-        # Existing names info
+        # Divider
+        ctk.CTkLabel(
+            dialog,
+            text="Or select an existing rate card to overwrite:",
+            font=("Arial", 10, "bold"),
+            text_color="orange"
+        ).pack(anchor="w", padx=15, pady=(10, 5))
+        
+        # Load existing rate cards
         master_data = self.load_master_rate_cards()
         existing_names = list(master_data.get("rate_cards", {}).keys())
         
-        existing_label = ctk.CTkLabel(
-            dialog,
-            text=f"Existing: {', '.join(existing_names) if existing_names else 'None'}",
-            font=("Arial", 9),
-            text_color="gray"
-        )
-        existing_label.pack(anchor="w", padx=15, pady=(0, 10))
+        # Scrollable frame for existing rate cards
+        if existing_names:
+            scroll_frame = ctk.CTkScrollableFrame(dialog, fg_color="gray20", corner_radius=6)
+            scroll_frame.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+            
+            def on_mousewheel(event):
+                scroll_frame._parent_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            scroll_frame.bind("<MouseWheel>", on_mousewheel)
+            
+            def select_existing(selected_name):
+                # Populate the name entry with selected name
+                name_entry.delete(0, "end")
+                name_entry.insert(0, selected_name)
+                name_entry.select_range(0, len(selected_name))
+                # Update button highlights
+                for btn, btn_name in existing_buttons:
+                    if btn_name == selected_name:
+                        btn.configure(fg_color="#2b7dbc")  # Highlight selected
+                    else:
+                        btn.configure(fg_color="#555")
+            
+            existing_buttons = []
+            for existing_name in sorted(existing_names):
+                btn = ctk.CTkButton(
+                    scroll_frame,
+                    text=existing_name,
+                    command=lambda name=existing_name: select_existing(name),
+                    font=("Arial", 10),
+                    height=32,
+                    fg_color="#555",
+                    hover_color="#666",
+                    corner_radius=4
+                )
+                btn.pack(fill="x", padx=5, pady=3)
+                existing_buttons.append((btn, existing_name))
+        else:
+            ctk.CTkLabel(
+                dialog,
+                text="No existing rate cards yet",
+                font=("Arial", 9),
+                text_color="gray"
+            ).pack(padx=15, pady=(5, 15))
         
         # Status label for feedback
         status_label = ctk.CTkLabel(
@@ -3419,7 +3799,7 @@ class OneStopShopMain:
             font=("Arial", 9),
             text_color="orange"
         )
-        status_label.pack(anchor="w", padx=15, pady=(0, 5))
+        status_label.pack(anchor="w", padx=15, pady=(0, 10))
         
         # Buttons
         btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
@@ -3793,6 +4173,10 @@ class OneStopShopMain:
             
             if rate_card:
                 self.update_rates_in_table(rate_card)
+        
+        # Try to populate quantities from QuoteMe mapping (if available)
+        if self.quoteme_data and self.selected_workflow:
+            self.update_quantities_from_quoteme(self.selected_workflow)
     
     def update_rates_in_table(self, rate_card: dict):
         """Update rate values in the services table from a rate card"""
@@ -3824,6 +4208,46 @@ class OneStopShopMain:
                 if rate:
                     widgets["rate"].delete(0, "end")
                     widgets["rate"].insert(0, rate)
+    
+    def update_quantities_from_quoteme(self, workflow_name: str):
+        """
+        Populate service quantities from QuoteMe data based on saved account-level mapping.
+        Applies calculations including hourly service conversions.
+        """
+        if not self.quoteme_data or not workflow_name:
+            return
+        
+        # Load the account-level mapping (shared across all workflows)
+        mapping = self.quoteme_value_mapper.load_mapping(
+            self.current_account
+        )
+        
+        if not mapping:
+            return  # No mapping defined for this account
+        
+        # Get the first language pair's QuoteMe data (word counts are same for all LPs in QuoteMe)
+        if not self.quoteme_data or not self.quoteme_data[0]:
+            return
+        
+        quoteme_lp_data = self.quoteme_data[0]  # Get word count data from first LP
+        word_count_data = quoteme_lp_data.get_effective_wc(use_cumulative=True)
+        
+        # Apply quantities to services based on account-level mapping
+        for service, service_config in mapping.items():
+            if service not in self.workflow_service_widgets:
+                continue
+            
+            # Calculate quantity using service config (handles hourly calculations)
+            quantity = self.quoteme_value_mapper.calculate_service_value(
+                word_count_data,
+                service_config
+            )
+            
+            # Apply quantity to all language pairs for this service
+            service_data = self.workflow_service_widgets[service]
+            for lp, widgets in service_data.items():
+                widgets["quantity"].delete(0, "end")
+                widgets["quantity"].insert(0, str(quantity))
 
     def refresh_pa_integration_tab(self):
         """Reload PA Template Mapper in the Configure Template sub-tab for current account"""
