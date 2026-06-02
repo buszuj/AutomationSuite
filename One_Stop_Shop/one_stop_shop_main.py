@@ -4,7 +4,7 @@ Central hub for job data import and GLE API integration
 """
 
 import customtkinter as ctk
-from tkinter import filedialog, messagebox, Menu
+from tkinter import filedialog, messagebox, Menu, BooleanVar
 import tkinterdnd2 as tkdnd
 import pandas as pd
 import requests
@@ -452,6 +452,7 @@ class OneStopShopMain:
         self.cached_rate_card = None  # Cache normalized rate card to persist across workflow changes
         self.quoteme_data = None  # Stores parsed QuoteMe data
         self.language_pairs = []  # Language pairs from QuoteMe
+        self.source_type_var = ctk.StringVar(value="Dead Source")  # Live Source or Dead Source
         self.workflow_service_data = {}  # Stores service data: {service_name: {lp: {quantity, rate}}}
         
         # Setup menu bar BEFORE UI
@@ -484,6 +485,28 @@ class OneStopShopMain:
         pa_menu.add_command(label="Generate PA Worksheets", command=self.generate_pa_worksheets)
         pa_menu.add_command(label="Kick Off Automation", command=self.kick_off_automation)
         
+        # Appearance menu
+        appearance_menu = Menu(menubar, tearoff=0, bg="#2b2b2b", fg="white", activebackground="#1f538d", activeforeground="white", font=("Arial", 10))
+        menubar.add_cascade(label="  Appearance  ", menu=appearance_menu)
+        
+        # Track current theme mode
+        self.current_theme = "dark"
+        
+        def toggle_theme():
+            """Toggle between dark and light mode"""
+            if self.current_theme == "dark":
+                ctk.set_appearance_mode("light")
+                self.current_theme = "light"
+                appearance_menu.entryconfig("🌙 Dark Mode", label="🌞 Light Mode")
+                print("[DEBUG] Switched to light mode")
+            else:
+                ctk.set_appearance_mode("dark")
+                self.current_theme = "dark"
+                appearance_menu.entryconfig("🌞 Light Mode", label="🌙 Dark Mode")
+                print("[DEBUG] Switched to dark mode")
+        
+        appearance_menu.add_command(label="🌙 Dark Mode", command=toggle_theme)
+        
         # Store menu references for enabling/disabling
         self.config_menu = config_menu
         self.pa_menu = pa_menu
@@ -499,6 +522,178 @@ class OneStopShopMain:
         help_menu = Menu(menubar, tearoff=0, bg="#2b2b2b", fg="white", activebackground="#1f538d", activeforeground="white", font=("Arial", 10))
         menubar.add_cascade(label="  Help  ", menu=help_menu)
         help_menu.add_command(label="About", command=self.show_about)
+    
+    def _refresh_account_list_ui(self):
+        """Refresh the account list in the startup screen"""
+        try:
+            # Clear existing widgets
+            for widget in self.account_list_frame.winfo_children():
+                widget.destroy()
+            
+            # Load accounts
+            accounts = self.account_workflow_manager.get_accounts()
+            
+            if not accounts:
+                ctk.CTkLabel(
+                    self.account_list_frame,
+                    text="No accounts found.\nClick 'Create New' to get started.",
+                    text_color="orange",
+                    font=("Arial", 12),
+                    justify="left"
+                ).pack(pady=20)
+            else:
+                for account in accounts:
+                    radio = ctk.CTkRadioButton(
+                        self.account_list_frame,
+                        text=account,
+                        variable=self.selected_account_var,
+                        value=account,
+                        font=("Arial", 12),
+                        text_color="white"
+                    )
+                    radio.pack(anchor="w", padx=15, pady=8)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load accounts: {str(e)}")
+    
+    def _switch_account(self):
+        """Switch back to account selection screen"""
+        self.current_account = None
+        self.selected_rate_card = None
+        self.cached_rate_card = None
+        self.update_account_display()
+        self.update_status("Account selection mode")
+    
+    def _select_account_from_ui(self):
+        """Select account from the startup screen"""
+        selected = self.selected_account_var.get()
+        if not selected:
+            messagebox.showwarning("No Selection", "Please select an account")
+            return
+        
+        self.current_account = selected
+        # Clear rate card cache when account changes
+        self.selected_rate_card = None
+        self.cached_rate_card = None
+        self.update_account_display()
+        self.update_status(f"Active account: {self.current_account}")
+        self.refresh_ui()
+        self.refresh_workflow_dropdown()
+        self.refresh_rate_card_dropdown()
+    
+    def _create_account_from_ui(self):
+        """Create a new account from startup screen"""
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title("Create New Account")
+        dialog.geometry("400x200")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Center dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (400 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (200 // 2)
+        dialog.geometry(f'400x200+{x}+{y}')
+        
+        ctk.CTkLabel(dialog, text="Enter Account Name:", font=("Arial", 12, "bold")).pack(pady=(20, 10))
+        name_entry = ctk.CTkEntry(dialog, width=300, font=("Arial", 12), placeholder_text="e.g., Client A")
+        name_entry.pack(pady=10)
+        name_entry.focus()
+        
+        def create():
+            account_name = name_entry.get().strip()
+            if not account_name:
+                messagebox.showwarning("Invalid Name", "Account name cannot be empty")
+                return
+            
+            try:
+                if self.account_workflow_manager.create_account(account_name):
+                    dialog.destroy()
+                    self._refresh_account_list_ui()
+                    self.selected_account_var.set(account_name)
+                    messagebox.showinfo("Success", f"Account '{account_name}' created successfully!")
+                else:
+                    messagebox.showerror("Error", "Account already exists or creation failed")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to create account: {str(e)}")
+        
+        ctk.CTkButton(dialog, text="Create", command=create, width=120, height=32, font=("Arial", 11, "bold")).pack(pady=10)
+    
+    def _rename_account_from_ui(self):
+        """Rename an account from startup screen"""
+        old_name = self.selected_account_var.get()
+        if not old_name:
+            messagebox.showwarning("No Selection", "Please select an account to rename")
+            return
+        
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title("Rename Account")
+        dialog.geometry("400x200")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Center dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (400 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (200 // 2)
+        dialog.geometry(f'400x200+{x}+{y}')
+        
+        ctk.CTkLabel(dialog, text=f"Rename '{old_name}' to:", font=("Arial", 12, "bold")).pack(pady=(20, 10))
+        name_entry = ctk.CTkEntry(dialog, width=300, font=("Arial", 12))
+        name_entry.insert(0, old_name)
+        name_entry.pack(pady=10)
+        name_entry.focus()
+        name_entry.select_range(0, len(old_name))
+        
+        def rename():
+            new_name = name_entry.get().strip()
+            if not new_name:
+                messagebox.showwarning("Invalid Name", "Account name cannot be empty")
+                return
+            
+            try:
+                if self.account_workflow_manager.rename_account(old_name, new_name):
+                    if self.current_account == old_name:
+                        self.current_account = new_name
+                    dialog.destroy()
+                    self._refresh_account_list_ui()
+                    self.selected_account_var.set(new_name)
+                    self.update_account_display()
+                    messagebox.showinfo("Success", f"Account renamed to '{new_name}'!")
+                else:
+                    messagebox.showerror("Error", "Account already exists or rename failed")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to rename account: {str(e)}")
+        
+        ctk.CTkButton(dialog, text="Rename", command=rename, width=120, height=32, font=("Arial", 11, "bold")).pack(pady=10)
+    
+    def _delete_account_from_ui(self):
+        """Delete an account from startup screen"""
+        account_name = self.selected_account_var.get()
+        if not account_name:
+            messagebox.showwarning("No Selection", "Please select an account to delete")
+            return
+        
+        confirm = messagebox.askyesno(
+            "Confirm Delete",
+            f"Are you sure you want to delete '{account_name}'?\n\nThis will delete all workflows and configurations for this account.\n\nThis action cannot be undone."
+        )
+        
+        if not confirm:
+            return
+        
+        try:
+            if self.account_workflow_manager.delete_account(account_name):
+                if self.current_account == account_name:
+                    self.current_account = None
+                    self.refresh_ui()
+                
+                self._refresh_account_list_ui()
+                self.selected_account_var.set("")
+                messagebox.showinfo("Success", f"Account '{account_name}' deleted!")
+            else:
+                messagebox.showerror("Error", "Failed to delete account")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to delete account: {str(e)}")
     
     def select_account(self):
         """Modal dialog to select/create/edit/delete accounts"""
@@ -765,14 +960,19 @@ class OneStopShopMain:
         """Update account display and show/hide tabs based on account selection"""
         if self.current_account:
             self.account_info_label.configure(text=self.current_account)
+            self.switch_account_btn.configure(state="normal")  # Enable switch button
             # Show tabs
             if hasattr(self, 'account_prompt') and hasattr(self, 'main_tabs'):
                 self.account_prompt.pack_forget()
-                self.main_tabs.pack(fill="both", expand=True)
+                self.main_tabs.pack(fill="both", expand=True)  # Pack tabs only when account selected
             # Reload PA Template Mapper with the newly selected account
             self.refresh_pa_integration_tab()
+            # Refresh Manage Workflows tab to show workflows for this account
+            if hasattr(self, '_manage_workflows_refresh'):
+                self._manage_workflows_refresh()
         else:
             self.account_info_label.configure(text="None Selected")
+            self.switch_account_btn.configure(state="disabled")  # Disable switch button
             # Hide tabs, show prompt
             if hasattr(self, 'account_prompt') and hasattr(self, 'main_tabs'):
                 self.main_tabs.pack_forget()
@@ -1413,16 +1613,16 @@ class OneStopShopMain:
             text_color="white"
         ).pack(side="left", padx=10)
     
-    def pull_gle_data_from_entry(self):
-        """Pull GLE data using the job ID from the entry field"""
-        job_id = self.gle_entry.get().strip()
+    def pull_glp_data_from_entry(self):
+        """Pull GLP data using the job ID from the entry field"""
+        job_id = self.glp_entry.get().strip()
         
         if not job_id:
-            messagebox.showwarning("Missing Input", "Please enter a Job ID in the GLE entry field")
+            messagebox.showwarning("Missing Input", "Please enter a Job ID in the GLP entry field")
             return
         
         try:
-            self.update_status("Fetching data from GLE API...")
+            self.update_status("Fetching data from GLP API...")
             # Fetch data from API
             excel_data = self.api_client.fetch_project_data(job_id)
             
@@ -1465,7 +1665,7 @@ class OneStopShopMain:
                                 text_color="#2ecc71"
                             )
             # Update UI
-            self.update_status(f"✅ GLE data pulled for Job ID: {job_id}")
+            self.update_status(f"✅ GLP data pulled for Job ID: {job_id}")
             self.update_data_info()
             
             # Load and display data with default columns if not already configured
@@ -1485,8 +1685,8 @@ class OneStopShopMain:
             )
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to pull GLE data:\n{str(e)}")
-            self.update_status("❌ Failed to pull GLE data")
+            messagebox.showerror("Error", f"Failed to pull GLP data:\n{str(e)}")
+            self.update_status("❌ Failed to pull GLP data")
 
 
     
@@ -1576,39 +1776,42 @@ class OneStopShopMain:
         )
         self.account_info_label.pack(side="left", padx=(0, 10))
         
-        ctk.CTkButton(
+        # Switch Account button
+        self.switch_account_btn = ctk.CTkButton(
             account_row,
-            text="Choose Account",
-            command=self.select_account,
-            width=120,
+            text="🔄 Switch Account",
+            command=self._switch_account,
+            width=140,
             height=28,
             font=("Arial", 10),
-            fg_color="#2b7dbc",
-            hover_color="#1f538d"
-        ).pack(side="left")
+            fg_color="#8e44ad",
+            hover_color="#7d3f88",
+            state="disabled"  # Enabled only when account is selected
+        )
+        self.switch_account_btn.pack(side="left", padx=(0, 10))
         
-        # Center section - GLE API Pull
+        # Center section - GLP API Pull
         center_section = ctk.CTkFrame(banner_frame, fg_color="transparent")
         center_section.pack(side="left", fill="y", padx=15, pady=10)
         
         
-        gle_row = ctk.CTkFrame(center_section, fg_color="transparent")
-        gle_row.pack(fill="x", pady=(5, 0))
+        glp_row = ctk.CTkFrame(center_section, fg_color="transparent")
+        glp_row.pack(fill="x", pady=(5, 0))
         
-        self.gle_entry = ctk.CTkEntry(
-            gle_row,
-            placeholder_text="Enter GLE JOB ID...",
+        self.glp_entry = ctk.CTkEntry(
+            glp_row,
+            placeholder_text="Enter GLP JOB ID...",
             width=200,
             height=28,
             font=("Arial", 10)
         )
-        self.gle_entry.pack(side="left", padx=(0, 8))
-        self.gle_entry.bind("<Return>", lambda e: self.pull_gle_data_from_entry())
+        self.glp_entry.pack(side="left", padx=(0, 8))
+        self.glp_entry.bind("<Return>", lambda e: self.pull_glp_data_from_entry())
 
         ctk.CTkButton(
-            gle_row,
-            text="Pull GLE Data",
-            command=self.pull_gle_data_from_entry,
+            glp_row,
+            text="Pull GLP Data",
+            command=self.pull_glp_data_from_entry,
             width=80,
             height=28,
             font=("Arial", 10),
@@ -1642,58 +1845,130 @@ class OneStopShopMain:
         self.tabs_container = ctk.CTkFrame(parent, fg_color="transparent")
         self.tabs_container.pack(fill="both", expand=True)
         
-        # Account selection prompt (shows when no account selected)
+        # Account selection prompt - now with full management UI (shows when no account selected)
         self.account_prompt = ctk.CTkFrame(self.tabs_container, fg_color="#34495e", corner_radius=15)
-        self.account_prompt.pack(fill="both", expand=True, padx=50, pady=50)
+        self.account_prompt.pack(fill="both", expand=True, padx=20, pady=50)
         
         prompt_content = ctk.CTkFrame(self.account_prompt, fg_color="transparent")
-        prompt_content.pack(expand=True, pady=80)
+        prompt_content.pack(fill="both", expand=True, padx=40, pady=30)
+        
+        # Title section
+        title_frame = ctk.CTkFrame(prompt_content, fg_color="transparent")
+        title_frame.pack(fill="x", pady=(0, 30))
         
         ctk.CTkLabel(
-            prompt_content,
-            text="🏢",
-            font=("Arial", 48)
-        ).pack(pady=(0, 20))
-        
-        ctk.CTkLabel(
-            prompt_content,
-            text="Please select an account to continue",
-            font=("Arial", 18, "bold"),
+            title_frame,
+            text="🏢 Manage Accounts",
+            font=("Arial", 28, "bold"),
             text_color="white"
-        ).pack(pady=(0, 10))
+        ).pack(side="left")
         
         ctk.CTkLabel(
-            prompt_content,
-            text="Use the 'Choose Account' button in the banner above",
+            title_frame,
+            text="Select, create, or manage your accounts",
             font=("Arial", 12),
             text_color="#95a5a6"
-        ).pack(pady=(0, 20))
+        ).pack(side="left", padx=(20, 0))
         
-        ctk.CTkButton(
-            prompt_content,
-            text="Choose Account",
-            command=self.select_account,
-            width=200,
-            height=40,
+        # Content: Two columns - left for list, right for buttons
+        content_row = ctk.CTkFrame(prompt_content, fg_color="transparent")
+        content_row.pack(fill="both", expand=True)
+        content_row.grid_columnconfigure(0, weight=2)  # Account list gets 2x space
+        content_row.grid_columnconfigure(1, weight=1)  # Buttons get 1x space
+        
+        # LEFT: Account list
+        list_section = ctk.CTkFrame(content_row, fg_color="transparent")
+        list_section.grid(row=0, column=0, sticky="nsew", padx=(0, 30))
+        
+        ctk.CTkLabel(
+            list_section,
+            text="Available Accounts",
             font=("Arial", 14, "bold"),
+            text_color="white"
+        ).pack(anchor="w", pady=(0, 15))
+        
+        # Scrollable account list
+        self.account_list_frame = ctk.CTkScrollableFrame(
+            list_section,
+            fg_color="#2c3e50",
+            corner_radius=8,
+            height=300
+        )
+        self.account_list_frame.pack(fill="both", expand=True, pady=(0, 15))
+        
+        self.selected_account_var = ctk.StringVar(value=self.current_account or "")
+        self._refresh_account_list_ui()
+        
+        # RIGHT: Action buttons
+        button_section = ctk.CTkFrame(content_row, fg_color="transparent")
+        button_section.grid(row=0, column=1, sticky="n", padx=(30, 0))
+        
+        ctk.CTkLabel(
+            button_section,
+            text="Actions",
+            font=("Arial", 14, "bold"),
+            text_color="white"
+        ).pack(anchor="w", pady=(0, 15))
+        
+        # Select Account button
+        ctk.CTkButton(
+            button_section,
+            text="✅ Select",
+            command=self._select_account_from_ui,
+            width=140,
+            height=36,
+            font=("Arial", 11, "bold"),
+            fg_color="#27ae60",
+            hover_color="#229954"
+        ).pack(fill="x", pady=5)
+        
+        # Create New button
+        ctk.CTkButton(
+            button_section,
+            text="➕ Create New",
+            command=self._create_account_from_ui,
+            width=140,
+            height=36,
+            font=("Arial", 11, "bold"),
             fg_color="#3498db",
             hover_color="#2980b9"
-        ).pack()
+        ).pack(fill="x", pady=5)
         
-        # Tabbed interface (initially hidden)
+        # Rename button
+        ctk.CTkButton(
+            button_section,
+            text="✏️  Rename",
+            command=self._rename_account_from_ui,
+            width=140,
+            height=36,
+            font=("Arial", 11),
+            fg_color="#f39c12",
+            hover_color="#e67e22"
+        ).pack(fill="x", pady=5)
+        
+        # Delete button
+        ctk.CTkButton(
+            button_section,
+            text="🗑️  Delete",
+            command=self._delete_account_from_ui,
+            width=140,
+            height=36,
+            font=("Arial", 11),
+            fg_color="#e74c3c",
+            hover_color="#c0392b"
+        ).pack(fill="x", pady=5)
+        
+        # Tabbed interface (created but NOT packed initially - fixes startup lag)
         self.main_tabs = ctk.CTkTabview(self.tabs_container)
-        self.main_tabs.pack(fill="both", expand=True)
+        # DO NOT PACK HERE - let tabs build offscreen, pack only when account selected
         
         # Create tabs - Data View first, then QuoteMe, PA Integration, Rate Cards, and Configuration
+        # These build in memory without rendering since main_tabs is not packed
         self.setup_data_view_tab()
         self.setup_quoteme_parser_tab()
         self.setup_pa_integration_tab()
         self.setup_rate_cards_tab()
         self.setup_configuration_tab()
-        
-        # Initially hide tabs until account is selected
-        if not self.current_account:
-            self.main_tabs.pack_forget()
     
     def setup_data_view_tab(self):
         """Setup Job Data tab - split layout with data preview (25%) and workflow services (75%)"""
@@ -1770,7 +2045,10 @@ class OneStopShopMain:
             """Handle dragging the separator to resize panes"""
             # Calculate new weights based on mouse position
             total_width = main_container.winfo_width()
-            left_width = event.x
+            # Get absolute position of separator and convert to relative position
+            sep_abs_x = separator.winfo_x()
+            pointer_x = event.x_root
+            left_width = pointer_x - main_container.winfo_x()
             
             # Update column weights to maintain aspect ratio
             if left_width > 200 and (total_width - left_width) > 300:  # Respect minimums
@@ -1797,33 +2075,25 @@ class OneStopShopMain:
         
         ctk.CTkLabel(
             header_left,
-            text="⚙️ Workflow Configuration",
+            text="⚙️ Job Charges",
             font=("Arial", 14, "bold")
         ).pack(anchor="w")
-        
-        ctk.CTkButton(
-            right_header,
-            text="✏️ Edit Workflows",
-            command=self.open_current_account_workflow_editor,
-            width=140,
-            height=30,
-            font=("Arial", 10, "bold"),
-            fg_color="#3498db",
-            hover_color="#2980b9"
-        ).pack(side="right", padx=(5, 0))
         
         # Workflow selector section
         wf_frame = ctk.CTkFrame(right_pane, fg_color="transparent")
         wf_frame.grid(row=1, column=0, sticky="ew", padx=15, pady=10)
         
+        wf_label_frame = ctk.CTkFrame(wf_frame, fg_color="transparent")
+        wf_label_frame.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        
         ctk.CTkLabel(
-            wf_frame,
+            wf_label_frame,
             text="Choose Workflow:",
             font=("Arial", 11, "bold")
         ).pack(anchor="w", pady=(0, 5))
         
         self.workflow_dropdown = ctk.CTkComboBox(
-            wf_frame,
+            wf_label_frame,
             values=[],
             command=self.on_workflow_selected,
             state="readonly",
@@ -1831,6 +2101,28 @@ class OneStopShopMain:
             height=32
         )
         self.workflow_dropdown.pack(fill="x")
+        
+        # Source Type Selector (on same row as Choose Workflow)
+        source_frame = ctk.CTkFrame(wf_frame, fg_color="transparent")
+        source_frame.pack(side="left", fill="x", padx=10)
+        
+        ctk.CTkLabel(
+            source_frame,
+            text="Source Type:",
+            font=("Arial", 10)
+        ).pack()
+        
+        self.source_type_dropdown = ctk.CTkComboBox(
+            source_frame,
+            values=["Live Source", "Dead Source"],
+            variable=self.source_type_var,
+            command=self._on_source_type_changed,
+            state="readonly",
+            font=("Arial", 10),
+            height=32,
+            width=150
+        )
+        self.source_type_dropdown.pack(fill="x", pady=(3, 0))
         
         # Rate card selector section
         rc_frame = ctk.CTkFrame(right_pane, fg_color="transparent")
@@ -1842,6 +2134,7 @@ class OneStopShopMain:
             font=("Arial", 11, "bold")
         ).pack(anchor="w", pady=(0, 5))
         
+        # Top row: Rate card dropdown and Browse button
         rc_dropdown_frame = ctk.CTkFrame(rc_frame, fg_color="transparent")
         rc_dropdown_frame.pack(fill="x", pady=(0, 5))
         
@@ -1867,6 +2160,83 @@ class OneStopShopMain:
             hover_color="#229954"
         ).pack(side="left", padx=(5, 0))
         
+        # Currency section (Native Currency + Target Currency + Conversion Rate)
+        currency_frame = ctk.CTkFrame(rc_frame, fg_color="transparent")
+        currency_frame.pack(fill="x", pady=(5, 0))
+        
+        # Native Currency (read-only label - from rate card)
+        native_currency_frame = ctk.CTkFrame(currency_frame, fg_color="transparent")
+        native_currency_frame.pack(side="left", padx=(0, 10))
+        
+        ctk.CTkLabel(
+            native_currency_frame,
+            text="Native Currency:",
+            font=("Arial", 10)
+        ).pack(anchor="w")
+        
+        self.native_currency_label = ctk.CTkLabel(
+            native_currency_frame,
+            text="USD",
+            font=("Arial", 10, "bold"),
+            text_color="#3498db"
+        )
+        self.native_currency_label.pack(fill="x", pady=(3, 0))
+        
+        # Target Currency (editable dropdown - for conversion)
+        target_currency_frame = ctk.CTkFrame(currency_frame, fg_color="transparent")
+        target_currency_frame.pack(side="left", padx=(10, 0))
+        
+        ctk.CTkLabel(
+            target_currency_frame,
+            text="Target Currency:",
+            font=("Arial", 10)
+        ).pack(anchor="w")
+        
+        self.target_currency_dropdown = ctk.CTkComboBox(
+            target_currency_frame,
+            values=["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "INR", "MXN", "BRL"],
+            state="readonly",
+            font=("Arial", 10),
+            height=28,
+            width=80,
+            command=self._on_target_currency_changed
+        )
+        self.target_currency_dropdown.set("USD")
+        self.target_currency_dropdown.pack(fill="x", pady=(3, 0))
+        
+        # Conversion rate input
+        rate_label_frame = ctk.CTkFrame(currency_frame, fg_color="transparent")
+        rate_label_frame.pack(side="left", padx=(10, 0))
+        
+        ctk.CTkLabel(
+            rate_label_frame,
+            text="Conversion Rate:",
+            font=("Arial", 10)
+        ).pack(anchor="w")
+        
+        self.conversion_rate_entry = ctk.CTkEntry(
+            rate_label_frame,
+            placeholder_text="1.0",
+            font=("Arial", 10),
+            width=80,
+            height=28
+        )
+        self.conversion_rate_entry.delete(0, "end")
+        self.conversion_rate_entry.insert(0, "1.0")
+        self.conversion_rate_entry.pack(fill="x", pady=(3, 0))
+        
+        # Save conversion rate button
+        ctk.CTkButton(
+            currency_frame,
+            text="💾 Save",
+            command=self._save_currency_and_recalculate,
+            width=70,
+            height=28,
+            font=("Arial", 9, "bold"),
+            fg_color="#3498db",
+            hover_color="#2980b9"
+        ).pack(side="left", padx=(10, 0), pady=(16, 0))
+        
         # Rate card info message (inside rc_frame)
         self.rate_card_info = ctk.CTkLabel(
             rc_frame,
@@ -1879,12 +2249,27 @@ class OneStopShopMain:
         self.rate_card_info.pack(fill="x", pady=(5, 0))
         
         # Services table section
-        table_label = ctk.CTkLabel(
-            right_pane,
+        # Services table label with Service Config button (moved to row 3 since Source Type is now with Workflow)
+        table_label_frame = ctk.CTkFrame(right_pane, fg_color="transparent")
+        table_label_frame.grid(row=3, column=0, sticky="ew", padx=15, pady=(15, 5))
+        
+        ctk.CTkLabel(
+            table_label_frame,
             text="Services by Language Pair:",
             font=("Arial", 11, "bold")
-        )
-        table_label.grid(row=3, column=0, sticky="ew", padx=15, pady=(15, 5))
+        ).pack(side="left", expand=True, anchor="w")
+        
+        # Service Config button
+        ctk.CTkButton(
+            table_label_frame,
+            text="⚙️ Service Config",
+            command=self._open_service_config_dialog,
+            width=140,
+            height=28,
+            font=("Arial", 9, "bold"),
+            fg_color="#8e44ad",
+            hover_color="#7d3ba0"
+        ).pack(side="right", padx=(5, 0))
         
         # Create scrollable table frame
         self.services_table_frame = ctk.CTkScrollableFrame(
@@ -1905,6 +2290,20 @@ class OneStopShopMain:
         
         # Store references for workflow management
         self.workflow_service_widgets = {}  # Maps service_name to {lp: {quantity_entry, rate_entry}}
+        
+        # Export Charges button section
+        export_frame = ctk.CTkFrame(right_pane, fg_color="transparent")
+        export_frame.grid(row=5, column=0, sticky="ew", padx=15, pady=(10, 15))
+        
+        ctk.CTkButton(
+            export_frame,
+            text="📊 Export Charges to CSV",
+            command=self.export_charges_to_csv,
+            height=35,
+            font=("Arial", 11, "bold"),
+            fg_color="#9b59b6",
+            hover_color="#8e44ad"
+        ).pack(fill="x")
     
     def setup_configuration_tab(self):
         """Setup Configuration tab with sub-tabs - all UIs embedded inline"""
@@ -1972,15 +2371,237 @@ class OneStopShopMain:
         mapping_container.pack(fill="both", expand=True)
 
         def load_entity_mapping(*_):
+            """Load and display canonical service mappings for selected entity"""
             # Clear previous mapping UI
             for widget in mapping_container.winfo_children():
                 widget.destroy()
             entity = entity_var.get()
             if not entity:
                 return
+            
             try:
-                ServiceMappingWindow(self.root, entity, frame=mapping_container)
+                import sys
+                sys.path.insert(0, str(Path(__file__).parent.parent / "Core"))
+                from service_mapper import ServiceMapper
+                
+                mapper = ServiceMapper()
+                canonical_services = mapper.canonical_services
+                aliases = mapper.load_entity_service_aliases(entity)
+                
+                if not canonical_services:
+                    ctk.CTkLabel(
+                        mapping_container,
+                        text="⚠️ No canonical services found",
+                        font=("Arial", 12),
+                        text_color="#e74c3c"
+                    ).pack(expand=True, pady=30)
+                    return
+                
+                # Header with info and add button
+                header_frame = ctk.CTkFrame(mapping_container, fg_color="transparent")
+                header_frame.pack(fill="x", padx=15, pady=(15, 10))
+                
+                title_label = ctk.CTkLabel(
+                    header_frame,
+                    text=f"Canonical Services - Map {entity} Equivalents",
+                    font=("Arial", 13, "bold")
+                )
+                title_label.pack(side="left", anchor="w")
+                
+                info_label = ctk.CTkLabel(
+                    header_frame,
+                    text=f"{len(aliases)} / {len(canonical_services)} mapped",
+                    font=("Arial", 11),
+                    text_color="#95a5a6"
+                )
+                info_label.pack(side="left", padx=(20, 0), anchor="w")
+                
+                # Button to add new service
+                def add_new_service():
+                    dialog = ctk.CTkToplevel(self.root)
+                    dialog.title("Add New Canonical Service")
+                    dialog.geometry("450x250")
+                    dialog.transient(self.root)
+                    dialog.grab_set()
+                    
+                    # Center dialog
+                    dialog.update_idletasks()
+                    x = (dialog.winfo_screenwidth() // 2) - (450 // 2)
+                    y = (dialog.winfo_screenheight() // 2) - (250 // 2)
+                    dialog.geometry(f'450x250+{x}+{y}')
+                    
+                    ctk.CTkLabel(
+                        dialog,
+                        text="Create New Canonical Service",
+                        font=("Arial", 13, "bold")
+                    ).pack(pady=(15, 5), padx=15)
+                    
+                    # Canonical service name
+                    ctk.CTkLabel(
+                        dialog,
+                        text="Canonical Service Name:",
+                        font=("Arial", 11)
+                    ).pack(anchor="w", padx=15, pady=(10, 0))
+                    
+                    canonical_entry = ctk.CTkEntry(dialog, font=("Arial", 11), width=400)
+                    canonical_entry.pack(padx=15, pady=(0, 10))
+                    canonical_entry.focus()
+                    
+                    # Entity-specific alias
+                    ctk.CTkLabel(
+                        dialog,
+                        text=f"{entity} Equivalent Name (Optional):",
+                        font=("Arial", 11)
+                    ).pack(anchor="w", padx=15, pady=(5, 0))
+                    
+                    alias_entry = ctk.CTkEntry(dialog, font=("Arial", 11), width=400)
+                    alias_entry.pack(padx=15, pady=(0, 15))
+                    
+                    # Buttons
+                    btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+                    btn_frame.pack(fill="x", padx=15, pady=10)
+                    
+                    def save_new_service():
+                        canonical_name = canonical_entry.get().strip()
+                        alias_name = alias_entry.get().strip()
+                        
+                        if not canonical_name:
+                            messagebox.showwarning("Required", "Please enter a canonical service name")
+                            return
+                        
+                        # Add to canonical services
+                        if mapper.add_canonical_service(canonical_name):
+                            # If alias provided, set it
+                            if alias_name:
+                                mapper.set_entity_service_alias(entity, canonical_name, alias_name)
+                            
+                            messagebox.showinfo("Success", f"Added: {canonical_name}")
+                            dialog.destroy()
+                            # Reload the mapping UI
+                            load_entity_mapping()
+                        else:
+                            messagebox.showerror("Error", f"Service '{canonical_name}' already exists")
+                    
+                    ctk.CTkButton(
+                        btn_frame,
+                        text="Add Service",
+                        command=save_new_service,
+                        fg_color="#27ae60",
+                        hover_color="#229954"
+                    ).pack(side="left", padx=(0, 5))
+                    
+                    ctk.CTkButton(
+                        btn_frame,
+                        text="Cancel",
+                        command=dialog.destroy,
+                        fg_color="#95a5a6",
+                        hover_color="#7f8c8d"
+                    ).pack(side="left")
+                
+                ctk.CTkButton(
+                    header_frame,
+                    text="+ Add New Service",
+                    command=add_new_service,
+                    width=180,
+                    fg_color="#27ae60",
+                    hover_color="#229954"
+                ).pack(side="right", padx=5)
+                
+                # Scrollable services list with alias mappings
+                scroll_frame = ctk.CTkScrollableFrame(mapping_container, fg_color="transparent")
+                scroll_frame.pack(fill="both", expand=True, padx=15, pady=10)
+                
+                # Table header
+                header_row = ctk.CTkFrame(scroll_frame, fg_color="#34495e", height=35)
+                header_row.pack(fill="x", pady=(0, 5))
+                header_row.pack_propagate(False)
+                
+                ctk.CTkLabel(
+                    header_row,
+                    text="Canonical Service",
+                    font=("Arial", 11, "bold"),
+                    width=300
+                ).pack(side="left", padx=10, pady=8)
+                
+                ctk.CTkLabel(
+                    header_row,
+                    text="↔",
+                    font=("Arial", 12, "bold"),
+                    width=30
+                ).pack(side="left")
+                
+                ctk.CTkLabel(
+                    header_row,
+                    text=f"{entity} Name",
+                    font=("Arial", 11, "bold"),
+                    width=300
+                ).pack(side="left", padx=10, pady=8)
+                
+                # Services list
+                for canonical_name in canonical_services:
+                    row_frame = ctk.CTkFrame(scroll_frame, fg_color="#2c3e50", corner_radius=4)
+                    row_frame.pack(fill="x", pady=3, padx=5)
+                    
+                    # Canonical service (read-only label)
+                    ctk.CTkLabel(
+                        row_frame,
+                        text=canonical_name,
+                        font=("Arial", 10),
+                        width=300,
+                        anchor="w",
+                        text_color="#3498db"
+                    ).pack(side="left", padx=10, pady=8)
+                    
+                    ctk.CTkLabel(
+                        row_frame,
+                        text="→",
+                        font=("Arial", 11, "bold"),
+                        width=30
+                    ).pack(side="left")
+                    
+                    # Entity alias (editable entry)
+                    alias_var = ctk.StringVar(value=aliases.get(canonical_name, ""))
+                    alias_entry = ctk.CTkEntry(
+                        row_frame,
+                        textvariable=alias_var,
+                        font=("Arial", 10),
+                        width=300,
+                        placeholder_text="(optional: entity-specific name)"
+                    )
+                    alias_entry.pack(side="left", padx=10, pady=5)
+                    
+                    # Save button for this alias
+                    def save_alias(canonical=canonical_name, var=alias_var):
+                        alias_val = var.get().strip()
+                        if alias_val:
+                            mapper.set_entity_service_alias(entity, canonical, alias_val)
+                            info_label.configure(text=f"{len(mapper.load_entity_service_aliases(entity))} / {len(canonical_services)} mapped")
+                            print(f"[DEBUG] Saved alias for {canonical}: {alias_val}")
+                        else:
+                            # Clear alias if empty
+                            current_aliases = mapper.load_entity_service_aliases(entity)
+                            if canonical in current_aliases:
+                                del current_aliases[canonical]
+                                mapper.save_entity_service_aliases(entity, current_aliases)
+                                info_label.configure(text=f"{len(current_aliases)} / {len(canonical_services)} mapped")
+                                print(f"[DEBUG] Cleared alias for {canonical}")
+                    
+                    ctk.CTkButton(
+                        row_frame,
+                        text="Save",
+                        command=save_alias,
+                        width=60,
+                        font=("Arial", 9),
+                        fg_color="#3498db",
+                        hover_color="#2980b9"
+                    ).pack(side="left", padx=5, pady=5)
+                
+                print(f"[DEBUG] Loaded {len(canonical_services)} canonical services, {len(aliases)} mapped for {entity}")
+                
             except Exception as e:
+                print(f"Error loading canonical service mapping: {e}")
+                import traceback
+                traceback.print_exc()
                 ctk.CTkLabel(
                     mapping_container,
                     text=f"⚠️ Failed to load mapping for '{entity}':\n{str(e)}",
@@ -1994,32 +2615,271 @@ class OneStopShopMain:
         if entity_names:
             load_entity_mapping()
 
-        # ── 1.3 Configure Workflows ──────────────────────────────────────────
-        workflows_tab = config_subtabs.add("Configure Workflows")
+        # ── 1.3 Fee Services Configuration ────────────────────────────────────
+        fee_services_tab = config_subtabs.add("Fee Services")
+        
+        # Account selector for Fee Service defaults
+        fee_header_frame = ctk.CTkFrame(fee_services_tab, fg_color="#1f538d", height=60)
+        fee_header_frame.pack(fill="x", padx=0, pady=(0, 5))
+        fee_header_frame.pack_propagate(False)
+        
+        fee_header_inner = ctk.CTkFrame(fee_header_frame, fg_color="transparent")
+        fee_header_inner.pack(expand=True)
+        
+        ctk.CTkLabel(
+            fee_header_inner,
+            text="Configure Fee Service Defaults:",
+            font=("Arial", 12, "bold"),
+            text_color="white"
+        ).pack(side="left", padx=(10, 10), pady=15)
+        
+        # Load accounts
         try:
-            WorkflowManagerGUI(frame=workflows_tab)
-        except Exception as e:
-            ctk.CTkLabel(
-                workflows_tab,
-                text=f"⚠️ Failed to load Workflow Manager:\n{str(e)}",
-                font=("Arial", 12),
-                text_color="#e74c3c"
-            ).pack(expand=True, pady=50)
+            import sys
+            sys.path.insert(0, str(Path(__file__).parent.parent / "Core"))
+            from account_workflow_manager import AccountWorkflowManager
+            
+            wf_manager = AccountWorkflowManager()
+            account_list = wf_manager.get_accounts()
+        except Exception:
+            account_list = []
+        
+        fee_account_var = ctk.StringVar(value=account_list[0] if account_list else "")
+        fee_account_dropdown = ctk.CTkComboBox(
+            fee_header_inner,
+            values=account_list,
+            variable=fee_account_var,
+            width=200,
+            font=("Arial", 12)
+        )
+        fee_account_dropdown.pack(side="left", padx=(0, 10), pady=15)
+        
+        # Container for fee service configuration
+        fee_config_container = ctk.CTkFrame(fee_services_tab, fg_color="transparent")
+        fee_config_container.pack(fill="both", expand=True)
+        
+        def load_fee_services_config(*_):
+            """Load and display Fee Service default configuration"""
+            for widget in fee_config_container.winfo_children():
+                widget.destroy()
+            
+            account = fee_account_var.get()
+            if not account:
+                ctk.CTkLabel(
+                    fee_config_container,
+                    text="No account selected",
+                    font=("Arial", 11)
+                ).pack(expand=True, pady=20)
+                return
+            
+            try:
+                from service_mapper import ServiceMapper
+                
+                mapper = ServiceMapper()
+                canonical_services = [s for s in mapper.canonical_services if "Fee" in s]
+                
+                if not canonical_services:
+                    ctk.CTkLabel(
+                        fee_config_container,
+                        text="No Fee services found in canonical services",
+                        font=("Arial", 11)
+                    ).pack(expand=True, pady=20)
+                    return
+                
+                # Load existing fee defaults for this account
+                fee_defaults_path = Path(__file__).parent.parent / "Core" / "accounts" / account / "fee_service_defaults.json"
+                fee_defaults = {}
+                if fee_defaults_path.exists():
+                    with open(fee_defaults_path, 'r', encoding='utf-8') as f:
+                        fee_defaults = json.load(f).get("defaults", {})
+                
+                # Info label
+                info_frame = ctk.CTkFrame(fee_config_container, fg_color="transparent")
+                info_frame.pack(fill="x", padx=15, pady=(15, 10))
+                
+                ctk.CTkLabel(
+                    info_frame,
+                    text=f"Default Quantities for {account} - {len(canonical_services)} Fee Services",
+                    font=("Arial", 12, "bold")
+                ).pack(anchor="w")
+                
+                # Scrollable list of Fee services
+                scroll_frame = ctk.CTkScrollableFrame(fee_config_container, fg_color="transparent")
+                scroll_frame.pack(fill="both", expand=True, padx=15, pady=10)
+                
+                # Table header
+                header_row = ctk.CTkFrame(scroll_frame, fg_color="#34495e", height=35)
+                header_row.pack(fill="x", pady=(0, 5))
+                header_row.pack_propagate(False)
+                
+                ctk.CTkLabel(
+                    header_row,
+                    text="Fee Service Name",
+                    font=("Arial", 11, "bold"),
+                    width=400
+                ).pack(side="left", padx=10, pady=8)
+                
+                ctk.CTkLabel(
+                    header_row,
+                    text="Default Quantity",
+                    font=("Arial", 11, "bold"),
+                    width=150
+                ).pack(side="left", padx=10, pady=8)
+                
+                # Fee services list
+                for service_name in canonical_services:
+                    row_frame = ctk.CTkFrame(scroll_frame, fg_color="#2c3e50", corner_radius=4)
+                    row_frame.pack(fill="x", pady=3, padx=5)
+                    
+                    ctk.CTkLabel(
+                        row_frame,
+                        text=service_name,
+                        font=("Arial", 10),
+                        width=400,
+                        anchor="w",
+                        text_color="#2ecc71"
+                    ).pack(side="left", padx=10, pady=8)
+                    
+                    # Default quantity entry
+                    qty_var = ctk.StringVar(value=str(fee_defaults.get(service_name, "")))
+                    qty_entry = ctk.CTkEntry(
+                        row_frame,
+                        textvariable=qty_var,
+                        font=("Arial", 10),
+                        width=150,
+                        placeholder_text="(optional)"
+                    )
+                    qty_entry.pack(side="left", padx=5, pady=5)
+                    
+                    # Save button
+                    def save_fee_default(service=service_name, var=qty_var):
+                        default_qty = var.get().strip()
+                        
+                        # Load current defaults
+                        if fee_defaults_path.exists():
+                            with open(fee_defaults_path, 'r', encoding='utf-8') as f:
+                                data = json.load(f)
+                        else:
+                            data = {"description": f"Fee Service default quantities for {account}", "defaults": {}}
+                        
+                        # Update or remove
+                        if default_qty:
+                            try:
+                                float(default_qty)  # Validate it's a number
+                                data["defaults"][service] = default_qty
+                                print(f"[DEBUG] Set default quantity for {service}: {default_qty}")
+                            except ValueError:
+                                messagebox.showerror("Invalid", "Default quantity must be a number")
+                                return
+                        else:
+                            if service in data["defaults"]:
+                                del data["defaults"][service]
+                                print(f"[DEBUG] Cleared default quantity for {service}")
+                        
+                        # Save
+                        fee_defaults_path.parent.mkdir(parents=True, exist_ok=True)
+                        with open(fee_defaults_path, 'w', encoding='utf-8') as f:
+                            json.dump(data, f, indent=2, ensure_ascii=False)
+                        
+                        messagebox.showinfo("Saved", f"Default quantity saved for {service}")
+                    
+                    ctk.CTkButton(
+                        row_frame,
+                        text="Save",
+                        command=save_fee_default,
+                        width=70,
+                        font=("Arial", 9),
+                        fg_color="#27ae60",
+                        hover_color="#229954"
+                    ).pack(side="left", padx=5, pady=5)
+                
+            except Exception as e:
+                print(f"Error loading fee services config: {e}")
+                import traceback
+                traceback.print_exc()
+                ctk.CTkLabel(
+                    fee_config_container,
+                    text=f"⚠️ Error: {str(e)}",
+                    font=("Arial", 11),
+                    text_color="#e74c3c"
+                ).pack(expand=True, pady=20)
+        
+        fee_account_dropdown.configure(command=load_fee_services_config)
+        
+        if account_list:
+            load_fee_services_config()
 
     def setup_quoteme_parser_tab(self):
         """Setup QuoteMe Email Parser tab - embedded directly in the viewing pane"""
         parser_tab = self.main_tabs.add("QuoteMe Parser")
+        
+        # ── Manage Workflows Tab ─────────────────────────────────────────────────
+        workflows_tab = self.main_tabs.add("Manage Workflows")
+        self._setup_manage_workflows_tab(workflows_tab)
 
         def on_parser_apply(lp_code: str, lp_data):
-            self.update_status(f"✅ QuoteMe parsed: {lp_code}")
+            """Callback when parser applies individual LP data"""
+            print(f"\n[DEBUG] on_parser_apply called")
+            print(f"[DEBUG]   lp_code: {lp_code}")
+            print(f"[DEBUG]   lp_data type: {type(lp_data)}")
+            
+            # Initialize quoteme_data as a list if not already set
+            if self.quoteme_data is None:
+                self.quoteme_data = []
+                print(f"[DEBUG]   Initialized quoteme_data as empty list")
+            
+            # Add this LP data to the list (avoid duplicates by checking lp_code)
+            existing_lp_codes = [lp.lp_code for lp in self.quoteme_data if hasattr(lp, 'lp_code')]
+            print(f"[DEBUG]   Existing LP codes: {existing_lp_codes}")
+            
+            if lp_code not in existing_lp_codes:
+                self.quoteme_data.append(lp_data)
+                print(f"[DEBUG]   Added lp_data to quoteme_data (total: {len(self.quoteme_data)})")
+            else:
+                print(f"[DEBUG]   LP code already exists - skipping")
+            
+            # Extract and add to language_pairs if not already present
+            lp_name = self._extract_lp_name(lp_code)
+            print(f"[DEBUG]   Extracted LP name: {lp_name}")
+            
+            if lp_name not in self.language_pairs:
+                self.language_pairs.append(lp_name)
+                print(f"[DEBUG]   Added to language_pairs (total: {len(self.language_pairs)})")
+            else:
+                print(f"[DEBUG]   LP name already in language_pairs - skipping")
+            
+            # Update status
+            self.update_status(f"✅ Applied: {lp_code}")
+            
+            # If a workflow is selected, refresh quantities in services table
+            print(f"[DEBUG]   selected_workflow: {self.selected_workflow}")
+            if self.selected_workflow:
+                services = self.account_workflow_manager.get_workflow_services(
+                    self.current_account,
+                    self.selected_workflow
+                )
+                print(f"[DEBUG]   Got services: {services}")
+                if services:
+                    print(f"[DEBUG]   Calling populate_services_table")
+                    self.populate_services_table(services)
+            else:
+                print(f"[DEBUG]   No workflow selected - not refreshing table")
 
         def on_parser_complete(parse_result):
             """Callback when parsing completes - update Job Data tab"""
-            if parse_result and parse_result.success and parse_result.language_pairs:
+            print(f"\n[DEBUG] on_parser_complete called")
+            print(f"[DEBUG]   parse_result: {parse_result}")
+            if parse_result:
+                print(f"[DEBUG]   parse_result.success: {parse_result.success if hasattr(parse_result, 'success') else 'N/A'}")
+                print(f"[DEBUG]   parse_result.language_pairs: {len(parse_result.language_pairs) if hasattr(parse_result, 'language_pairs') else 'N/A'}")
+            
+            if parse_result and hasattr(parse_result, 'success') and parse_result.success and hasattr(parse_result, 'language_pairs') and parse_result.language_pairs:
                 try:
+                    print(f"[DEBUG]   Calling set_language_pairs_from_quoteme with {len(parse_result.language_pairs)} LP(s)")
                     self.set_language_pairs_from_quoteme(parse_result.language_pairs)
                     self.update_status(f"✅ Job Data updated with {len(parse_result.language_pairs)} language pair(s)")
                 except Exception as e:
+                    print(f"[DEBUG] ERROR: {e}")
                     print(f"Error updating Job Data with parsed language pairs: {e}")
 
         try:
@@ -2032,6 +2892,366 @@ class OneStopShopMain:
                 text_color="#e74c3c"
             ).pack(expand=True, pady=60)
 
+    def _on_source_type_changed(self, choice: str):
+        """Callback when source type dropdown changes - refresh services table"""
+        if self.selected_workflow:
+            services = self.account_workflow_manager.get_workflow_services(
+                self.current_account,
+                self.selected_workflow
+            )
+            self.populate_services_table(services)
+    
+    def _setup_manage_workflows_tab(self, tab_frame):
+        """Setup the Manage Workflows tab with embedded UI (no dialog)"""
+        # Content frame
+        content_frame = ctk.CTkFrame(tab_frame, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True, padx=15, pady=15)
+        
+        # Workflows list label and button frame
+        list_header = ctk.CTkFrame(content_frame, fg_color="transparent")
+        list_header.pack(fill="x", pady=(0, 10))
+        
+        ctk.CTkLabel(
+            list_header,
+            text="Workflows:",
+            font=("Arial", 11, "bold")
+        ).pack(anchor="w", side="left")
+        
+        # Scrollable workflows list
+        workflows_scroll = ctk.CTkScrollableFrame(
+            content_frame,
+            fg_color="gray25",
+            corner_radius=8
+        )
+        workflows_scroll.pack(fill="both", expand=True)
+        
+        # Bind mouse wheel
+        def on_mousewheel(event):
+            workflows_scroll._parent_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        workflows_scroll.bind("<MouseWheel>", on_mousewheel)
+        
+        def refresh_workflows_list():
+            """Refresh the workflows list display"""
+            # Clear existing widgets
+            for widget in workflows_scroll.winfo_children():
+                widget.destroy()
+            
+            if not self.current_account:
+                ctk.CTkLabel(
+                    workflows_scroll,
+                    text="Select an account first",
+                    text_color="orange"
+                ).pack(pady=20)
+                return
+            
+            workflows = self.account_workflow_manager.get_workflows(self.current_account)
+            
+            if not workflows:
+                ctk.CTkLabel(
+                    workflows_scroll,
+                    text="No workflows yet. Create one with the button above.",
+                    text_color="orange"
+                ).pack(pady=20)
+            else:
+                for workflow_name in workflows:
+                    wf_frame = ctk.CTkFrame(workflows_scroll, fg_color="gray20", corner_radius=6)
+                    wf_frame.pack(fill="x", pady=5, padx=5)
+                    
+                    wf_info_frame = ctk.CTkFrame(wf_frame, fg_color="transparent")
+                    wf_info_frame.pack(fill="both", expand=True, padx=10, pady=8)
+                    
+                    services = self.account_workflow_manager.get_workflow_services(
+                        self.current_account,
+                        workflow_name
+                    )
+                    
+                    # Extract service names (handle both string and dict formats)
+                    service_names = []
+                    for svc in services:
+                        if isinstance(svc, dict):
+                            service_names.append(svc.get("name", svc))
+                        else:
+                            service_names.append(svc)
+                    
+                    ctk.CTkLabel(
+                        wf_info_frame,
+                        text=f"📋 {workflow_name}",
+                        font=("Arial", 11, "bold")
+                    ).pack(anchor="w")
+                    
+                    ctk.CTkLabel(
+                        wf_info_frame,
+                        text=f"Services: {', '.join(service_names) if service_names else 'None'}",
+                        font=("Arial", 9),
+                        text_color="gray",
+                        wraplength=400,
+                        justify="left"
+                    ).pack(anchor="w", pady=(3, 0))
+                    
+                    # Edit and Delete buttons
+                    btn_frame = ctk.CTkFrame(wf_frame, fg_color="transparent")
+                    btn_frame.pack(fill="x", padx=10, pady=(0, 8))
+                    
+                    ctk.CTkButton(
+                        btn_frame,
+                        text="✏️ Edit",
+                        command=lambda wf=workflow_name: self._edit_workflow_dialog(None, wf),
+                        width=80,
+                        height=26,
+                        font=("Arial", 9),
+                        fg_color="#3498db"
+                    ).pack(side="left", padx=(0, 5))
+                    
+                    ctk.CTkButton(
+                        btn_frame,
+                        text="🗑️ Delete",
+                        command=lambda wf=workflow_name: self._delete_workflow_from_tab(wf, refresh_workflows_list),
+                        width=80,
+                        height=26,
+                        font=("Arial", 9),
+                        fg_color="#e74c3c"
+                    ).pack(side="left")
+        
+        # Save the refresh function so it can be called from update_account_display()
+        self._manage_workflows_refresh = refresh_workflows_list
+        
+        # Add New button now that refresh_workflows_list is defined
+        ctk.CTkButton(
+            list_header,
+            text="➕ Add New",
+            command=lambda: self._add_workflow_embedded(content_frame, refresh_workflows_list),
+            width=100,
+            height=28,
+            font=("Arial", 9, "bold"),
+            fg_color="green"
+        ).pack(anchor="e", side="right")
+        
+        # Initial population
+        refresh_workflows_list()
+    
+    def _add_workflow_embedded(self, parent_frame, refresh_callback):
+        """Dialog to add new workflow - works with embedded tab"""
+        add_dialog = ctk.CTkToplevel(self.root)
+        add_dialog.title("Add Workflow")
+        add_dialog.geometry("600x500")
+        add_dialog.transient(self.root)
+        add_dialog.grab_set()
+        
+        # Center on parent
+        add_dialog.update_idletasks()
+        x = (add_dialog.winfo_screenwidth() // 2) - (600 // 2)
+        y = (add_dialog.winfo_screenheight() // 2) - (500 // 2)
+        add_dialog.geometry(f'600x500+{x}+{y}')
+        
+        # Workflow name
+        ctk.CTkLabel(add_dialog, text="Workflow Name:", font=("Arial", 11, "bold")).pack(pady=(15, 5), padx=15, anchor="w")
+        name_entry = ctk.CTkEntry(add_dialog, width=400, font=("Arial", 11))
+        name_entry.pack(padx=15, pady=(0, 15))
+        
+        # Main content frame with two columns
+        content = ctk.CTkFrame(add_dialog, fg_color="transparent")
+        content.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+        
+        # LEFT: Available services with search
+        left_frame = ctk.CTkFrame(content, fg_color="transparent")
+        left_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
+        
+        ctk.CTkLabel(left_frame, text="Available Services:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(0, 5))
+        
+        # Search entry for filtering
+        search_var = ctk.StringVar()
+        search_entry = ctk.CTkEntry(
+            left_frame,
+            textvariable=search_var,
+            placeholder_text="🔍 Search services...",
+            font=("Arial", 9),
+            height=28
+        )
+        search_entry.pack(fill="x", pady=(0, 8))
+        search_entry.focus()
+        
+        services_scroll = ctk.CTkScrollableFrame(left_frame, fg_color="gray25", corner_radius=6)
+        services_scroll.pack(fill="both", expand=True)
+        
+        def on_mousewheel(event):
+            services_scroll._parent_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        services_scroll.bind("<MouseWheel>", on_mousewheel)
+        
+        # Get canonical services
+        canonical_services = self.service_mapper.canonical_services
+        selected_services_list = []  # Track order
+        service_widgets = {}
+        service_frames = {}  # Track frames for visibility toggling
+        
+        def on_search_change(*args):
+            """Filter services based on search query"""
+            query = search_var.get().lower().strip()
+            
+            for service, frame in service_frames.items():
+                if query == "":
+                    frame.pack(anchor="w", padx=10, pady=2, fill="x")
+                elif query in service.lower():
+                    frame.pack(anchor="w", padx=10, pady=2, fill="x")
+                else:
+                    frame.pack_forget()
+        
+        search_var.trace("w", on_search_change)
+        
+        def on_service_selected(service_name, cb_var):
+            """Handle service checkbox"""
+            if cb_var.get():
+                if service_name not in selected_services_list:
+                    selected_services_list.append(service_name)
+                update_selected_list()
+            else:
+                if service_name in selected_services_list:
+                    selected_services_list.remove(service_name)
+                update_selected_list()
+        
+        # Create checkboxes for all canonical services
+        for service in canonical_services:
+            var = BooleanVar(value=False)
+            
+            def make_callback(svc, v):
+                return lambda: on_service_selected(svc, v)
+            
+            cb_frame = ctk.CTkFrame(services_scroll, fg_color="transparent")
+            cb_frame.pack(anchor="w", padx=10, pady=2, fill="x")
+            service_frames[service] = cb_frame
+            
+            cb = ctk.CTkCheckBox(
+                cb_frame,
+                text=service,
+                variable=var,
+                command=make_callback(service, var),
+                font=("Arial", 9)
+            )
+            cb.pack(anchor="w", side="left")
+            service_widgets[service] = (cb, var)
+        
+        # RIGHT: Selected services (ordered)
+        right_frame = ctk.CTkFrame(content, fg_color="transparent")
+        right_frame.pack(side="right", fill="both", expand=True, padx=(10, 0))
+        
+        ctk.CTkLabel(right_frame, text="Selected (Order):", font=("Arial", 10, "bold")).pack(anchor="w", pady=(0, 5))
+        selected_scroll = ctk.CTkScrollableFrame(right_frame, fg_color="gray25", corner_radius=6)
+        selected_scroll.pack(fill="both", expand=True)
+        selected_scroll.bind("<MouseWheel>", on_mousewheel)
+        
+        selected_widgets = []
+        attribute_vars = {}  # Track Used_when attributes
+        
+        def update_selected_list():
+            """Refresh the selected services list"""
+            for widget in selected_widgets:
+                widget.destroy()
+            selected_widgets.clear()
+            
+            for idx, service in enumerate(selected_services_list):
+                item_frame = ctk.CTkFrame(selected_scroll, fg_color="gray20", corner_radius=4, height=40)
+                item_frame.pack(fill="x", padx=5, pady=3)
+                item_frame.pack_propagate(False)
+                selected_widgets.append(item_frame)
+                
+                content_frame = ctk.CTkFrame(item_frame, fg_color="transparent")
+                content_frame.pack(fill="both", expand=True, padx=2, pady=2)
+                
+                service_label = ctk.CTkLabel(
+                    content_frame,
+                    text=f"{idx + 1}. {service}",
+                    font=("Arial", 10),
+                    justify="left"
+                )
+                service_label.pack(side="left", fill="x", expand=True, pady=5)
+                
+                # Remove button
+                def make_remove_cmd(service_name):
+                    def remove_service():
+                        selected_services_list.remove(service_name)
+                        service_widgets[service_name][1].set(False)
+                        update_selected_list()
+                    return remove_service
+                
+                ctk.CTkButton(
+                    content_frame,
+                    text="✗",
+                    command=make_remove_cmd(service),
+                    width=24,
+                    height=24,
+                    font=("Arial", 10),
+                    fg_color="#e74c3c"
+                ).pack(side="right", padx=5)
+                
+                # Initialize attribute_vars if needed
+                if service not in attribute_vars:
+                    attribute_vars[service] = {
+                        ">For": BooleanVar(value=False),
+                        ">Eng": BooleanVar(value=False),
+                        "Live": BooleanVar(value=False)
+                    }
+        
+        # Initial population
+        update_selected_list()
+        
+        # Buttons
+        btn_frame = ctk.CTkFrame(add_dialog, fg_color="transparent")
+        btn_frame.pack(pady=15, padx=15)
+        
+        def save_workflow():
+            workflow_name = name_entry.get().strip()
+            if not workflow_name:
+                messagebox.showerror("Error", "Workflow name cannot be empty!")
+                return
+            
+            if not selected_services_list:
+                messagebox.showerror("Error", "Select at least one service!")
+                return
+            
+            if self.account_workflow_manager.create_workflow(self.current_account, workflow_name, selected_services_list):
+                # Update service attributes
+                for service in selected_services_list:
+                    used_when = []
+                    if service in attribute_vars:
+                        if attribute_vars[service][">For"].get():
+                            used_when.append(">For")
+                        if attribute_vars[service][">Eng"].get():
+                            used_when.append(">Eng")
+                        if attribute_vars[service]["Live"].get():
+                            used_when.append("Live")
+                    
+                    if hasattr(self.account_workflow_manager, 'update_service_attribute'):
+                        self.account_workflow_manager.update_service_attribute(
+                            self.current_account,
+                            workflow_name,
+                            service,
+                            used_when
+                        )
+                
+                messagebox.showinfo("Success", f"Workflow '{workflow_name}' created!")
+                add_dialog.destroy()
+                refresh_callback()  # Refresh Manage Workflows tab
+                self.refresh_workflow_dropdown()  # CRITICAL: Also refresh Job Data dropdown
+            else:
+                messagebox.showerror("Error", f"Workflow '{workflow_name}' already exists!")
+        
+        ctk.CTkButton(btn_frame, text="Create", command=save_workflow, width=100, fg_color="#2b7dbc").pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="Cancel", command=add_dialog.destroy, width=100).pack(side="left", padx=5)
+    
+    def _delete_workflow_from_tab(self, workflow_name, refresh_callback):
+        """Delete workflow and refresh tab display"""
+        confirm = messagebox.askyesno(
+            "Confirm Delete",
+            f"Delete workflow '{workflow_name}'?\n\nThis cannot be undone."
+        )
+        
+        if confirm:
+            if self.account_workflow_manager.delete_workflow(self.current_account, workflow_name):
+                messagebox.showinfo("Success", f"Workflow '{workflow_name}' deleted")
+                refresh_callback()
+            else:
+                messagebox.showerror("Error", "Failed to delete workflow")
+    
     def setup_pa_integration_tab(self):
         """Setup PA Integration tab with embedded sub-tabs"""
         pa_tab = self.main_tabs.add("PA Integration")
@@ -2380,6 +3600,14 @@ class OneStopShopMain:
         self.rate_card_info.configure(text="ℹ️ No rate card loaded. Select from dropdown or browse for a file.")
     
     def open_current_account_workflow_editor(self):
+        """Deprecated - workflow editing now in Manage Workflows tab"""
+        # Direct user to the Manage Workflows tab instead
+        messagebox.showinfo("Workflow Editor Moved", "Workflow editing has been moved to the 'Manage Workflows' tab. Please use that tab to manage workflows.")
+        # Optionally, select the Manage Workflows tab
+        # self.main_tabs.set("Manage Workflows")  # If tab names support this
+        return
+    
+    def open_current_account_workflow_editor_old(self):
         """Open simplified workflow editor for current account only"""
         if not self.current_account:
             messagebox.showwarning("No Account", "Please select an account first")
@@ -2475,6 +3703,14 @@ class OneStopShopMain:
                     workflow_name
                 )
                 
+                # Extract service names (handle both string and dict formats)
+                service_names = []
+                for svc in services:
+                    if isinstance(svc, dict):
+                        service_names.append(svc.get("name", svc))
+                    else:
+                        service_names.append(svc)
+                
                 ctk.CTkLabel(
                     wf_info_frame,
                     text=f"📋 {workflow_name}",
@@ -2483,7 +3719,7 @@ class OneStopShopMain:
                 
                 ctk.CTkLabel(
                     wf_info_frame,
-                    text=f"Services: {', '.join(services) if services else 'None'}",
+                    text=f"Services: {', '.join(service_names) if service_names else 'None'}",
                     font=("Arial", 9),
                     text_color="gray",
                     wraplength=400,
@@ -2610,7 +3846,7 @@ class OneStopShopMain:
         
         # Create checkboxes for all canonical services
         for service in canonical_services:
-            var = ctk.BooleanVar(value=False)
+            var = BooleanVar(value=False)
             
             def make_callback(svc, v):
                 return lambda: on_service_selected(svc, v)
@@ -2792,9 +4028,9 @@ class OneStopShopMain:
             ):
                 add_dialog.destroy()
                 messagebox.showinfo("Success", f"Workflow '{wf_name}' created successfully")
-                # Refresh parent dialog
-                parent_dialog.destroy()
-                self.open_current_account_workflow_editor()
+                # Refresh the workflows list in the Manage Workflows tab
+                if refresh_callback:
+                    refresh_callback()
                 self.refresh_workflow_dropdown()
             else:
                 messagebox.showerror("Error", f"Workflow '{wf_name}' already exists")
@@ -2866,16 +4102,25 @@ class OneStopShopMain:
         services_scroll.bind("<MouseWheel>", on_mousewheel)
         
         # Get current workflow services
-        current_services = self.account_workflow_manager.get_workflow_services(
+        current_services_raw = self.account_workflow_manager.get_workflow_services(
             self.current_account,
             workflow_name
         )
+        
+        # Extract service names (handle both string and dict formats)
+        current_services = []
+        for svc in current_services_raw:
+            if isinstance(svc, dict):
+                current_services.append(svc.get("name", svc))
+            else:
+                current_services.append(svc)
         
         # Get canonical services
         canonical_services = self.service_mapper.canonical_services
         selected_services_list = list(current_services)  # Maintain current order
         service_widgets = {}
         service_frames = {}  # Track frames for visibility toggling
+        attribute_vars = {}  # Track Used_when attributes for each service
         
         def on_search_change(*args):
             """Filter services based on search query"""
@@ -2907,24 +4152,76 @@ class OneStopShopMain:
         
         # Create checkboxes for all canonical services
         for service in canonical_services:
-            var = ctk.BooleanVar(value=service in current_services)
+            var = BooleanVar(value=service in current_services)
             
             def make_callback(svc, v):
                 return lambda: on_service_selected(svc, v)
             
+            # Get current attributes for this service
+            current_attrs = []
+            if hasattr(self.account_workflow_manager, 'get_service_attributes'):
+                try:
+                    current_attrs = self.account_workflow_manager.get_service_attributes(
+                        self.current_account,
+                        workflow_name,
+                        service
+                    )
+                except:
+                    current_attrs = []
+            
             cb_frame = ctk.CTkFrame(services_scroll, fg_color="transparent")
-            cb_frame.pack(anchor="w", padx=10, pady=2, fill="x")
+            cb_frame.pack(anchor="w", padx=10, pady=5, fill="x")
             service_frames[service] = cb_frame  # Store frame for search filtering
             
+            # Service checkbox
             cb = ctk.CTkCheckBox(
                 cb_frame,
                 text=service,
                 variable=var,
                 command=make_callback(service, var),
-                font=("Arial", 9)
+                font=("Arial", 9, "bold")
             )
-            cb.pack(anchor="w", side="left")
+            cb.pack(anchor="w", side="left", pady=(0, 3))
             service_widgets[service] = (cb, var)
+            
+            # Attribute checkboxes (only shown if service is selected)
+            attr_frame = ctk.CTkFrame(cb_frame, fg_color="transparent")
+            attr_frame.pack(anchor="w", fill="x", padx=(20, 0), pady=(2, 3))
+            
+            attribute_vars[service] = {}
+            
+            # >For checkbox
+            for_var = BooleanVar(value=(">For" in current_attrs))
+            ctk.CTkCheckBox(
+                attr_frame,
+                text=">For (Foreign)",
+                variable=for_var,
+                font=("Arial", 8),
+                text_color="#aaa"
+            ).pack(side="left", padx=(0, 8))
+            attribute_vars[service][">For"] = for_var
+            
+            # >Eng checkbox
+            eng_var = BooleanVar(value=(">Eng" in current_attrs))
+            ctk.CTkCheckBox(
+                attr_frame,
+                text=">Eng (English)",
+                variable=eng_var,
+                font=("Arial", 8),
+                text_color="#aaa"
+            ).pack(side="left", padx=(0, 8))
+            attribute_vars[service][">Eng"] = eng_var
+            
+            # Live checkbox
+            live_var = BooleanVar(value=("Live" in current_attrs))
+            ctk.CTkCheckBox(
+                attr_frame,
+                text="Live source",
+                variable=live_var,
+                font=("Arial", 8),
+                text_color="#aaa"
+            ).pack(side="left", padx=0)
+            attribute_vars[service]["Live"] = live_var
         
         # RIGHT: Selected services (ordered)
         right_frame = ctk.CTkFrame(content, fg_color="transparent")
@@ -2982,54 +4279,63 @@ class OneStopShopMain:
                         drag_data["dragging"] = True
                         frame.configure(fg_color="#3498db")
                         handle.configure(text_color="#ffffff")
-                        # Bind motion to root window for global tracking
-                        edit_dialog.bind("<Motion>", on_motion)
+                        # Bind B1-Motion to root window for tracking while button is held
+                        edit_dialog.bind("<B1-Motion>", on_motion)
                     
                     def on_motion(event):
                         if not drag_data["dragging"] or drag_data["source_idx"] is None:
                             return
                         
-                        # Find which service we're hovering over
-                        y_pos = event.y
+                        # Get the scrollable frame's scroll offset to adjust coordinates
+                        scroll_offset = selected_scroll._parent_canvas.yview()[0] * (
+                            selected_scroll._parent_canvas.bbox("all")[3] if selected_scroll._parent_canvas.bbox("all") else 0
+                        )
+                        
+                        # Find which service we're hovering over using absolute window coordinates
+                        target_y = selected_scroll.winfo_rooty() + (event.y - edit_dialog.winfo_rooty())
+                        
                         for check_idx, check_widget in enumerate(selected_widgets):
-                            widget_y = check_widget.winfo_y()
+                            widget_root_y = check_widget.winfo_rooty()
                             widget_height = check_widget.winfo_height()
-                            if widget_y <= y_pos <= widget_y + widget_height:
+                            # Check if we're hovering over this widget
+                            if widget_root_y <= event.y_root <= widget_root_y + widget_height:
+                                # Highlight this widget as the drop target
                                 if check_idx != drag_data["source_idx"]:
                                     check_widget.configure(fg_color="#2ecc71")
                                 else:
                                     check_widget.configure(fg_color="#3498db")
-                            elif check_widget != drag_data["source_widget"]:
-                                check_widget.configure(fg_color="gray20")
+                            else:
+                                # Reset color for non-target widgets
+                                if check_widget != drag_data["source_widget"]:
+                                    check_widget.configure(fg_color="gray20")
                     
                     def on_release(event):
                         if not drag_data["dragging"] or drag_data["source_idx"] is None:
                             return
                         
                         drag_data["dragging"] = False
-                        # Find target index
-                        y_pos = event.y
-                        target_idx = drag_data["source_idx"]
+                        edit_dialog.unbind("<B1-Motion>")
+                        
+                        # Find target index by checking which widget we released over
+                        target_idx = drag_data["source_idx"]  # Default to current position
                         for check_idx, check_widget in enumerate(selected_widgets):
-                            widget_y = check_widget.winfo_y()
+                            widget_root_y = check_widget.winfo_rooty()
                             widget_height = check_widget.winfo_height()
-                            if widget_y <= y_pos <= widget_y + widget_height:
+                            if widget_root_y <= event.y_root <= widget_root_y + widget_height:
                                 target_idx = check_idx
                                 break
                         
-                        # Perform swap if different positions
+                        # Perform reorder if different positions
                         if target_idx != drag_data["source_idx"]:
                             src = drag_data["source_idx"]
-                            # Swap items in the list
-                            selected_services_list[src], selected_services_list[target_idx] = (
-                                selected_services_list[target_idx], 
-                                selected_services_list[src]
-                            )
+                            dst = target_idx
+                            # Move item from src to dst
+                            item = selected_services_list.pop(src)
+                            selected_services_list.insert(dst, item)
                         
                         # Reset drag state
                         drag_data["source_idx"] = None
                         drag_data["source_widget"] = None
-                        edit_dialog.unbind("<Motion>")
                         
                         # Refresh display
                         update_selected_list()
@@ -3082,11 +4388,33 @@ class OneStopShopMain:
                 workflow_name,
                 selected_services_list  # Preserves order
             ):
+                # Update service attributes
+                for service in selected_services_list:
+                    if service in attribute_vars:
+                        used_when = []
+                        if attribute_vars[service][">For"].get():
+                            used_when.append(">For")
+                        if attribute_vars[service][">Eng"].get():
+                            used_when.append(">Eng")
+                        if attribute_vars[service]["Live"].get():
+                            used_when.append("Live")
+                        
+                        if hasattr(self.account_workflow_manager, 'update_service_attribute'):
+                            self.account_workflow_manager.update_service_attribute(
+                                self.current_account,
+                                workflow_name,
+                                service,
+                                used_when
+                            )
+                
                 edit_dialog.destroy()
                 messagebox.showinfo("Success", f"Workflow '{workflow_name}' updated successfully")
-                # Refresh parent dialog
-                parent_dialog.destroy()
-                self.open_current_account_workflow_editor()
+                # Refresh parent dialog if it exists (from embedded tab)
+                if parent_dialog is not None:
+                    parent_dialog.destroy()
+                # Refresh the Manage Workflows tab
+                if hasattr(self, '_manage_workflows_refresh'):
+                    self._manage_workflows_refresh()
                 self.refresh_workflow_dropdown()
             else:
                 messagebox.showerror("Error", "Failed to update workflow")
@@ -3121,16 +4449,54 @@ class OneStopShopMain:
         if confirm:
             if self.account_workflow_manager.delete_workflow(self.current_account, workflow_name):
                 messagebox.showinfo("Success", f"Workflow '{workflow_name}' deleted")
-                # Refresh parent dialog
-                parent_dialog.destroy()
-                self.open_current_account_workflow_editor()
+                # Refresh the Manage Workflows tab if available
+                if hasattr(self, '_manage_workflows_refresh'):
+                    self._manage_workflows_refresh()
                 self.refresh_workflow_dropdown()
             else:
                 messagebox.showerror("Error", "Failed to delete workflow")
     
+    def _open_service_config_dialog(self):
+        """Open the Map QuoteMe Values dialog for service configuration"""
+        if not self.current_account:
+            messagebox.showwarning("No Account", "Please select an account first")
+            return
+        
+        if not self.selected_workflow:
+            messagebox.showwarning("No Workflow", "Please select a workflow first")
+            return
+        
+        if not self.quoteme_data:
+            messagebox.showwarning("No QuoteMe Data", "Please parse a QuoteMe email first to get word count data")
+            return
+        
+        # Get services for current workflow
+        services = self.account_workflow_manager.get_workflow_services(
+            self.current_account,
+            self.selected_workflow
+        )
+        
+        if not services:
+            messagebox.showwarning("No Services", "The selected workflow has no services")
+            return
+        
+        # Extract service names (handle both string and dict formats)
+        service_names = []
+        for s in services:
+            if isinstance(s, dict):
+                service_names.append(s.get("name", s))
+            else:
+                service_names.append(s)
+        
+        # Show the mapping dialog
+        self._show_quoteme_mapping_dialog(service_names, self.selected_workflow)
+    
     def on_workflow_selected(self, workflow_name: str):
         """Handle workflow selection - populate services table and check for QuoteMe mapping"""
+        print(f"\n[DEBUG] on_workflow_selected called: workflow='{workflow_name}'")
+        
         if not workflow_name or not self.current_account:
+            print(f"[DEBUG] Returning early - workflow_name: {workflow_name}, current_account: {self.current_account}")
             return
         
         self.selected_workflow = workflow_name
@@ -3138,21 +4504,47 @@ class OneStopShopMain:
             self.current_account,
             workflow_name
         )
+        print(f"[DEBUG] Services for workflow: {services}")
         
         # Check if we have QuoteMe data and need to map values to services
         if self.quoteme_data and services:
+            print(f"[DEBUG] QuoteMe data present ({len(self.quoteme_data)} LPs), checking mapping...")
             existing_mapping = self.quoteme_value_mapper.load_mapping(
                 self.current_account
             )
-            # Show dialog if new services exist that aren't in the mapping
-            unmapped_services = [s for s in services if s not in existing_mapping]
-            if unmapped_services:
-                # New services need mapping
-                self._show_quoteme_mapping_dialog(services, workflow_name)
-            elif not existing_mapping:
-                # No mapping exists at all for this account
-                self._show_quoteme_mapping_dialog(services, workflow_name)
+            print(f"[DEBUG] Loaded mapping keys: {list(existing_mapping.keys())}")
+            
+            # Check if user has opted to skip prompts for this workflow
+            skip_prompts = existing_mapping.get("_workflow_skip_prompts", {})
+            should_skip_for_this_wf = skip_prompts.get(workflow_name, False)
+            print(f"[DEBUG] Skip prompts for this workflow: {should_skip_for_this_wf}")
+            
+            # Extract service names (handle both string and dict formats)
+            service_names = []
+            for s in services:
+                if isinstance(s, dict):
+                    service_names.append(s.get("name", s))
+                else:
+                    service_names.append(s)
+            
+            print(f"[DEBUG] Service names: {service_names}")
+            
+            # Show dialog if:
+            # 1. User hasn't opted to skip this workflow AND
+            # 2. (New services exist that aren't mapped OR no mapping exists at all)
+            if not should_skip_for_this_wf:
+                # Filter out metadata keys when checking for service mappings
+                service_mapping = {k: v for k, v in existing_mapping.items() if not k.startswith("_")}
+                unmapped_services = [s for s in service_names if s not in service_mapping]
+                print(f"[DEBUG] Unmapped services: {unmapped_services}, existing mapping count: {len(service_mapping)}")
+                if unmapped_services or not service_mapping:
+                    # New services need mapping
+                    print(f"[DEBUG] Showing QuoteMe mapping dialog...")
+                    self._show_quoteme_mapping_dialog(service_names, workflow_name)
+        else:
+            print(f"[DEBUG] Skipping mapping check - quoteme_data: {bool(self.quoteme_data)}, services: {bool(services)}")
         
+        print(f"[DEBUG] Calling populate_services_table...")
         self.populate_services_table(services)
     
     def _show_quoteme_mapping_dialog(self, services: List[str], workflow_name: str):
@@ -3245,7 +4637,7 @@ class OneStopShopMain:
                 existing_fields = existing_mapping[service].get("fields", [])
             
             for field in self.quoteme_value_mapper.available_fields:
-                var = ctk.BooleanVar(value=(field in existing_fields))
+                var = BooleanVar(value=(field in existing_fields))
                 field_vars[field] = var
                 
                 cb = ctk.CTkCheckBox(
@@ -3264,13 +4656,27 @@ class OneStopShopMain:
             else:
                 service_configs[service] = {
                     "fields": [],
-                    "hourly": False,
+                    "service_type": "Word",
                     "divider": 1.0,
                     "increment": 1.0,
                     "minimum": 0
                 }
             
             service_configs[service]["field_vars"] = field_vars
+        
+        # Skip prompt checkbox
+        skip_prompt_var = BooleanVar(value=False)
+        skip_prompt_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        skip_prompt_frame.pack(fill="x", padx=15, pady=(5, 10))
+        
+        ctk.CTkCheckBox(
+            skip_prompt_frame,
+            text="Do not show this prompt again for this workflow",
+            variable=skip_prompt_var,
+            font=("Arial", 9),
+            onvalue=True,
+            offvalue=False
+        ).pack(anchor="w")
         
         # Buttons
         btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
@@ -3283,8 +4689,8 @@ class OneStopShopMain:
                 field_vars = config.pop("field_vars", {})
                 selected_fields = [field for field, var in field_vars.items() if var.get()]
                 
-                if selected_fields or config.get("hourly", False):
-                    # Save config even if no fields selected (might be pre-filled with hourly settings)
+                if selected_fields or config.get("service_type") != "Word":
+                    # Save config even if no fields selected (might be pre-filled with hourly/fee settings)
                     config["fields"] = selected_fields
                     mapping[service] = config
             
@@ -3295,17 +4701,30 @@ class OneStopShopMain:
                 )
                 return
             
+            # Add skip-prompt metadata if checked
+            if skip_prompt_var.get():
+                # Load existing mapping to preserve skip-prompts
+                existing = self.quoteme_value_mapper.load_mapping(self.current_account)
+                skip_prompts = existing.get("_workflow_skip_prompts", {})
+                skip_prompts[workflow_name] = True
+                mapping["_workflow_skip_prompts"] = skip_prompts
+            else:
+                # Preserve existing skip-prompts even if not checked this time
+                existing = self.quoteme_value_mapper.load_mapping(self.current_account)
+                if "_workflow_skip_prompts" in existing:
+                    mapping["_workflow_skip_prompts"] = existing["_workflow_skip_prompts"]
+            
             # Save the account-level mapping
             self.quoteme_value_mapper.save_mapping(
                 self.current_account,
                 mapping
             )
             
-            messagebox.showinfo(
-                "Mapping Saved",
-                f"QuoteMe value mapping saved for account {self.current_account}\n(applies to all workflows)"
-            )
             dialog.destroy()
+            
+            # Refresh the services table to display quantities with new mapping
+            if self.selected_workflow:
+                self.populate_services_table(self.lp_manager.get_all_language_pairs(), self.selected_workflow)
         
         def skip_mapping():
             dialog.destroy()
@@ -3332,102 +4751,160 @@ class OneStopShopMain:
     
     def _show_service_config_dialog(self, parent_dialog, service_name: str, service_configs: dict):
         """
-        Show configuration dialog for hourly service settings.
-        Allows setting divider, increment, and minimum values.
+        Show configuration dialog for service type settings (Word, Hourly, or Fee).
+        Allows setting divider, increment, and minimum values for Hourly services.
         """
         config_dialog = ctk.CTkToplevel(parent_dialog)
         config_dialog.title(f"Configure: {service_name}")
-        config_dialog.geometry("400x350")
+        config_dialog.geometry("550x650")
         config_dialog.transient(parent_dialog)
         config_dialog.grab_set()
         
         # Center dialog
         config_dialog.update_idletasks()
-        x = (config_dialog.winfo_screenwidth() // 2) - (400 // 2)
-        y = (config_dialog.winfo_screenheight() // 2) - (350 // 2)
-        config_dialog.geometry(f'400x350+{x}+{y}')
+        x = (config_dialog.winfo_screenwidth() // 2) - (550 // 2)
+        y = (config_dialog.winfo_screenheight() // 2) - (650 // 2)
+        config_dialog.geometry(f'550x650+{x}+{y}')
         
-        current_config = service_configs[service_name]
+        current_config = service_configs.get(service_name, {})
+        current_service_type = current_config.get("service_type", "Word")
         
         # Header
         ctk.CTkLabel(
             config_dialog,
             text=f"Service Configuration: {service_name}",
-            font=("Arial", 11, "bold")
+            font=("Arial", 12, "bold")
         ).pack(pady=(15, 20), padx=15)
         
-        # Hourly checkbox
-        hourly_var = ctk.BooleanVar(value=current_config.get("hourly", False))
+        # Service Type dropdown
+        type_frame = ctk.CTkFrame(config_dialog, fg_color="transparent")
+        type_frame.pack(fill="x", padx=30, pady=10)
         
-        hourly_check = ctk.CTkCheckBox(
-            config_dialog,
-            text="Hourly Service (apply hourly calculations)",
-            variable=hourly_var,
+        ctk.CTkLabel(
+            type_frame,
+            text="Service Type:",
+            font=("Arial", 11, "bold")
+        ).pack(anchor="w")
+        
+        service_type_var = ctk.StringVar(value=current_service_type)
+        service_type_dropdown = ctk.CTkComboBox(
+            type_frame,
+            values=["Word", "Hourly", "Fee"],
+            variable=service_type_var,
+            state="readonly",
             font=("Arial", 10),
-            onvalue=True,
-            offvalue=False
+            height=32
         )
-        hourly_check.pack(anchor="w", padx=30, pady=10)
+        service_type_dropdown.pack(fill="x", pady=(5, 0))
+        
+        # Info labels for each service type
+        info_frame = ctk.CTkFrame(config_dialog, fg_color="#2b2b2b", corner_radius=6)
+        info_frame.pack(fill="x", padx=30, pady=10)
+        
+        word_info = ctk.CTkLabel(
+            info_frame,
+            text="Word: Standard word count (sum of selected fields)",
+            font=("Arial", 9),
+            text_color="#b0c4de",
+            justify="left",
+            wraplength=450
+        )
+        word_info.pack(padx=10, pady=10, anchor="w")
+        
+        hourly_info = ctk.CTkLabel(
+            info_frame,
+            text="Hourly: Calculate as MAX(CEILING(total_words/divider, increment), minimum)",
+            font=("Arial", 9),
+            text_color="#b0c4de",
+            justify="left",
+            wraplength=450
+        )
+        hourly_info.pack(padx=10, pady=10, anchor="w")
+        
+        fee_info = ctk.CTkLabel(
+            info_frame,
+            text="Fee: Rate = SUMPRODUCT(Qty*Rate) of all Word/Hourly/Fee services above (enter qty manually)",
+            font=("Arial", 9),
+            text_color="#b0c4de",
+            justify="left",
+            wraplength=450
+        )
+        fee_info.pack(padx=10, pady=10, anchor="w")
+        
+        # Separator
+        separator = ctk.CTkFrame(config_dialog, height=1, fg_color="gray40")
+        separator.pack(fill="x", padx=30, pady=10)
+        
+        # Hourly settings frame (scrollable if needed)
+        settings_frame = ctk.CTkFrame(config_dialog, fg_color="transparent")
+        settings_frame.pack(fill="both", expand=True, padx=30, pady=10)
         
         # Divider field
-        divider_frame = ctk.CTkFrame(config_dialog, fg_color="transparent")
-        divider_frame.pack(fill="x", padx=30, pady=10)
+        divider_frame = ctk.CTkFrame(settings_frame, fg_color="transparent")
+        divider_frame.pack(fill="x", pady=10)
         
         ctk.CTkLabel(
             divider_frame,
-            text="Divider (e.g., 8 for 8-hour day):",
+            text="Divider (e.g., 1000 for hourly rate):",
             font=("Arial", 10)
         ).pack(anchor="w")
         
         divider_entry = ctk.CTkEntry(
             divider_frame,
-            placeholder_text="1.0"
+            placeholder_text="1.0",
+            font=("Arial", 10),
+            height=32
         )
         divider_entry.pack(fill="x", pady=(5, 0))
         divider_entry.insert(0, str(current_config.get("divider", 1.0)))
         
         # Increment field
-        increment_frame = ctk.CTkFrame(config_dialog, fg_color="transparent")
-        increment_frame.pack(fill="x", padx=30, pady=10)
+        increment_frame = ctk.CTkFrame(settings_frame, fg_color="transparent")
+        increment_frame.pack(fill="x", pady=10)
         
         ctk.CTkLabel(
             increment_frame,
-            text="Increment (e.g., 0.5 for rounding):",
+            text="Increment (rounding unit, e.g., 0.5):",
             font=("Arial", 10)
         ).pack(anchor="w")
         
         increment_entry = ctk.CTkEntry(
             increment_frame,
-            placeholder_text="1.0"
+            placeholder_text="1.0",
+            font=("Arial", 10),
+            height=32
         )
         increment_entry.pack(fill="x", pady=(5, 0))
         increment_entry.insert(0, str(current_config.get("increment", 1.0)))
         
         # Minimum field
-        minimum_frame = ctk.CTkFrame(config_dialog, fg_color="transparent")
-        minimum_frame.pack(fill="x", padx=30, pady=10)
+        minimum_frame = ctk.CTkFrame(settings_frame, fg_color="transparent")
+        minimum_frame.pack(fill="x", pady=10)
         
         ctk.CTkLabel(
             minimum_frame,
-            text="Minimum Value:",
+            text="Minimum Value (e.g., 0.5):",
             font=("Arial", 10)
         ).pack(anchor="w")
         
         minimum_entry = ctk.CTkEntry(
             minimum_frame,
-            placeholder_text="0"
+            placeholder_text="0.0",
+            font=("Arial", 10),
+            height=32
         )
         minimum_entry.pack(fill="x", pady=(5, 0))
-        minimum_entry.insert(0, str(current_config.get("minimum", 0)))
+        minimum_entry.insert(0, str(current_config.get("minimum", 0.0)))
         
         # Help text
         help_label = ctk.CTkLabel(
             config_dialog,
-            text="Formula: ((base_value / divider) rounded to increment) with minimum",
+            text="Example: 640 words ÷ 1000 = 0.64 → CEILING to 0.5 = 1.0 → MAX with min 0.5 = 1.0",
             font=("Arial", 8),
-            text_color="gray"
+            text_color="gray",
+            wraplength=450
         )
-        help_label.pack(padx=30, pady=(15, 0))
+        help_label.pack(padx=30, pady=(5, 10))
         
         # Buttons
         btn_frame = ctk.CTkFrame(config_dialog, fg_color="transparent")
@@ -3437,7 +4914,7 @@ class OneStopShopMain:
             try:
                 divider = float(divider_entry.get() or 1.0)
                 increment = float(increment_entry.get() or 1.0)
-                minimum = int(minimum_entry.get() or 0)
+                minimum = float(minimum_entry.get() or 0.0)
                 
                 if divider <= 0:
                     messagebox.showerror("Invalid", "Divider must be greater than 0")
@@ -3446,7 +4923,7 @@ class OneStopShopMain:
                     messagebox.showerror("Invalid", "Increment must be greater than 0")
                     return
                 
-                service_configs[service_name]["hourly"] = hourly_var.get()
+                service_configs[service_name]["service_type"] = service_type_var.get()
                 service_configs[service_name]["divider"] = divider
                 service_configs[service_name]["increment"] = increment
                 service_configs[service_name]["minimum"] = minimum
@@ -3460,7 +4937,9 @@ class OneStopShopMain:
             text="Save Config",
             command=save_config,
             width=120,
-            fg_color="#2b7dbc"
+            height=32,
+            fg_color="#2b7dbc",
+            font=("Arial", 10, "bold")
         ).pack(side="left", padx=5)
         
         ctk.CTkButton(
@@ -3468,7 +4947,9 @@ class OneStopShopMain:
             text="Close",
             command=config_dialog.destroy,
             width=120,
-            fg_color="gray"
+            height=32,
+            fg_color="gray",
+            font=("Arial", 10)
         ).pack(side="left", padx=5)
     
     
@@ -3479,24 +4960,33 @@ class OneStopShopMain:
         Args:
             quoteme_data: List of LanguagePairData objects from QuoteMe parser
         """
+        print(f"\n[DEBUG] set_language_pairs_from_quoteme called")
+        print(f"[DEBUG] quoteme_data type: {type(quoteme_data)}, length: {len(quoteme_data) if quoteme_data else 'None'}")
+        
         self.quoteme_data = quoteme_data
         self.language_pairs = []
         
         if quoteme_data:
-            for lp_data in quoteme_data:
+            for idx, lp_data in enumerate(quoteme_data):
                 if lp_data.lp_code:
                     # Extract only the language pair name ("Source > Target") without parsed data
                     lp_name = self._extract_lp_name(lp_data.lp_code)
                     self.language_pairs.append(lp_name)
+                    print(f"[DEBUG] LP {idx}: {lp_name}")
+        
+        print(f"[DEBUG] Total language pairs loaded: {len(self.language_pairs)}")
         
         # Refresh the services table to show the new language pairs
         if self.selected_workflow and self.current_account:
+            print(f"[DEBUG] Refreshing services table for workflow: {self.selected_workflow}")
             services = self.account_workflow_manager.get_workflow_services(
                 self.current_account,
                 self.selected_workflow
             )
             if services:
                 self.populate_services_table(services)
+        else:
+            print(f"[DEBUG] Cannot refresh services - selected_workflow: {self.selected_workflow}, current_account: {self.current_account}")
     
     @staticmethod
     def _extract_lp_name(lp_code: str) -> str:
@@ -3525,7 +5015,7 @@ class OneStopShopMain:
         return first_line[:80]
 
     def on_rate_card_selected(self, rate_card_name: str):
-        """Handle rate card selection - update rates in table"""
+        """Handle rate card selection - update rates in table and load currency settings"""
         if not rate_card_name:
             return
         
@@ -3539,11 +5029,202 @@ class OneStopShopMain:
             # Normalize rate card services and cache it
             rate_card = self.normalize_rate_card_services(rate_card, display_name)
             self.rate_card_info.configure(text=f"✓ Using rate card: {display_name}")
+            
             # Update rates in the table
             self.update_rates_in_table(rate_card)
+            
+            # Load and display native currency from rate card
+            native_currency = rate_card.get("native_currency", "USD")
+            self.native_currency_label.configure(text=native_currency)
+            print(f"[DEBUG] Native Currency set to: {native_currency}")
+            
+            # Load target currency and conversion rate for this rate card
+            self._load_currency_conversion(rate_card_name)
         else:
             display_name = rate_card_name.replace("[Master] ", "")
             self.rate_card_info.configure(text=f"⚠️ Failed to load rate card: {display_name}")
+            # Reset currency to default
+            self.native_currency_label.configure(text="USD")
+            self.target_currency_dropdown.set("USD")
+            self.conversion_rate_entry.delete(0, "end")
+            self.conversion_rate_entry.insert(0, "1.0")
+    
+    def _get_currency_conversion_path(self) -> Path:
+        """Get the path for storing currency conversion rates for an account"""
+        if not self.current_account:
+            return None
+        
+        conversion_dir = Path(__file__).parent.parent / "Core" / "accounts" / self.current_account
+        conversion_dir.mkdir(parents=True, exist_ok=True)
+        return conversion_dir / "currency_conversions.json"
+    
+    def _load_currency_conversion(self, rate_card_name: str):
+        """Load saved currency and conversion rate for a specific rate card"""
+        conv_path = self._get_currency_conversion_path()
+        if not conv_path or not conv_path.exists():
+            # Default to USD and 1.0
+            self.currency_dropdown.set("USD")
+            self.conversion_rate_entry.delete(0, "end")
+            self.conversion_rate_entry.insert(0, "1.0")
+            return
+        
+        try:
+            with open(conv_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # Get clean rate card name (remove [Master] prefix)
+            clean_name = rate_card_name.replace("[Master] ", "")
+            conversions = data.get("conversions", {})
+            
+            if clean_name in conversions:
+                conv_data = conversions[clean_name]
+                target_currency = conv_data.get("target_currency", "USD")
+                rate = conv_data.get("rate", 1.0)
+                
+                self.target_currency_dropdown.set(target_currency)
+                self.conversion_rate_entry.delete(0, "end")
+                self.conversion_rate_entry.insert(0, str(rate))
+                print(f"[DEBUG] Loaded conversion: {target_currency} @ {rate}")
+            else:
+                # New rate card - use defaults
+                self.target_currency_dropdown.set("USD")
+                self.conversion_rate_entry.delete(0, "end")
+                self.conversion_rate_entry.insert(0, "1.0")
+                print(f"[DEBUG] No saved conversion for {clean_name}, using defaults")
+        except Exception as e:
+            print(f"Error loading currency conversion: {e}")
+            self.target_currency_dropdown.set("USD")
+            self.conversion_rate_entry.delete(0, "end")
+            self.conversion_rate_entry.insert(0, "1.0")
+    
+    def _save_currency_and_recalculate(self):
+        """Save the current target currency and conversion rate for the selected rate card, then recalculate rates"""
+        if not self.selected_rate_card or not self.current_account:
+            messagebox.showwarning("Error", "Please select a rate card first")
+            return
+        
+        try:
+            target_currency = self.target_currency_dropdown.get()
+            rate_str = self.conversion_rate_entry.get()
+            rate = float(rate_str)
+            
+            if rate <= 0:
+                messagebox.showerror("Invalid", "Conversion rate must be greater than 0")
+                return
+            
+            conv_path = self._get_currency_conversion_path()
+            
+            # Load existing data or create new
+            if conv_path.exists():
+                with open(conv_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            else:
+                data = {"description": f"Currency conversions for account {self.current_account}", "conversions": {}}
+            
+            # Get clean rate card name
+            clean_name = self.selected_rate_card.replace("[Master] ", "")
+            
+            # Update or create entry
+            if "conversions" not in data:
+                data["conversions"] = {}
+            
+            data["conversions"][clean_name] = {
+                "target_currency": target_currency,
+                "rate": rate
+            }
+            
+            # Save to file
+            with open(conv_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            
+            print(f"[DEBUG] Saved conversion: {clean_name} - {target_currency} @ {rate}")
+            
+            # Recalculate rates in the table
+            self._recalculate_rates(rate)
+            
+            messagebox.showinfo("Success", f"Saved & Applied: {clean_name} - {target_currency} @ {rate}")
+        except ValueError:
+            messagebox.showerror("Invalid Input", "Please enter a valid conversion rate (number)")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save currency conversion: {e}")
+    
+    def _on_target_currency_changed(self, new_currency: str):
+        """Handle when target currency is changed - trigger recalculation"""
+        print(f"[DEBUG] Target Currency changed to: {new_currency}")
+        
+        try:
+            rate_str = self.conversion_rate_entry.get()
+            if rate_str:
+                rate = float(rate_str)
+                if rate > 0:
+                    self._recalculate_rates(rate)
+                    print(f"[DEBUG] Rates recalculated with {new_currency} @ {rate}")
+        except ValueError:
+            print(f"[DEBUG] Could not parse conversion rate: {rate_str}")
+    
+    def _recalculate_rates(self, conversion_rate: float):
+        """Recalculate all service rates using the conversion rate (Word & Hourly only, not Fee)"""
+        print(f"[DEBUG] _recalculate_rates called with rate: {conversion_rate}")
+        
+        if not hasattr(self, 'workflow_service_widgets') or not self.workflow_service_widgets:
+            print(f"[DEBUG] No workflow services to recalculate")
+            return
+        
+        # Get the original (unconverted) rates from the selected rate card
+        if not self.selected_rate_card:
+            print(f"[DEBUG] No rate card selected")
+            return
+        
+        original_rate_card = self.load_rate_card(self.selected_rate_card)
+        if not original_rate_card:
+            print(f"[DEBUG] Could not load original rate card")
+            return
+        
+        # For each service in the workflow, apply conversion to Word/Hourly services (NOT Fee)
+        for service_name, widgets in self.workflow_service_widgets.items():
+            print(f"[DEBUG] Processing service: {service_name}")
+            
+            # Get service type to check if it's Fee
+            service_config = self.quoteme_value_mapper.get_service_config(
+                self.current_account,
+                service_name
+            ) if hasattr(self, 'quoteme_value_mapper') else {}
+            
+            service_type = service_config.get("service_type", "Word")
+            print(f"[DEBUG]   Service type: {service_type}")
+            
+            # Skip Fee services - they auto-calculate from other services
+            if service_type == "Fee":
+                print(f"[DEBUG]   Skipping Fee service (auto-calculated)")
+                continue
+            
+            # Get the original rate from the rate card
+            if self.selected_workflow and self.language_pairs:
+                lp = self.language_pairs[0] if self.language_pairs else ""
+                if lp:
+                    # Extract target language from LP
+                    parts = lp.split(">")
+                    if len(parts) == 2:
+                        target_lang = parts[1].strip()
+                    else:
+                        target_lang = lp
+                    
+                    # Get original rate from rate card
+                    original_rate_str = self.get_rate_from_card(original_rate_card, service_name, target_lang)
+                    if original_rate_str:
+                        try:
+                            original_rate = float(original_rate_str)
+                            # Apply conversion
+                            converted_rate = original_rate * conversion_rate
+                            
+                            # Update the rate widget (display only, not saved to rate card)
+                            widgets["rate"].delete(0, "end")
+                            widgets["rate"].insert(0, str(round(converted_rate, 4)))
+                            print(f"[DEBUG]   Rate converted: {original_rate} * {conversion_rate} = {converted_rate}")
+                        except ValueError:
+                            print(f"[DEBUG]   Could not parse original rate: {original_rate_str}")
+        
+        print(f"[DEBUG] Rate recalculation complete")
     
     def browse_rate_card_file(self):
         """Open file dialog to browse and load a rate card JSON or XLSX file"""
@@ -3588,15 +5269,73 @@ class OneStopShopMain:
                 # Normalize services to canonical names
                 if rate_card:
                     rate_card = self.normalize_rate_card_services(rate_card, rate_card_name)
+                    
+                    # Ensure native currency is set
+                    if "native_currency" not in rate_card:
+                        # Prompt user for native currency
+                        dialog = ctk.CTkToplevel(self.root)
+                        dialog.title("Set Native Currency")
+                        dialog.geometry("350x150")
+                        dialog.transient(self.root)
+                        dialog.grab_set()
+                        
+                        # Center dialog
+                        dialog.update_idletasks()
+                        x = (dialog.winfo_screenwidth() // 2) - (350 // 2)
+                        y = (dialog.winfo_screenheight() // 2) - (150 // 2)
+                        dialog.geometry(f'350x150+{x}+{y}')
+                        
+                        ctk.CTkLabel(
+                            dialog,
+                            text="New rate card loaded!\nWhat is the native currency?",
+                            font=("Arial", 12)
+                        ).pack(pady=15)
+                        
+                        currency_var = ctk.StringVar(value="USD")
+                        currency_dropdown = ctk.CTkComboBox(
+                            dialog,
+                            values=["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "INR", "MXN", "BRL"],
+                            variable=currency_var,
+                            state="readonly",
+                            font=("Arial", 11),
+                            width=150
+                        )
+                        currency_dropdown.pack(pady=10)
+                        
+                        def save_currency():
+                            rate_card["native_currency"] = currency_var.get()
+                            print(f"[DEBUG] Set native_currency to: {rate_card['native_currency']}")
+                            dialog.destroy()
+                        
+                        ctk.CTkButton(
+                            dialog,
+                            text="OK",
+                            command=save_currency,
+                            width=150
+                        ).pack(pady=10)
+                        
+                        dialog.wait_window()
+                    else:
+                        print(f"[DEBUG] Rate card already has native_currency: {rate_card['native_currency']}")
                 
                 # Update selection and load
                 self.selected_rate_card = rate_card_name
                 self.rate_card_dropdown.set(rate_card_name)
                 
+                # Initialize target currency conversion as USD/1.0 if not already set
+                # (The on_rate_card_selected will call _load_currency_conversion)
+                self.target_currency_dropdown.set("USD")
+                self.conversion_rate_entry.delete(0, "end")
+                self.conversion_rate_entry.insert(0, "1.0")
+                
                 # Update rates in table
                 if rate_card:
                     self.rate_card_info.configure(text=f"✓ Using rate card: {rate_card_name}")
                     self.update_rates_in_table(rate_card)
+                    
+                    # Update native currency label
+                    native_currency = rate_card.get("native_currency", "USD")
+                    self.native_currency_label.configure(text=native_currency)
                     
                     # Offer to save as master rate card
                     save_master = messagebox.askyesno(
@@ -4029,6 +5768,18 @@ class OneStopShopMain:
         
         self.workflow_service_widgets = {}
         
+        # Load fee service defaults for this account
+        fee_defaults = {}
+        if self.current_account:
+            fee_defaults_path = Path(__file__).parent.parent / "Core" / "accounts" / self.current_account / "fee_service_defaults.json"
+            if fee_defaults_path.exists():
+                try:
+                    with open(fee_defaults_path, 'r', encoding='utf-8') as f:
+                        fee_defaults = json.load(f).get("defaults", {})
+                        print(f"[DEBUG] Loaded fee service defaults for {self.current_account}: {fee_defaults}")
+                except Exception as e:
+                    print(f"[DEBUG] Error loading fee defaults: {e}")
+        
         if not services or not self.language_pairs:
             msg_text = "Select a workflow to view services"
             if not self.language_pairs:
@@ -4094,7 +5845,7 @@ class OneStopShopMain:
             ctk.CTkLabel(
                 lp_header_container,
                 text=lp,
-                font=("Arial", 7, "bold"),
+                font=("Arial", 11, "bold"),
                 text_color="white",
                 wraplength=105,
                 justify="center"
@@ -4108,14 +5859,49 @@ class OneStopShopMain:
                 text_color="#b0c4de"
             ).grid(row=1, column=0, sticky="ew", padx=3, pady=(1, 2))
         
-        # Create service rows
-        for row_idx, service in enumerate(services, start=1):
+        # Create service rows with filtering based on source type and LP direction
+        print(f"\n[TABLE DISPLAY] Populating services table for workflow '{self.selected_workflow}'")
+        print(f"  Source Type: {self.source_type_var.get()}")
+        
+        row_idx = 1
+        for service in services:
+            # Extract service name and attributes (handle both string and dict formats)
+            if isinstance(service, dict):
+                service_name = service.get("name", str(service))
+                used_when = service.get("used_when", [])
+            else:
+                service_name = service
+                used_when = []
+            
+            # Check if this service has any rows that would be visible across all LPs
+            service_has_visible_rows = False
+            for lp in self.language_pairs:
+                lp_direction = self._detect_translation_direction(lp)
+                selected_source_type = self.source_type_var.get()
+                
+                if self._should_include_service(service_name, selected_source_type, lp_direction):
+                    service_has_visible_rows = True
+                    break
+            
+            # Skip services that wouldn't be visible in any LP
+            if not service_has_visible_rows and used_when:  # Only skip if it has attributes (defined filters)
+                print(f"  [SKIP] Service '{service_name}': Not applicable for any LP with current settings")
+                continue
+            
+            print(f"  [SHOW] Service '{service_name}' with attributes {used_when}")
+            
             row_bg = "gray22" if row_idx % 2 == 1 else "gray20"
+            
+            # Build display text with attributes on separate lines
+            display_text = service_name
+            if used_when:
+                attr_text = ", ".join(used_when)
+                display_text = f"{service_name}\n({attr_text})"
             
             # Service name cell
             service_label = ctk.CTkLabel(
                 table_frame,
-                text=service,
+                text=display_text,
                 font=("Arial", 9),
                 text_color="white",
                 fg_color=row_bg,
@@ -4131,6 +5917,33 @@ class OneStopShopMain:
                 col_qty = 1 + lp_idx * 2
                 col_rate = 2 + lp_idx * 2
                 
+                # Get service type to check if it's a Fee service
+                service_type = "Word"  # Default
+                if self.current_account:
+                    try:
+                        mapping = self.quoteme_value_mapper.load_mapping(self.current_account)
+                        if service_name in mapping:
+                            service_type = mapping[service_name].get("service_type", "Word")
+                    except:
+                        pass
+                
+                # Determine styling based on service type and current theme
+                is_fee_service = service_type == "Fee"
+                
+                # Theme-aware colors for Fee services
+                # Dark mode: bright green (#00ff00), Light mode: dark red (#CC0000)
+                current_mode = ctk.get_appearance_mode()
+                if is_fee_service:
+                    if current_mode == "Light":
+                        qty_border_color = "#CC0000"  # Dark red for light mode
+                        qty_fg_color = "#FFE6E6"      # Very light red background
+                    else:
+                        qty_border_color = "#00ff00"  # Bright green for dark mode
+                        qty_fg_color = "#1a3a1a"      # Dark background
+                else:
+                    qty_border_color = "#505050"
+                    qty_fg_color = "#3a3a3a"
+                
                 # Quantity entry
                 quantity_entry = ctk.CTkEntry(
                     table_frame,
@@ -4138,10 +5951,35 @@ class OneStopShopMain:
                     height=28,
                     font=("Arial", 8),
                     placeholder_text="0",
-                    fg_color="#3a3a3a",
-                    border_color="#505050"
+                    fg_color=qty_fg_color,
+                    border_color=qty_border_color,
+                    border_width=2 if is_fee_service else 1
                 )
                 quantity_entry.grid(row=row_idx, column=col_qty, sticky="ew", padx=1, pady=1)
+                
+                # Apply Fee service default quantity if available
+                if is_fee_service and service_name in fee_defaults:
+                    quantity_entry.insert(0, fee_defaults[service_name])
+                    print(f"[DEBUG] Applied default quantity to {service_name}: {fee_defaults[service_name]}")
+                
+                # Bind on-focus-out or key release to sync quantities across LPs for Fee services
+                if is_fee_service:
+                    def on_fee_qty_change(event, service=service_name, qty_widget=quantity_entry):
+                        """Sync quantity across all LPs for this Fee service"""
+                        new_qty = qty_widget.get()
+                        if new_qty:  # Only sync if there's a value
+                            print(f"[DEBUG] Fee service quantity changed: {service} = {new_qty}")
+                            # Update same service in all other LPs
+                            if service in self.workflow_service_widgets:
+                                for other_lp, other_widgets in self.workflow_service_widgets[service].items():
+                                    if other_lp != lp:  # Don't update the current LP
+                                        other_widgets["quantity"].delete(0, "end")
+                                        other_widgets["quantity"].insert(0, new_qty)
+                                        print(f"[DEBUG]   Updated {service} in {other_lp} to {new_qty}")
+                    
+                    # Bind to FocusOut and Enter key
+                    quantity_entry.bind("<FocusOut>", on_fee_qty_change)
+                    quantity_entry.bind("<Return>", on_fee_qty_change)
                 
                 # Rate entry
                 rate_entry = ctk.CTkEntry(
@@ -4160,7 +5998,11 @@ class OneStopShopMain:
                     "rate": rate_entry
                 }
             
-            self.workflow_service_widgets[service] = service_data
+            # Store using service name (not dict) as key for consistent access
+            self.workflow_service_widgets[service_name] = service_data
+            
+            # Increment row for next service
+            row_idx += 1
         
         # Try to populate rates from current rate card (use cached version if available)
         if self.selected_rate_card:
@@ -4212,42 +6054,105 @@ class OneStopShopMain:
     def update_quantities_from_quoteme(self, workflow_name: str):
         """
         Populate service quantities from QuoteMe data based on saved account-level mapping.
-        Applies calculations including hourly service conversions.
+        Each LP gets its own word count data from the corresponding quoteme_data entry.
+        Handles Word, Hourly, and Fee service types with cumulative calculations for Fee services.
         """
-        if not self.quoteme_data or not workflow_name:
+        print(f"\n[DEBUG] update_quantities_from_quoteme called for workflow: {workflow_name}")
+        print(f"[DEBUG] quoteme_data: {bool(self.quoteme_data)}, language_pairs: {self.language_pairs}")
+        
+        if not self.quoteme_data or not workflow_name or not self.language_pairs:
+            print(f"[DEBUG] Returning early - quoteme_data: {bool(self.quoteme_data)}, language_pairs: {bool(self.language_pairs)}")
             return
         
         # Load the account-level mapping (shared across all workflows)
         mapping = self.quoteme_value_mapper.load_mapping(
             self.current_account
         )
+        print(f"[DEBUG] Loaded account mapping from '{self.current_account}': {list(mapping.keys())}")
         
         if not mapping:
+            print(f"[DEBUG] No mapping found for account '{self.current_account}' - aborting")
             return  # No mapping defined for this account
         
-        # Get the first language pair's QuoteMe data (word counts are same for all LPs in QuoteMe)
-        if not self.quoteme_data or not self.quoteme_data[0]:
-            return
+        # Create a mapping of LP name to its corresponding quoteme_data
+        lp_data_map = {}
+        for idx, quoteme_lp_data in enumerate(self.quoteme_data):
+            if quoteme_lp_data and idx < len(self.language_pairs):
+                lp_name = self.language_pairs[idx]
+                lp_data_map[lp_name] = quoteme_lp_data
+                print(f"[DEBUG] LP {idx}: '{lp_name}' -> quoteme_data")
         
-        quoteme_lp_data = self.quoteme_data[0]  # Get word count data from first LP
-        word_count_data = quoteme_lp_data.get_effective_wc(use_cumulative=True)
+        # Build ordered list of services (from workflow_service_widgets which preserves order)
+        service_order = list(self.workflow_service_widgets.keys())
+        print(f"[DEBUG] Service order from widgets: {service_order}")
         
         # Apply quantities to services based on account-level mapping
-        for service, service_config in mapping.items():
-            if service not in self.workflow_service_widgets:
+        for service_idx, service in enumerate(service_order):
+            if service not in mapping:
+                print(f"[DEBUG] Service '{service}' NOT in mapping - skipping")
                 continue
             
-            # Calculate quantity using service config (handles hourly calculations)
-            quantity = self.quoteme_value_mapper.calculate_service_value(
-                word_count_data,
-                service_config
-            )
+            print(f"[DEBUG] Processing service: {service}")
+            service_config = mapping[service]
+            service_type = service_config.get("service_type", "Word")
+            print(f"[DEBUG]   Service type: {service_type}")
+            print(f"[DEBUG]   Service config: {service_config}")
             
-            # Apply quantity to all language pairs for this service
             service_data = self.workflow_service_widgets[service]
+            
             for lp, widgets in service_data.items():
-                widgets["quantity"].delete(0, "end")
-                widgets["quantity"].insert(0, str(quantity))
+                print(f"[DEBUG]   Processing LP: {lp}")
+                # Get the specific LP's word count data
+                if lp not in lp_data_map:
+                    print(f"[DEBUG]     LP '{lp}' not in lp_data_map - skipping")
+                    continue
+                
+                quoteme_lp_data = lp_data_map[lp]
+                word_count_data = quoteme_lp_data.get_effective_wc(use_cumulative=True)
+                print(f"[DEBUG]     Word count data: {word_count_data}")
+                
+                # Calculate quantity based on service type
+                if service_type == "Fee":
+                    # Fee service: SUMPRODUCT of (Quantity * Rate) for all services above it
+                    # This includes Word, Hourly, AND other Fee services (cumulative)
+                    # IMPORTANT: For Fee services, the SUMPRODUCT becomes the RATE, not the quantity
+                    fee_value = 0.0
+                    for prev_idx in range(service_idx):
+                        prev_service = service_order[prev_idx]
+                        if prev_service not in self.workflow_service_widgets:
+                            continue
+                        
+                        try:
+                            # Get Qty and Rate for previous service at this LP
+                            prev_qty_str = self.workflow_service_widgets[prev_service][lp]["quantity"].get()
+                            prev_rate_str = self.workflow_service_widgets[prev_service][lp]["rate"].get()
+                            
+                            if prev_qty_str and prev_rate_str:
+                                prev_qty = float(prev_qty_str)
+                                prev_rate = float(prev_rate_str)
+                                fee_value += prev_qty * prev_rate
+                        except (ValueError, KeyError):
+                            pass
+                    
+                    # For Fee services, SUMPRODUCT becomes the RATE (quantity defaults to 1)
+                    widgets["rate"].delete(0, "end")
+                    widgets["rate"].insert(0, str(fee_value))
+                    print(f"[DEBUG]     Fee service - Set rate to: {fee_value}")
+                    
+                    # Set quantity to 1 for Fee services
+                    widgets["quantity"].delete(0, "end")
+                    widgets["quantity"].insert(0, "1")
+                    print(f"[DEBUG]     Fee service - Set quantity to: 1")
+                else:
+                    # Word or Hourly: use normal calculation
+                    quantity = self.quoteme_value_mapper.calculate_service_value(
+                        word_count_data,
+                        service_config
+                    )
+                    print(f"[DEBUG]     Calculated quantity: {quantity}")
+                    
+                    widgets["quantity"].delete(0, "end")
+                    widgets["quantity"].insert(0, str(quantity))
 
     def refresh_pa_integration_tab(self):
         """Reload PA Template Mapper in the Configure Template sub-tab for current account"""
@@ -4282,6 +6187,233 @@ class OneStopShopMain:
                 font=("Arial", 12),
                 text_color="#e74c3c"
             ).pack(expand=True, pady=40)
+
+    def export_charges_to_csv(self):
+        """
+        Export charges to CSV file based on current workflow services configuration.
+        Format matches the CHARGES_TEMPLATE structure from ChargesIntegration.py
+        
+        Filters services based on:
+        - User-selected Source Type (Live Source / Dead Source)
+        - Service's Used_when attributes
+        - Auto-detected direction based on target language (>Eng / >For)
+        """
+        # Validate prerequisites
+        if not self.workflow_service_widgets:
+            messagebox.showwarning(
+                "No Services",
+                "Please select a workflow and configure services first."
+            )
+            return
+        
+        if not self.language_pairs:
+            messagebox.showwarning(
+                "No Language Pairs",
+                "Please parse QuoteMe data to populate language pairs first."
+            )
+            return
+        
+        try:
+            # Get selected source type
+            selected_source_type = self.source_type_var.get()
+            
+            print(f"\n[EXPORT DEBUG] Starting export with SourceType='{selected_source_type}'")
+            print(f"  Workflows selected: {self.selected_workflow}")
+            print(f"  Language pairs: {self.language_pairs}")
+            
+            # Prepare charges data - grouped by LP
+            charges_list = []
+            
+            # Iterate through language pairs (outer loop) then services (inner loop)
+            for lp_name in self.language_pairs:
+                # Detect direction of translation for this LP
+                lp_direction = self._detect_translation_direction(lp_name)
+                
+                print(f"\n  [EXPORT] LP='{lp_name}', Direction='{lp_direction}'")
+                
+                # Get all services for this LP
+                services_for_lp = []
+                
+                for service_name, lp_data in self.workflow_service_widgets.items():
+                    if lp_name not in lp_data:
+                        continue
+                    
+                    # Check if this service should be included based on source type and direction
+                    if not self._should_include_service(service_name, selected_source_type, lp_direction):
+                        continue
+                    
+                    entries = lp_data[lp_name]
+                    
+                    # Extract quantity and rate from entries
+                    qty_text = entries["quantity"].get().strip()
+                    rate_text = entries["rate"].get().strip()
+                    
+                    # Skip if both are empty or zero
+                    quantity = float(qty_text) if qty_text else 0
+                    rate = float(rate_text) if rate_text else 0
+                    
+                    if quantity == 0 and rate == 0:
+                        continue
+                    
+                    services_for_lp.append((service_name, quantity, rate))
+                    print(f"    [INCLUDE] Service='{service_name}', Qty={quantity}, Rate={rate}")
+                
+                # If this LP has services to export, add them to charges list
+                if services_for_lp:
+                    print(f"  [SUMMARY] LP '{lp_name}' has {len(services_for_lp)} service(s) to export")
+                else:
+                    print(f"  [SUMMARY] LP '{lp_name}' has NO services to export")
+                    
+                if services_for_lp:
+                    for row_idx, (service_name, quantity, rate) in enumerate(services_for_lp):
+                        # Mark first row of this LP with "x"
+                        mark_new = "x" if row_idx == 0 else ""
+                        
+                        # Parse source and target from LP name using " into " delimiter
+                        if " into " in lp_name:
+                            parts = lp_name.split(" into ", 1)
+                            source_lang = parts[0].strip()
+                            target_lang = parts[1].strip()
+                        else:
+                            # Fallback if format is different
+                            lp_parts = lp_name.split('>')
+                            source_lang = lp_parts[0].strip() if len(lp_parts) > 0 else ""
+                            target_lang = lp_parts[1].strip() if len(lp_parts) > 1 else ""
+                        
+                        # Create charge row
+                        charge_row = {
+                            "Mark New Line Item": mark_new,
+                            "Line Item Description": lp_name,
+                            "Source": source_lang,
+                            "Target": target_lang,
+                            "Hide Unit Costs": 0,
+                            "Hide Details": 0,
+                            "Service Group 1": "",  # Left blank - no data source
+                            "Service Group 2": "",  # Left blank - no data source
+                            "Service Group 3": "",
+                            "Service": service_name,
+                            "UofM": "Word",  # Default - could be made dynamic
+                            "Quantity": quantity,
+                            "Rate": rate,
+                            "CommentsForInvoice": "",
+                            "Technology Product": "GL PD"
+                        }
+                        charges_list.append(charge_row)
+            
+            if not charges_list:
+                messagebox.showinfo(
+                    "No Charges",
+                    "No services with quantities or rates to export."
+                )
+                return
+            
+            # Create DataFrame
+            charges_df = pd.DataFrame(charges_list)
+            
+            # Prepare filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            default_filename = f"Charges_Export_{timestamp}.csv"
+            
+            # Ask user where to save
+            filepath = filedialog.asksaveasfilename(
+                title="Save Charges Export",
+                defaultextension=".csv",
+                filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+                initialfile=default_filename
+            )
+            
+            if not filepath:
+                return
+            
+            # Export to CSV
+            charges_df.to_csv(filepath, index=False)
+            
+            self.update_status(f"✅ Charges exported to {Path(filepath).name}")
+            messagebox.showinfo(
+                "Export Successful",
+                f"Charges exported to:\n{filepath}\n\n"
+                f"Total line items: {len(charges_list)}\n"
+                f"Source Type: {selected_source_type}"
+            )
+            
+        except ValueError as e:
+            messagebox.showerror(
+                "Invalid Value",
+                f"Error processing quantity or rate values:\n{str(e)}"
+            )
+        except Exception as e:
+            messagebox.showerror(
+                "Export Failed",
+                f"Failed to export charges:\n{str(e)}"
+            )
+    
+    def _detect_translation_direction(self, lp_name: str) -> str:
+        """
+        Auto-detect translation direction based on target language.
+        Returns ">Eng" if target is English, ">For" otherwise
+        """
+        if " into " not in lp_name:
+            print(f"    [DIRECTION] LP '{lp_name}': No ' into ' delimiter -> >For (default)")
+            return ">For"  # Default
+        
+        parts = lp_name.split(" into ", 1)
+        if len(parts) < 2:
+            print(f"    [DIRECTION] LP '{lp_name}': Invalid format -> >For (default)")
+            return ">For"
+        
+        source_lang = parts[0].strip()
+        target_lang = parts[1].strip()
+        
+        # Check if target is English (various forms)
+        if "english" in target_lang.lower():
+            print(f"    [DIRECTION] {source_lang} into {target_lang} -> >Eng (English target)")
+            return ">Eng"
+        else:
+            print(f"    [DIRECTION] {source_lang} into {target_lang} -> >For (non-English target)")
+            return ">For"
+    
+    def _should_include_service(self, service_name: str, selected_source_type: str, lp_direction: str) -> bool:
+        """
+        Determine if a service should be included in the export based on:
+        - Selected source type (Live Source / Dead Source)
+        - Service's Used_when attributes
+        - LP direction (>Eng / >For)
+        """
+        # Get service attributes from workflow
+        if not self.current_account or not self.selected_workflow:
+            print(f"  [FILTER DEBUG] {service_name}: No account/workflow -> INCLUDE (legacy)")
+            return True  # Include if no account/workflow selected (legacy behavior)
+        
+        try:
+            used_when = self.account_workflow_manager.get_service_attributes(
+                self.current_account,
+                self.selected_workflow,
+                service_name
+            )
+        except Exception as e:
+            used_when = []  # Default: no filters
+            print(f"  [FILTER DEBUG] {service_name}: Error getting attributes ({e}) -> INCLUDE")
+        
+        # If service has no Used_when attributes, include it
+        if not used_when:
+            print(f"  [FILTER DEBUG] {service_name}: No attributes defined -> INCLUDE (legacy)")
+            return True
+        
+        # Debug: Show what we're filtering on
+        print(f"  [FILTER DEBUG] Service='{service_name}', SourceType='{selected_source_type}', LPDirection='{lp_direction}', Attributes={used_when}")
+        
+        # Filter based on selected source type
+        if selected_source_type == "Live Source":
+            # Include if service is marked for "Live" source
+            include = "Live" in used_when
+            print(f"    -> Live Source: 'Live' in attributes? {include}")
+            return include
+        else:  # Dead Source
+            # Include if service matches the LP direction
+            include = lp_direction in used_when
+            print(f"    -> Dead Source: '{lp_direction}' in attributes? {include}")
+            return include
+
 
     def _run_inline_preview(self):
         """Run PA data preview and show results in the Data Preview sub-tab"""
@@ -4579,7 +6711,7 @@ class OneStopShopMain:
         # Create checkboxes for each column in preserved order
         column_vars = {}
         for col in ordered_columns:
-            var = ctk.BooleanVar(value=col in self.visible_columns)
+            var = BooleanVar(value=col in self.visible_columns)
             column_vars[col] = var
             
             cb = ctk.CTkCheckBox(

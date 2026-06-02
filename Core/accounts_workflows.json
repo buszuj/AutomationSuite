@@ -5,18 +5,76 @@
         "HT Trans + Proof": [
           "Translation and Proofreading",
           "Proofreading"
-        ]
+        ],
+        "FT  + BT": {
+          "services": [
+            {
+              "name": "Trans./Edit/Proof.",
+              "used_when": []
+            },
+            {
+              "name": "Translation",
+              "used_when": []
+            },
+            {
+              "name": "Back Translation",
+              "used_when": []
+            },
+            {
+              "name": "Reconciliation",
+              "used_when": []
+            },
+            {
+              "name": "Review",
+              "used_when": []
+            },
+            {
+              "name": "Formatting",
+              "used_when": []
+            }
+          ],
+          "quoteme_mapping": {}
+        }
       }
     },
     "PXL": {
       "workflows": {
         "Full Document: Translation + Proofreading": {
           "services": [
-            "Trans./Edit/Proof.",
-            "TM - Exact Matches",
-            "TM - Fuzzy Matches",
-            "Formatting",
-            "Project Management"
+            {
+              "name": "Trans./Edit/Proof.",
+              "used_when": [
+                ">Eng"
+              ]
+            },
+            {
+              "name": "Translation and Proofreading",
+              "used_when": [
+                ">For"
+              ]
+            },
+            {
+              "name": "Machine Translation",
+              "used_when": [
+                "Live"
+              ]
+            },
+            {
+              "name": "TM - Fuzzy Matches",
+              "used_when": []
+            },
+            {
+              "name": "TM - Exact Matches",
+              "used_when": []
+            },
+            {
+              "name": "Formatting",
+              "used_when": []
+            },
+            {
+              "name": "Project Management",
+              "used_when": []
+            }
           ],
           "quoteme_mapping": {}
         },
@@ -42,6 +100,14 @@
             "Project Management"
           ],
           "quoteme_mapping": {}
+        },
+        "Full Document: Transcription": {
+          "services": [
+            "Transcription",
+            "Formatting",
+            "Project Management"
+          ],
+          "quoteme_mapping": {}
         }
       }
     },
@@ -57,9 +123,6 @@
     "Janssen Canada": {
       "workflows": {}
     },
-    "testedsgsdf": {
-      "workflows": {}
-    },
     "AMGEN": {
       "workflows": {
         "TEP": [
@@ -69,6 +132,35 @@
           "Formatting",
           "Desktop Publishing"
         ]
+      }
+    },
+    "ICON": {
+      "workflows": {
+        "Translation + Proofreading": {
+          "services": [
+            {
+              "name": "MT full EditProof",
+              "used_when": []
+            },
+            {
+              "name": "TM - Fuzzy Matches",
+              "used_when": []
+            },
+            {
+              "name": "TM - Exact Matches",
+              "used_when": []
+            },
+            {
+              "name": "Formatting",
+              "used_when": []
+            },
+            {
+              "name": "Project Management",
+              "used_when": []
+            }
+          ],
+          "quoteme_mapping": {}
+        }
       }
     }
   }

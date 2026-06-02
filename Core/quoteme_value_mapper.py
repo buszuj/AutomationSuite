@@ -57,24 +57,56 @@ class QuoteMeValueMapper:
         Load QuoteMe value mapping for a specific account.
         Mappings are shared across all workflows.
         
+        SAFETY: Verifies that loaded mapping belongs to requested account
+        to prevent cross-account data mixing.
+        
         Returns:
             Dict mapping service_name -> {
                 "fields": [list of field names],
-                "hourly": bool,
+                "service_type": "Word|Hourly|Fee",
                 "divider": float (if hourly),
                 "increment": float (if hourly),
-                "minimum": int (if hourly)
+                "minimum": float (if hourly)
             }
         """
         mapping_file = self.get_account_mapping_path(account_name)
         try:
+            print(f"\n[DEBUG] Loading mapping for account '{account_name}'")
+            print(f"[DEBUG] Mapping file path: {mapping_file}")
+            
             if mapping_file.exists():
+                print(f"[DEBUG] File exists! Loading...")
                 with open(mapping_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    return data.get("mappings", {})
-            return {}
+                    print(f"[DEBUG] File contents keys: {list(data.keys())}")
+                    
+                    # SAFETY CHECK: Verify loaded mapping belongs to this account
+                    # NOTE: Old files may not have 'account' field - allow them through
+                    stored_account = data.get("account")
+                    print(f"[DEBUG] Stored account in file: {stored_account}")
+                    
+                    if stored_account is not None and stored_account != account_name:
+                        print(f"[DEBUG] WARNING: Account mismatch! Expected '{account_name}', got '{stored_account}'")
+                        return {}
+                    
+                    # Support both old format (direct mappings) and new format (nested under 'mappings')
+                    if "mappings" in data:
+                        result = data.get("mappings", {})
+                        print(f"[DEBUG] Using new format - found {len(result)} service mappings: {list(result.keys())}")
+                        return result
+                    else:
+                        # Backward compatibility: file might be old format without 'mappings' wrapper
+                        # Filter out metadata and structural keys
+                        mappings = {k: v for k, v in data.items() if not k.startswith("_") and k not in ["description", "account"]}
+                        print(f"[DEBUG] Using old format - found {len(mappings)} service mappings: {list(mappings.keys())}")
+                        return mappings
+            else:
+                print(f"[DEBUG] File does not exist!")
+                return {}
         except Exception as e:
-            print(f"Error loading QuoteMe value mapping: {e}")
+            print(f"[DEBUG] ERROR loading QuoteMe value mapping for account '{account_name}': {e}")
+            import traceback
+            traceback.print_exc()
             return {}
     
     def save_mapping(self, account_name: str, mapping: Dict[str, Dict[str, Any]]):
@@ -107,23 +139,24 @@ class QuoteMeValueMapper:
         except Exception as e:
             print(f"Error saving QuoteMe value mapping: {e}")
     
-    def calculate_service_value(self, word_count_data, service_config: Dict[str, Any]) -> int:
+    def calculate_service_value(self, word_count_data, service_config: Dict[str, Any]):
         """
-        Calculate a service value by summing specified QuoteMe fields.
-        Applies hourly calculations if configured.
+        Calculate a service value based on service type.
         
         Args:
             word_count_data: WordCountData object from QuoteMe parser
             service_config: Dict with keys:
+                - "service_type": "Word" | "Hourly" | "Fee" (default: "Word")
                 - "fields": list of QuoteMe field names
-                - "hourly": bool (optional)
                 - "divider": float (if hourly)
                 - "increment": float (if hourly)
-                - "minimum": int (if hourly)
+                - "minimum": float (if hourly)
             
         Returns:
-            Calculated service value
+            Calculated service value (int for standard word count, calculated for Hourly, 0 placeholder for Fee)
         """
+        service_type = service_config.get("service_type", "Word")
+        
         # Extract base value from fields
         field_names = service_config.get("fields", [])
         total = 0
@@ -132,21 +165,31 @@ class QuoteMeValueMapper:
             if internal_field and hasattr(word_count_data, internal_field):
                 total += getattr(word_count_data, internal_field, 0)
         
-        # Apply hourly calculations if configured
-        if service_config.get("hourly", False):
+        # Handle different service types
+        if service_type == "Hourly":
+            # Apply hourly calculations: MAX(CEILING(total/divider, increment), minimum)
             divider = service_config.get("divider", 1.0)
             increment = service_config.get("increment", 1.0)
             minimum = service_config.get("minimum", 0)
             
-            # Calculate: (base / divider) rounded to increment, with minimum
             if divider > 0:
+                import math
                 value = total / divider
+                # CEILING to nearest increment
                 if increment > 0:
-                    value = round(value / increment) * increment
+                    value = math.ceil(value / increment) * increment
                 value = max(value, minimum)
                 return int(value) if value == int(value) else value
-        
-        return total
+            return total
+            
+        elif service_type == "Fee":
+            # Fee services are calculated separately based on cumulative sum of other services
+            # Return 0 as placeholder - actual calculation happens in populate_service_quantities
+            return 0
+            
+        else:  # "Word" or default
+            # Standard word count (sum of selected fields)
+            return total
     
     def get_service_config(self, account_name: str, service_name: str) -> Optional[Dict[str, Any]]:
         """Get configuration for a specific service in an account"""

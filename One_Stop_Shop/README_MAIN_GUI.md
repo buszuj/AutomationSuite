@@ -1,7 +1,7 @@
 # One Stop Shop - Main GUI
 
 ## Overview
-Central hub for job data import and GLE API integration. This tool allows you to import Excel files or pull data directly from the TransPerfect GLE Portal API, store it in memory, and view it in a spreadsheet-like interface.
+Central hub for job data import and GLP API integration. This tool allows you to import Excel files or pull data directly from the TransPerfect GLP Portal API, store it in memory, and view it in a spreadsheet-like interface.
 
 ## Features
 
@@ -11,8 +11,8 @@ Central hub for job data import and GLE API integration. This tool allows you to
 - **Supported Formats**: .xlsx, .xls, .xlsm
 - **In-Memory Storage**: Data is kept in memory until cleared or replaced
 
-### 🌐 Pull GLE Data
-- **API Integration**: Direct connection to TransPerfect GLE Portal API
+### 🌐 Pull GLP Data
+- **API Integration**: Direct connection to TransPerfect GLP Portal API
 - **Job ID Search**: Enter any GL Portal Number to fetch project data
 - **OAuth Authentication**: Automatic token management
 - **Excel Export**: API returns data in Excel format, automatically loaded into the application
@@ -42,7 +42,7 @@ python launch_main.py
    - Select your Excel file
    - Click "Open"
 
-### Pull from GLE API
+### Pull from GLP API
 1. Enter the **GL Portal Number** (Job ID) in the text field
 2. Click "Pull Data"
 3. Wait for the API call to complete
@@ -59,7 +59,7 @@ python launch_main.py
 
 ## API Configuration
 
-The application uses the following GLE API credentials (production):
+The application uses the following GLP API credentials (production):
 
 ```python
 TOKEN_URL = "https://sso.transperfect.com/connect/token"
@@ -126,9 +126,9 @@ One_Stop_Shop/
 The status bar at the bottom shows:
 - "Ready" - Application ready for input
 - "Loading file..." - File being read
-- "Fetching data from GLE API..." - API call in progress
+- "Fetching data from GLP API..." - API call in progress
 - "✅ File loaded: [filename]" - Success
-- "✅ GLE data pulled for Job ID: [id]" - Success
+- "✅ GLP data pulled for Job ID: [id]" - Success
 - "❌ Failed..." - Error occurred
 
 ## Integration

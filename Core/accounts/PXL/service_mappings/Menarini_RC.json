@@ -3,17 +3,17 @@
   "account": "PXL",
   "rate_card": "Menarini_RC",
   "mappings": {
-    "Translation and Proofreading": "Translation and Proofreading",
+    "TM - Fuzzy Matches": "TM - Fuzzy Matches",
     "TM - Exact Matches": "TM - Exact Matches",
-    "Review": "Review",
     "Revisions": "Revisions",
     "Formatting": "Formatting",
-    "TM - Fuzzy Matches": "TM - Fuzzy Matches",
-    "Desktop Publishing": "Desktop Publishing",
-    "File Preparation": "File Preparation",
+    "Trans./Edit/Proof.": "Trans./Edit/Proof.",
+    "Review": "Review",
     "Project Management": "Project Management",
     "Reconciliation": "Reconciliation",
+    "File Preparation": "File Preparation",
+    "Translation and Proofreading": "Translation and Proofreading",
     "Proofreading": "Proofreading",
-    "Trans./Edit/Proof. (>FOR)": "Trans./Edit/Proof."
+    "Desktop Publishing": "Desktop Publishing"
   }
 }

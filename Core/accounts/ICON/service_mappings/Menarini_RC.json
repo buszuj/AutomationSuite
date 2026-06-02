@@ -1,0 +1,19 @@
+{
+  "description": "Service mapping for Menarini_RC under account ICON",
+  "account": "ICON",
+  "rate_card": "Menarini_RC",
+  "mappings": {
+    "Proofreading": "Proofreading",
+    "Desktop Publishing": "Desktop Publishing",
+    "Translation and Proofreading": "Translation and Proofreading",
+    "Project Management": "Project Management",
+    "File Preparation": "File Preparation",
+    "TM - Exact Matches": "TM - Exact Matches",
+    "TM - Fuzzy Matches": "TM - Fuzzy Matches",
+    "Review": "Review",
+    "Reconciliation": "Reconciliation",
+    "Revisions": "Revisions",
+    "Formatting": "Formatting",
+    "Trans./Edit/Proof.": "Trans./Edit/Proof."
+  }
+}

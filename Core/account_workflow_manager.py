@@ -225,6 +225,77 @@ class AccountWorkflowManager:
         self.save_accounts()
         return True
     
+    # Service Attributes (Used_when)
+    def get_workflow_services_with_attributes(self, account_name: str, workflow_name: str) -> Optional[List[Dict]]:
+        """Get services with their attributes for a workflow"""
+        services = self.get_workflow_services(account_name, workflow_name)
+        if services is None:
+            return None
+        
+        # Convert simple list to list of dicts if needed
+        result = []
+        for service in services:
+            if isinstance(service, dict):
+                # Already has attributes
+                result.append(service)
+            else:
+                # Convert string to dict (backward compatibility)
+                result.append({
+                    "name": service,
+                    "used_when": []  # Default: no filters
+                })
+        return result
+    
+    def update_service_attribute(self, account_name: str, workflow_name: str, service_name: str, used_when: List[str]) -> bool:
+        """Update Used_when attribute for a service in a workflow"""
+        if account_name not in self.accounts:
+            return False
+        
+        workflow_data = self.accounts[account_name]["workflows"].get(workflow_name)
+        if not workflow_data:
+            return False
+        
+        # Ensure services is a list of dicts
+        services = workflow_data.get("services", []) if isinstance(workflow_data, dict) else workflow_data
+        
+        # Convert to list of dicts if needed
+        services_list = []
+        for service in services:
+            if isinstance(service, dict):
+                services_list.append(service)
+            else:
+                services_list.append({"name": service, "used_when": []})
+        
+        # Update the specific service
+        for service in services_list:
+            if service["name"] == service_name:
+                service["used_when"] = used_when
+                break
+        
+        # Save back
+        if isinstance(workflow_data, dict):
+            workflow_data["services"] = services_list
+        else:
+            self.accounts[account_name]["workflows"][workflow_name] = {
+                "services": services_list,
+                "quoteme_mapping": {}
+            }
+        
+        self.save_accounts()
+        return True
+    
+    def get_service_attributes(self, account_name: str, workflow_name: str, service_name: str) -> List[str]:
+        """Get Used_when attributes for a specific service"""
+        services = self.get_workflow_services_with_attributes(account_name, workflow_name)
+        if not services:
+            return []
+        
+        for service in services:
+            if service["name"] == service_name:
+                return service.get("used_when", [])
+        
+        return []
+    
     # Utility
     def get_account_summary(self, account_name: str) -> Optional[dict]:
         """Get summary of an account"""

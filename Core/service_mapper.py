@@ -218,3 +218,128 @@ class ServiceMapper:
     def get_unmapped_canonical_services(self) -> List[str]:
         """Get list of all canonical services that are not mapped yet"""
         return self.canonical_services.copy()
+    
+    # ──────────────────────────────────────────────────────────────────────────
+    # Entity Service Alias Management (entity-specific names for canonical services)
+    # ──────────────────────────────────────────────────────────────────────────
+    
+    def get_entity_service_aliases_path(self, entity_name: str) -> Path:
+        """
+        Get the path for entity service aliases file.
+        
+        Structure: Core/entity_service_aliases/{entity_name}.json
+        
+        Args:
+            entity_name: Entity name (e.g., "PXL", "MENARINI", etc.)
+            
+        Returns:
+            Path to aliases file
+        """
+        aliases_dir = self.core_path / "entity_service_aliases"
+        aliases_dir.mkdir(parents=True, exist_ok=True)
+        return aliases_dir / f"{entity_name}.json"
+    
+    def load_entity_service_aliases(self, entity_name: str) -> Dict[str, str]:
+        """
+        Load service aliases for an entity.
+        
+        Returns:
+            Dict mapping canonical_service -> entity_specific_name
+        """
+        aliases_file = self.get_entity_service_aliases_path(entity_name)
+        try:
+            if aliases_file.exists():
+                with open(aliases_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return data.get("aliases", {})
+            return {}
+        except Exception as e:
+            print(f"Error loading entity service aliases for {entity_name}: {e}")
+            return {}
+    
+    def save_entity_service_aliases(self, entity_name: str, aliases: Dict[str, str]):
+        """
+        Save service aliases for an entity.
+        
+        Args:
+            entity_name: Entity name
+            aliases: Dict mapping canonical_service -> entity_specific_name
+        """
+        aliases_file = self.get_entity_service_aliases_path(entity_name)
+        try:
+            data = {
+                "description": f"Service aliases for entity {entity_name}",
+                "entity": entity_name,
+                "aliases": aliases
+            }
+            aliases_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(aliases_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            print(f"[DEBUG] Saved aliases for {entity_name}: {len(aliases)} mappings")
+        except Exception as e:
+            print(f"Error saving entity service aliases for {entity_name}: {e}")
+    
+    def add_canonical_service(self, service_name: str) -> bool:
+        """
+        Add a new canonical service to the master list.
+        
+        Args:
+            service_name: New canonical service name
+            
+        Returns:
+            True if added successfully, False if already exists
+        """
+        if self.is_canonical(service_name):
+            print(f"Service '{service_name}' already exists in canonical services")
+            return False
+        
+        try:
+            # Load the file
+            with open(self.canonical_services_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # Add to list (maintain alphabetical order)
+            services = data.get("canonical_services", [])
+            services.append(service_name)
+            services.sort()
+            data["canonical_services"] = services
+            
+            # Save back
+            with open(self.canonical_services_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            
+            # Update in-memory cache
+            self.canonical_services = services
+            self._service_cache[service_name.lower()] = service_name
+            
+            print(f"[DEBUG] Added canonical service: {service_name}")
+            return True
+        except Exception as e:
+            print(f"Error adding canonical service: {e}")
+            return False
+    
+    def set_entity_service_alias(self, entity_name: str, canonical_service: str, entity_name_alias: str) -> bool:
+        """
+        Set an alias (entity-specific name) for a canonical service.
+        
+        Args:
+            entity_name: Entity name (e.g., "PXL")
+            canonical_service: Canonical service name
+            entity_name_alias: Entity-specific name for this service
+            
+        Returns:
+            True if successful
+        """
+        if not self.is_canonical(canonical_service):
+            print(f"'{canonical_service}' is not a canonical service")
+            return False
+        
+        # Load current aliases
+        aliases = self.load_entity_service_aliases(entity_name)
+        
+        # Update
+        aliases[canonical_service] = entity_name_alias
+        
+        # Save
+        self.save_entity_service_aliases(entity_name, aliases)
+        return True

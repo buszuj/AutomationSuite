@@ -378,14 +378,14 @@ class WorkflowManagerGUI:
         delete_btn.pack(side="left", padx=2)
     
     def create_workflow_dialog(self):
-        """Show dialog to create workflow"""
+        """Show dialog to create workflow with service attributes"""
         if not self.selected_account:
             return
         
         # Create dialog window
         dialog = ctk.CTkToplevel(self.window)
         dialog.title("Create Workflow")
-        dialog.geometry("600x700")
+        dialog.geometry("700x800")
         dialog.transient(self.window)
         dialog.grab_set()
         
@@ -397,21 +397,70 @@ class WorkflowManagerGUI:
         # Services selection
         info_label = ctk.CTkLabel(
             dialog,
-            text="Select canonical services for this workflow:",
+            text="Select canonical services and configure their attributes:",
             font=("Arial", 12),
             text_color="#aaa"
         )
         info_label.pack(pady=(20, 10), padx=20)
         
-        services_frame = ctk.CTkScrollableFrame(dialog, width=500, height=400)
+        services_frame = ctk.CTkScrollableFrame(dialog, width=650, height=450)
         services_frame.pack(pady=10, padx=20, fill="both", expand=True)
         
         checkboxes = {}
+        attribute_vars = {}  # Track Used_when attributes for each service
+        
         for service in self.service_mapper.canonical_services:
             var = ctk.BooleanVar()
-            cb = ctk.CTkCheckBox(services_frame, text=service, variable=var, font=("Arial", 11))
-            cb.pack(anchor="w", pady=3, padx=10)
+            
+            # Service checkbox
+            service_frame = ctk.CTkFrame(services_frame, fg_color="gray20", corner_radius=5)
+            service_frame.pack(anchor="w", pady=5, padx=10, fill="x")
+            
+            # Top row: Service name checkbox
+            top_row = ctk.CTkFrame(service_frame, fg_color="transparent")
+            top_row.pack(anchor="w", fill="x", padx=10, pady=(8, 5))
+            
+            cb = ctk.CTkCheckBox(top_row, text=service, variable=var, font=("Arial", 11, "bold"))
+            cb.pack(side="left")
             checkboxes[service] = var
+            
+            # Bottom row: Used_when attributes
+            attr_row = ctk.CTkFrame(service_frame, fg_color="transparent")
+            attr_row.pack(anchor="w", fill="x", padx=30, pady=(0, 8))
+            
+            ctk.CTkLabel(attr_row, text="Used when:", font=("Arial", 10), text_color="#aaa").pack(side="left", padx=(0, 10))
+            
+            attribute_vars[service] = {}
+            
+            # >For checkbox
+            for_var = ctk.BooleanVar()
+            ctk.CTkCheckBox(
+                attr_row,
+                text=">For (Foreign target)",
+                variable=for_var,
+                font=("Arial", 9)
+            ).pack(side="left", padx=5)
+            attribute_vars[service][">For"] = for_var
+            
+            # >Eng checkbox
+            eng_var = ctk.BooleanVar()
+            ctk.CTkCheckBox(
+                attr_row,
+                text=">Eng (English target)",
+                variable=eng_var,
+                font=("Arial", 9)
+            ).pack(side="left", padx=5)
+            attribute_vars[service][">Eng"] = eng_var
+            
+            # Live checkbox
+            live_var = ctk.BooleanVar()
+            ctk.CTkCheckBox(
+                attr_row,
+                text="Live source",
+                variable=live_var,
+                font=("Arial", 9)
+            ).pack(side="left", padx=5)
+            attribute_vars[service]["Live"] = live_var
         
         # Buttons
         btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
@@ -429,6 +478,24 @@ class WorkflowManagerGUI:
                 return
             
             if self.manager.create_workflow(self.selected_account, workflow_name, selected_services):
+                # Update service attributes
+                for service in selected_services:
+                    used_when = []
+                    if attribute_vars[service][">For"].get():
+                        used_when.append(">For")
+                    if attribute_vars[service][">Eng"].get():
+                        used_when.append(">Eng")
+                    if attribute_vars[service]["Live"].get():
+                        used_when.append("Live")
+                    
+                    if hasattr(self.manager, 'update_service_attribute'):
+                        self.manager.update_service_attribute(
+                            self.selected_account,
+                            workflow_name,
+                            service,
+                            used_when
+                        )
+                
                 messagebox.showinfo("Success", f"Workflow '{workflow_name}' created!")
                 dialog.destroy()
                 self.refresh_workflows()
@@ -439,13 +506,13 @@ class WorkflowManagerGUI:
         ctk.CTkButton(btn_frame, text="Cancel", command=dialog.destroy, width=100).pack(side="left", padx=5)
     
     def edit_workflow(self, workflow_name):
-        """Edit an existing workflow"""
+        """Edit an existing workflow with service attributes"""
         services = self.manager.get_workflow_services(self.selected_account, workflow_name)
         
         # Create dialog
         dialog = ctk.CTkToplevel(self.window)
         dialog.title(f"Edit Workflow: {workflow_name}")
-        dialog.geometry("600x700")
+        dialog.geometry("700x800")
         dialog.transient(self.window)
         dialog.grab_set()
         
@@ -454,22 +521,78 @@ class WorkflowManagerGUI:
         # Info text
         info_label = ctk.CTkLabel(
             dialog,
-            text="Select canonical services for this workflow:",
+            text="Select canonical services and configure their attributes:",
             font=("Arial", 12),
             text_color="#aaa"
         )
         info_label.pack(pady=(5, 10))
         
-        # Services selection - use canonical services
-        services_frame = ctk.CTkScrollableFrame(dialog, width=500, height=450)
+        # Services selection with attributes
+        services_frame = ctk.CTkScrollableFrame(dialog, width=650, height=500)
         services_frame.pack(pady=10, padx=20, fill="both", expand=True)
         
         checkboxes = {}
+        attribute_vars = {}  # Track Used_when attributes for each service
+        
         for service in self.service_mapper.canonical_services:
             var = ctk.BooleanVar(value=(service in services))
-            cb = ctk.CTkCheckBox(services_frame, text=service, variable=var, font=("Arial", 11))
-            cb.pack(anchor="w", pady=3, padx=10)
+            
+            # Service checkbox
+            service_frame = ctk.CTkFrame(services_frame, fg_color="gray20", corner_radius=5)
+            service_frame.pack(anchor="w", pady=5, padx=10, fill="x")
+            
+            # Top row: Service name checkbox
+            top_row = ctk.CTkFrame(service_frame, fg_color="transparent")
+            top_row.pack(anchor="w", fill="x", padx=10, pady=(8, 5))
+            
+            cb = ctk.CTkCheckBox(top_row, text=service, variable=var, font=("Arial", 11, "bold"))
+            cb.pack(side="left")
             checkboxes[service] = var
+            
+            # Bottom row: Used_when attributes
+            attr_row = ctk.CTkFrame(service_frame, fg_color="transparent")
+            attr_row.pack(anchor="w", fill="x", padx=30, pady=(0, 8))
+            
+            ctk.CTkLabel(attr_row, text="Used when:", font=("Arial", 10), text_color="#aaa").pack(side="left", padx=(0, 10))
+            
+            # Get current attributes for this service
+            current_attrs = self.manager.get_service_attributes(
+                self.selected_account,
+                workflow_name,
+                service
+            ) if hasattr(self.manager, 'get_service_attributes') else []
+            
+            attribute_vars[service] = {}
+            
+            # >For checkbox
+            for_var = ctk.BooleanVar(value=(">For" in current_attrs))
+            ctk.CTkCheckBox(
+                attr_row,
+                text=">For (Foreign target)",
+                variable=for_var,
+                font=("Arial", 9)
+            ).pack(side="left", padx=5)
+            attribute_vars[service][">For"] = for_var
+            
+            # >Eng checkbox
+            eng_var = ctk.BooleanVar(value=(">Eng" in current_attrs))
+            ctk.CTkCheckBox(
+                attr_row,
+                text=">Eng (English target)",
+                variable=eng_var,
+                font=("Arial", 9)
+            ).pack(side="left", padx=5)
+            attribute_vars[service][">Eng"] = eng_var
+            
+            # Live checkbox
+            live_var = ctk.BooleanVar(value=("Live" in current_attrs))
+            ctk.CTkCheckBox(
+                attr_row,
+                text="Live source",
+                variable=live_var,
+                font=("Arial", 9)
+            ).pack(side="left", padx=5)
+            attribute_vars[service]["Live"] = live_var
         
         # Buttons
         btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
@@ -481,7 +604,27 @@ class WorkflowManagerGUI:
                 messagebox.showerror("Error", "Select at least one service!")
                 return
             
+            # Update workflow services
             self.manager.update_workflow(self.selected_account, workflow_name, selected_services)
+            
+            # Update service attributes
+            for service in selected_services:
+                used_when = []
+                if attribute_vars[service][">For"].get():
+                    used_when.append(">For")
+                if attribute_vars[service][">Eng"].get():
+                    used_when.append(">Eng")
+                if attribute_vars[service]["Live"].get():
+                    used_when.append("Live")
+                
+                if hasattr(self.manager, 'update_service_attribute'):
+                    self.manager.update_service_attribute(
+                        self.selected_account,
+                        workflow_name,
+                        service,
+                        used_when
+                    )
+            
             messagebox.showinfo("Success", f"Workflow '{workflow_name}' updated!")
             dialog.destroy()
             self.refresh_workflows()

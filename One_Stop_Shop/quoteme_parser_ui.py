@@ -450,11 +450,28 @@ class QuoteParserTab:
         else:
             messagebox.showinfo("Applied", f"Data for {lp_data.lp_code} would be applied")
     
+    def _sync_edited_values_to_lp_data(self):
+        """Sync all edited entry field values back to their corresponding lp_data objects"""
+        if not hasattr(self, '_entry_fields') or not hasattr(self, 'current_displayed_lp'):
+            return
+        
+        # Update the currently displayed LP with edited values
+        for key, (entry_var, wc_data, field_name) in self._entry_fields.items():
+            try:
+                new_value = int(entry_var.get())
+                setattr(wc_data, field_name, new_value)
+            except (ValueError, AttributeError):
+                # Skip invalid entries
+                pass
+    
     def _on_apply_all_click(self):
         """Apply all parsed LP data"""
         if not self.current_parse_result or not self.current_parse_result.language_pairs:
             messagebox.showwarning("No Data", "Please parse an email first")
             return
+        
+        # First, sync any edited values from the currently displayed LP back to its lp_data
+        self._sync_edited_values_to_lp_data()
         
         count = 0
         for lp_data in self.current_parse_result.language_pairs:
@@ -462,7 +479,7 @@ class QuoteParserTab:
                 self.on_apply_callback(lp_data.lp_code, lp_data)
                 count += 1
         
-        messagebox.showinfo("Success", f"Applied data for {count} language pair(s)")
+
     
     def _on_export_click(self):
         """Export parsed data to JSON"""

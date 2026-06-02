@@ -1,0 +1,24 @@
+{
+  "description": "Service mapping for Regeneron_RC under account ICON",
+  "account": "ICON",
+  "rate_card": "Regeneron_RC",
+  "mappings": {
+    "Translation and Proofreading": "Translation and Proofreading",
+    "Formatting": "Formatting",
+    "Desktop Publishing": "Desktop Publishing",
+    "MT full EditProof": "MT full EditProof",
+    "Proofreading": "Proofreading",
+    "Engineering": "Engineering",
+    "Reconciliation": "Reconciliation",
+    "File Preparation": "File Preparation",
+    "Review": "Review",
+    "Localization": "Localization",
+    "Revisions": "Revisions",
+    "TM - Fuzzy Matches": "TM - Fuzzy Matches",
+    "TM - Exact Matches": "TM - Exact Matches",
+    "Linguistic QA": "Localization QA",
+    "Trans./Edit/Proof. (>FOR)": "Trans./Edit/Proof.",
+    "Script Preparation": "File Preparation",
+    "PM fee": "Project Management"
+  }
+}
