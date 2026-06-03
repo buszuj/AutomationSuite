@@ -132,8 +132,8 @@ class ServiceMapper:
     def normalize_services(
         self, 
         rate_card_services: List[str],
-        account_name: str = None,
-        rate_card_name: str = None
+        account_name: Optional[str] = None,
+        rate_card_name: Optional[str] = None
     ) -> Tuple[Dict[str, str], List[str]]:
         """
         Normalize rate card services to canonical names.
@@ -343,3 +343,73 @@ class ServiceMapper:
         # Save
         self.save_entity_service_aliases(entity_name, aliases)
         return True
+    
+    # ──────────────────────────────────────────────────────────────────────────
+    # Min Fee Thresholds Management (per rate card, per account)
+    # ──────────────────────────────────────────────────────────────────────────
+    
+    def get_min_fee_thresholds_path(self, account_name: str, rate_card_name: str) -> Path:
+        """
+        Get the path for min fee thresholds file.
+        
+        Structure: Core/accounts/{account_name}/min_fee_thresholds/{rate_card_name}.json
+        
+        Args:
+            account_name: Account name (e.g., "PXL", "ICON")
+            rate_card_name: Rate card name (e.g., "Menarini_RC")
+            
+        Returns:
+            Path to min fee thresholds file
+        """
+        thresholds_dir = self.core_path / "accounts" / account_name / "min_fee_thresholds"
+        thresholds_dir.mkdir(parents=True, exist_ok=True)
+        return thresholds_dir / f"{rate_card_name}.json"
+    
+    def load_min_fee_thresholds(self, account_name: str, rate_card_name: str) -> Dict[str, float]:
+        """
+        Load min fee thresholds for a rate card.
+        
+        Returns:
+            Dict with 'FT_Min' and 'BT_Min' keys (both optional)
+            Example: {"FT_Min": 90.0, "BT_Min": 90.0}
+        """
+        thresholds_file = self.get_min_fee_thresholds_path(account_name, rate_card_name)
+        try:
+            if thresholds_file.exists():
+                with open(thresholds_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return data.get("thresholds", {})
+            return {}
+        except Exception as e:
+            print(f"[DEBUG] Error loading min fee thresholds: {e}")
+            return {}
+    
+    def save_min_fee_thresholds(self, account_name: str, rate_card_name: str, thresholds: Dict[str, float]):
+        """
+        Save min fee thresholds for a rate card.
+        
+        Args:
+            account_name: Account name
+            rate_card_name: Rate card name
+            thresholds: Dict with 'FT_Min' and/or 'BT_Min' entries
+        """
+        thresholds_file = self.get_min_fee_thresholds_path(account_name, rate_card_name)
+        try:
+            data = {
+                "description": f"Min fee thresholds for {rate_card_name} in account {account_name}",
+                "rate_card": rate_card_name,
+                "account": account_name,
+                "thresholds": thresholds
+            }
+            thresholds_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(thresholds_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            print(f"[DEBUG] Saved min fee thresholds for {rate_card_name}: {thresholds}")
+        except Exception as e:
+            print(f"[DEBUG] Error saving min fee thresholds: {e}")
+    
+    def min_fee_exists(self, account_name: str, rate_card_name: str) -> bool:
+        """Check if min fee thresholds are already configured for this rate card."""
+        thresholds_file = self.get_min_fee_thresholds_path(account_name, rate_card_name)
+        return thresholds_file.exists()
+

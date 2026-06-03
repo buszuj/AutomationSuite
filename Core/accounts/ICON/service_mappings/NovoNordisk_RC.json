@@ -1,0 +1,16 @@
+{
+  "description": "Service mapping for NovoNordisk_RC under account ICON",
+  "account": "ICON",
+  "rate_card": "NovoNordisk_RC",
+  "mappings": {
+    "Proofreading": "Proofreading",
+    "TM - Fuzzy Matches": "TM - Fuzzy Matches",
+    "Translation and Proofreading": "Translation and Proofreading",
+    "TM - Exact Matches": "TM - Exact Matches",
+    "Reconciliation": "Reconciliation",
+    "Revisions": "Revisions",
+    "Localization": "Localization",
+    "Formatting": "Formatting",
+    "File Preparation": "File Preparation"
+  }
+}

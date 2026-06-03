@@ -1,0 +1,10 @@
+{
+  "description": "Service mapping for icon under account ICON",
+  "account": "ICON",
+  "rate_card": "icon",
+  "mappings": {
+    "TM - Fuzzy Match High": "TM - Fuzzy Match High",
+    "TM - Fuzzy Match Low": "TM - Fuzzy Match Low",
+    "Translation": "Translation"
+  }
+}

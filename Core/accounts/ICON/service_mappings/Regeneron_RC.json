@@ -3,22 +3,22 @@
   "account": "ICON",
   "rate_card": "Regeneron_RC",
   "mappings": {
-    "Translation and Proofreading": "Translation and Proofreading",
-    "Formatting": "Formatting",
-    "Desktop Publishing": "Desktop Publishing",
-    "MT full EditProof": "MT full EditProof",
-    "Proofreading": "Proofreading",
     "Engineering": "Engineering",
-    "Reconciliation": "Reconciliation",
     "File Preparation": "File Preparation",
+    "Reconciliation": "Reconciliation",
     "Review": "Review",
+    "Desktop Publishing": "Desktop Publishing",
     "Localization": "Localization",
-    "Revisions": "Revisions",
-    "TM - Fuzzy Matches": "TM - Fuzzy Matches",
+    "MT full EditProof": "MT full EditProof",
     "TM - Exact Matches": "TM - Exact Matches",
-    "Linguistic QA": "Localization QA",
+    "Proofreading": "Proofreading",
+    "Revisions": "Revisions",
+    "Formatting": "Formatting",
+    "Translation and Proofreading": "Translation and Proofreading",
+    "TM - Fuzzy Matches": "TM - Fuzzy Matches",
     "Trans./Edit/Proof. (>FOR)": "Trans./Edit/Proof.",
+    "PM fee": "Project Management",
     "Script Preparation": "File Preparation",
-    "PM fee": "Project Management"
+    "Linguistic QA": "Localization QA"
   }
 }

@@ -9,6 +9,7 @@ Supports hourly services with dividers, increments, and minimum values.
 import json
 from pathlib import Path
 from typing import Dict, List, Optional, Any
+import re
 
 
 class QuoteMeValueMapper:
@@ -34,6 +35,12 @@ class QuoteMeValueMapper:
             "Repetitions": "repetitions",
             "New Words": "new_words"
         }
+        
+        # Load service classification (FT vs BT vs Fee)
+        self._ft_services = set()
+        self._bt_services = set()
+        self._fee_services = set()
+        self._load_service_classification()
     
     def get_account_mapping_path(self, account_name: str) -> Path:
         """
@@ -93,13 +100,25 @@ class QuoteMeValueMapper:
                     if "mappings" in data:
                         result = data.get("mappings", {})
                         print(f"[DEBUG] Using new format - found {len(result)} service mappings: {list(result.keys())}")
-                        return result
                     else:
                         # Backward compatibility: file might be old format without 'mappings' wrapper
                         # Filter out metadata and structural keys
-                        mappings = {k: v for k, v in data.items() if not k.startswith("_") and k not in ["description", "account"]}
-                        print(f"[DEBUG] Using old format - found {len(mappings)} service mappings: {list(mappings.keys())}")
-                        return mappings
+                        result = {k: v for k, v in data.items() if not k.startswith("_") and k not in ["description", "account"]}
+                        print(f"[DEBUG] Using old format - found {len(result)} service mappings: {list(result.keys())}")
+                    
+                    # Apply Hourly defaults: Div=1000, Inc=0.5, Min=1
+                    for service_name, config in result.items():
+                        if config.get("service_type") == "Hourly":
+                            # Set defaults only if not already specified
+                            if "divider" not in config or config["divider"] is None:
+                                config["divider"] = 1000
+                            if "increment" not in config or config["increment"] is None:
+                                config["increment"] = 0.5
+                            if "minimum" not in config or config["minimum"] is None:
+                                config["minimum"] = 1
+                            print(f"[DEBUG] Applied Hourly defaults to '{service_name}': Div={config['divider']}, Inc={config['increment']}, Min={config['minimum']}")
+                    
+                    return result
             else:
                 print(f"[DEBUG] File does not exist!")
                 return {}
@@ -194,10 +213,181 @@ class QuoteMeValueMapper:
     def get_service_config(self, account_name: str, service_name: str) -> Optional[Dict[str, Any]]:
         """Get configuration for a specific service in an account"""
         mapping = self.load_mapping(account_name)
-        return mapping.get(service_name)
+        return self.get_service_config_from_mapping(mapping, service_name)
+
+    def get_service_config_from_mapping(self, mapping: Dict[str, Dict[str, Any]], service_name: str) -> Optional[Dict[str, Any]]:
+        """Get service config from an already-loaded mapping using resilient key matching."""
+        resolved_key = self.resolve_mapping_key(mapping, service_name)
+        if resolved_key:
+            return mapping.get(resolved_key)
+        return None
+
+    def resolve_mapping_key(self, mapping: Dict[str, Dict[str, Any]], service_name: str) -> Optional[str]:
+        """
+        Resolve a workflow service name to a key in account mapping.
+        Handles exact/case-insensitive matches, canonical-name matches, and normalized token matches.
+        """
+        if not mapping or not service_name:
+            return None
+
+        # 1) Exact key match
+        if service_name in mapping:
+            return service_name
+
+        candidate_keys = [k for k in mapping.keys() if not str(k).startswith("_")]
+        service_lower = service_name.lower().strip()
+
+        # 2) Case-insensitive exact match
+        for key in candidate_keys:
+            if key.lower().strip() == service_lower:
+                return key
+
+        # 3) Canonical match (best signal when naming variants differ)
+        service_canonical = self._find_canonical_service_name(service_name)
+        if service_canonical:
+            for key in candidate_keys:
+                key_canonical = self._find_canonical_service_name(key)
+                if key_canonical and key_canonical == service_canonical:
+                    return key
+
+        # 4) Normalized token match (remove punctuation/spaces/casing)
+        service_norm = re.sub(r"[^a-z0-9]", "", service_lower)
+        if service_norm:
+            for key in candidate_keys:
+                key_norm = re.sub(r"[^a-z0-9]", "", key.lower().strip())
+                if key_norm == service_norm:
+                    return key
+
+        # 5) Last-resort containment checks on normalized strings
+        for key in candidate_keys:
+            key_norm = re.sub(r"[^a-z0-9]", "", key.lower().strip())
+            if service_norm and key_norm and (service_norm in key_norm or key_norm in service_norm):
+                return key
+
+        return None
     
     def update_service_config(self, account_name: str, service_name: str, config: Dict[str, Any]):
         """Update configuration for a specific service"""
         mapping = self.load_mapping(account_name)
         mapping[service_name] = config
         self.save_mapping(account_name, mapping)
+    
+    # ──────────────────────────────────────────────────────────────────────────
+    # Min Fee Helper Methods
+    # ──────────────────────────────────────────────────────────────────────────
+    
+    def is_ft_service(self, service_name: str) -> bool:
+        """
+        Check if a service is a Front Translation (FT) service.
+        Uses canonical service classification for reliable matching.
+        """
+        # Try to find matching canonical service
+        canonical_name = self._find_canonical_service_name(service_name)
+        if canonical_name and canonical_name in self._ft_services:
+            return True
+        return False
+    
+    def is_bt_service(self, service_name: str) -> bool:
+        """
+        Check if a service is a Back Translation (BT) service.
+        Uses canonical service classification for reliable matching.
+        """
+        # Try to find matching canonical service
+        canonical_name = self._find_canonical_service_name(service_name)
+        if canonical_name and canonical_name in self._bt_services:
+            return True
+        return False
+    
+    def is_fee_service(self, service_name: str) -> bool:
+        """
+        Check if a service is a Fee service.
+        Uses canonical service classification for reliable matching.
+        """
+        # Try to find matching canonical service
+        canonical_name = self._find_canonical_service_name(service_name)
+        if canonical_name and canonical_name in self._fee_services:
+            return True
+        return False
+    
+    def _load_service_classification(self):
+        """Load service classification (FT/BT/Fee) from canonical mapping file"""
+        classification_file = self.core_path / "service_classification.json"
+        
+        try:
+            if classification_file.exists():
+                with open(classification_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    self._ft_services = set(data.get("ft_services", []))
+                    self._bt_services = set(data.get("bt_services", []))
+                    self._fee_services = set(data.get("fee_services", []))
+                    print(f"[DEBUG] Loaded service classification: {len(self._ft_services)} FT, {len(self._bt_services)} BT, {len(self._fee_services)} Fee")
+            else:
+                print(f"[DEBUG] WARNING: service_classification.json not found at {classification_file}")
+                # Fallback to empty sets
+                self._ft_services = set()
+                self._bt_services = set()
+                self._fee_services = set()
+        except Exception as e:
+            print(f"[DEBUG] ERROR loading service_classification.json: {e}")
+            self._ft_services = set()
+            self._bt_services = set()
+            self._fee_services = set()
+    
+    def _find_canonical_service_name(self, service_name: str) -> Optional[str]:
+        """
+        Find the canonical service name that matches the given service name.
+        Handles variations like 'MT full EditProof' vs 'MT Full EditProof'
+        Uses case-insensitive and partial matching.
+        
+        Args:
+            service_name: The service name to match (from rate card or workflow)
+            
+        Returns:
+            Canonical service name if found, None otherwise
+        """
+        if not service_name:
+            return None
+        
+        service_lower = service_name.lower().strip()
+        
+        # First try exact match (case-insensitive)
+        for canonical in self._ft_services | self._bt_services | self._fee_services:
+            if canonical.lower() == service_lower:
+                return canonical
+        
+        # Then try partial matching with common variations
+        # Remove extra spaces and check for substring matches
+        service_normalized = ' '.join(service_lower.split())
+        
+        for canonical in self._ft_services | self._bt_services | self._fee_services:
+            canonical_lower = canonical.lower()
+            # Exact match after normalization
+            if service_normalized == canonical_lower:
+                return canonical
+            # Substring match (service name contains canonical or vice versa)
+            if canonical_lower in service_normalized or service_normalized in canonical_lower:
+                return canonical
+        
+        return None
+    
+    def get_min_fee_threshold_from_file(self, account_name: str, rate_card_name: str, min_fee_type: str) -> Optional[float]:
+        """
+        Load min fee threshold from file.
+        
+        Args:
+            account_name: Account name
+            rate_card_name: Rate card name
+            min_fee_type: "FT_Min" or "BT_Min"
+            
+        Returns:
+            Min fee threshold value or None if not set
+        """
+        try:
+            from service_mapper import ServiceMapper
+            mapper = ServiceMapper()
+            thresholds = mapper.load_min_fee_thresholds(account_name, rate_card_name)
+            return thresholds.get(min_fee_type)
+        except Exception as e:
+            print(f"[DEBUG] Error loading min fee threshold: {e}")
+            return None
+

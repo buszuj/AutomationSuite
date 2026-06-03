@@ -31,25 +31,25 @@
       "increment": 1.0,
       "minimum": 0
     },
-    "Formatting": {
-      "fields": [
-        "Context Matches",
-        "100% Matches",
-        "Fuzzy Matches",
-        "Repetitions",
-        "New Words"
-      ],
-      "service_type": "Hourly",
-      "divider": 1000.0,
-      "increment": 0.5,
-      "minimum": 1.0
-    },
     "Project Management": {
       "fields": [],
       "service_type": "Fee",
       "divider": 1.0,
       "increment": 1.0,
-      "minimum": 0.0
+      "minimum": 0.1
+    },
+    "Trans./Edit/Proof.": {
+      "fields": [
+        "New Words"
+      ],
+      "service_type": "Word",
+      "divider": 1.0,
+      "increment": 1.0,
+      "minimum": 0
+    },
+    "_workflow_skip_prompts": {
+      "Translation + Proofreading": true,
+      "FT + BT": true
     }
   }
 }

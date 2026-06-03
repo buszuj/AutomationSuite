@@ -1,0 +1,9 @@
+{
+  "description": "Min fee thresholds for icon in account ICON",
+  "rate_card": "icon",
+  "account": "ICON",
+  "thresholds": {
+    "FT_Min": 75.0,
+    "BT_Min": 75.0
+  }
+}

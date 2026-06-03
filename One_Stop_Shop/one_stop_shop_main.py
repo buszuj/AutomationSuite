@@ -566,19 +566,34 @@ class OneStopShopMain:
     def _select_account_from_ui(self):
         """Select account from the startup screen"""
         selected = self.selected_account_var.get()
+        print(f"[DEBUG] _select_account_from_ui called - selected: {selected}")
         if not selected:
             messagebox.showwarning("No Selection", "Please select an account")
             return
         
+        print(f"[DEBUG] Setting current_account to: {selected}")
         self.current_account = selected
+        print(f"[DEBUG] Cleared rate card cache")
         # Clear rate card cache when account changes
         self.selected_rate_card = None
         self.cached_rate_card = None
+        
+        print(f"[DEBUG] Calling update_account_display()")
         self.update_account_display()
+        
+        print(f"[DEBUG] Calling update_status()")
         self.update_status(f"Active account: {self.current_account}")
+        
+        print(f"[DEBUG] Calling refresh_ui()")
         self.refresh_ui()
+        
+        print(f"[DEBUG] Calling refresh_workflow_dropdown()")
         self.refresh_workflow_dropdown()
+        
+        print(f"[DEBUG] Calling refresh_rate_card_dropdown()")
         self.refresh_rate_card_dropdown()
+        
+        print(f"[DEBUG] Account selection complete")
     
     def _create_account_from_ui(self):
         """Create a new account from startup screen"""
@@ -2259,6 +2274,18 @@ class OneStopShopMain:
             font=("Arial", 11, "bold")
         ).pack(side="left", expand=True, anchor="w")
         
+        # Manual WC button
+        ctk.CTkButton(
+            table_label_frame,
+            text="📝 Manual WC",
+            command=self._show_manual_wc_dialog,
+            width=100,
+            height=28,
+            font=("Arial", 9, "bold"),
+            fg_color="#e67e22",
+            hover_color="#d35400"
+        ).pack(side="right", padx=(5, 0))
+        
         # Service Config button
         ctk.CTkButton(
             table_label_frame,
@@ -2269,6 +2296,18 @@ class OneStopShopMain:
             font=("Arial", 9, "bold"),
             fg_color="#8e44ad",
             hover_color="#7d3ba0"
+        ).pack(side="right", padx=(5, 0))
+        
+        # Rates Config button (for Min Fee thresholds)
+        ctk.CTkButton(
+            table_label_frame,
+            text="💰 Rates Config",
+            command=self.open_min_fee_editor,
+            width=140,
+            height=28,
+            font=("Arial", 9, "bold"),
+            fg_color="#16a085",
+            hover_color="#138870"
         ).pack(side="right", padx=(5, 0))
         
         # Create scrollable table frame
@@ -2291,9 +2330,47 @@ class OneStopShopMain:
         # Store references for workflow management
         self.workflow_service_widgets = {}  # Maps service_name to {lp: {quantity_entry, rate_entry}}
         
+        # Rush rate entry frame (below services table)
+        rush_frame = ctk.CTkFrame(right_pane, fg_color="transparent")
+        rush_frame.grid(row=5, column=0, sticky="ew", padx=15, pady=(5, 5))
+        
+        ctk.CTkLabel(
+            rush_frame,
+            text="Rush Rate (%):",
+            font=("Arial", 9)
+        ).pack(side="left", padx=(0, 5))
+        
+        self.rush_rate_entry = ctk.CTkEntry(
+            rush_frame,
+            width=80,
+            height=28,
+            font=("Arial", 9),
+            placeholder_text="e.g., 15"
+        )
+        self.rush_rate_entry.pack(side="left", padx=(0, 10))
+        self.rush_rate_entry.bind("<KeyRelease>", self._on_rush_rate_changed)
+        
+        ctk.CTkLabel(
+            rush_frame,
+            text="(Session-only, automatically adds Rush Premium fee)",
+            font=("Arial", 8),
+            text_color="gray"
+        ).pack(side="left")
+        
+        # Cache for calculated quantities (from QuoteMe data)
+        # Used to restore original values when recalculating min fees
+        # Structure: {service_name: {lp: calculated_quantity_value}}
+        self.calculated_quantities_cache = {}
+        
+        # Rush Premium tracking (session-only, not persisted)
+        self.rush_rate_value = None  # Float representing percentage (e.g., 15.0 for 15%)
+        
+        # Manual WC data storage (can be merged with QuoteMe data)
+        self.manual_wc_data = {}  # Structure: {lp_name: {field_name: value}}
+        
         # Export Charges button section
         export_frame = ctk.CTkFrame(right_pane, fg_color="transparent")
-        export_frame.grid(row=5, column=0, sticky="ew", padx=15, pady=(10, 15))
+        export_frame.grid(row=6, column=0, sticky="ew", padx=15, pady=(10, 15))
         
         ctk.CTkButton(
             export_frame,
@@ -3581,23 +3658,42 @@ class OneStopShopMain:
     
     def refresh_workflow_dropdown(self):
         """Refresh workflow dropdown for current account"""
-        workflows = self.get_available_workflows()
-        self.workflow_dropdown.configure(values=workflows)
-        if workflows:
-            self.workflow_dropdown.set(workflows[0])
-            self.on_workflow_selected(workflows[0])
-        else:
-            self.workflow_dropdown.set("")
-            self.services_empty_label.pack(expand=True, pady=20)
+        print(f"[DEBUG] refresh_workflow_dropdown called - current_account: {self.current_account}")
+        try:
+            workflows = self.get_available_workflows()
+            print(f"[DEBUG] Got workflows: {workflows}")
+            self.workflow_dropdown.configure(values=workflows)
+            print(f"[DEBUG] Configured dropdown values")
+            if workflows:
+                self.workflow_dropdown.set(workflows[0])
+                print(f"[DEBUG] Set first workflow: {workflows[0]}")
+                self.on_workflow_selected(workflows[0])
+            else:
+                self.workflow_dropdown.set("")
+                print(f"[DEBUG] No workflows, showing empty label")
+                if hasattr(self, 'services_empty_label'):
+                    self.services_empty_label.pack(expand=True, pady=20)
+        except Exception as e:
+            print(f"[ERROR] refresh_workflow_dropdown failed: {e}")
+            import traceback
+            traceback.print_exc()
     
     def refresh_rate_card_dropdown(self):
         """Refresh rate card dropdown - allows user to choose"""
-        rate_cards = self.get_available_rate_cards()
-        self.rate_card_dropdown.configure(values=rate_cards)
-        # Don't auto-select; let user choose manually or use Browse button
-        self.rate_card_dropdown.set("")
-        self.selected_rate_card = None
-        self.rate_card_info.configure(text="ℹ️ No rate card loaded. Select from dropdown or browse for a file.")
+        print(f"[DEBUG] refresh_rate_card_dropdown called - current_account: {self.current_account}")
+        try:
+            rate_cards = self.get_available_rate_cards()
+            print(f"[DEBUG] Got rate cards: {rate_cards}")
+            self.rate_card_dropdown.configure(values=rate_cards)
+            print(f"[DEBUG] Configured rate card dropdown values")
+            # Don't auto-select; let user choose manually or use Browse button
+            self.rate_card_dropdown.set("")
+            self.selected_rate_card = None
+            self.rate_card_info.configure(text="ℹ️ No rate card loaded. Select from dropdown or browse for a file.")
+        except Exception as e:
+            print(f"[ERROR] refresh_rate_card_dropdown failed: {e}")
+            import traceback
+            traceback.print_exc()
     
     def open_current_account_workflow_editor(self):
         """Deprecated - workflow editing now in Manage Workflows tab"""
@@ -4547,6 +4643,406 @@ class OneStopShopMain:
         print(f"[DEBUG] Calling populate_services_table...")
         self.populate_services_table(services)
     
+    def _show_manual_wc_dialog(self):
+        """Show dialog for manually entering word count data for specific language pairs"""
+        if not self.current_account or not self.selected_rate_card:
+            messagebox.showwarning("Missing Info", "Please select an account and rate card first")
+            return
+
+        # Build language list from currently selected/imported rate card
+        language_choices = []
+        rate_card = self.cached_rate_card if self.cached_rate_card else self.load_rate_card(self.selected_rate_card)
+        if isinstance(rate_card, dict) and "languages" in rate_card:
+            language_choices = sorted([str(k).strip() for k in rate_card.get("languages", {}).keys() if str(k).strip()])
+        
+        # Fallback: derive source/target suggestions from existing LPs
+        if not language_choices:
+            derived = set()
+            for lp_name in self.language_pairs:
+                if ">" in lp_name:
+                    src, tgt = lp_name.split(">", 1)
+                    if src.strip():
+                        derived.add(src.strip())
+                    if tgt.strip():
+                        derived.add(tgt.strip())
+            language_choices = sorted(derived)
+        
+        # Create modal dialog
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title("Manual Word Count Entry")
+        dialog.geometry("700x600")
+        dialog.resizable(True, True)
+        dialog.grab_set()
+        dialog.transient(self.root)
+        self._manual_wc_dialog = dialog
+        
+        # Make dialog centered and keep it on top
+        dialog.after(100, lambda: dialog.lift())
+        
+        # Main frame with scrollable content
+        main_frame = ctk.CTkScrollableFrame(dialog, fg_color="gray25")
+        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Data structure to hold LP entries
+        lp_entries = []
+        
+        def create_lp_section(frame, lp_data=None):
+            """Create a section for one language pair"""
+            lp_section_frame = ctk.CTkFrame(frame, fg_color="gray30", corner_radius=5)
+            lp_section_frame.pack(fill="x", padx=5, pady=5)
+
+            # Source/Target language selectors
+            lp_header_frame = ctk.CTkFrame(lp_section_frame, fg_color="transparent")
+            lp_header_frame.pack(fill="x", padx=10, pady=(10, 5))
+
+            ctk.CTkLabel(
+                lp_header_frame,
+                text="Source:",
+                font=("Arial", 9, "bold")
+            ).pack(side="left", padx=(0, 4))
+
+            source_var = ctk.StringVar(value=lp_data.get("source", "") if lp_data else "")
+            source_combo = ctk.CTkComboBox(
+                lp_header_frame,
+                values=language_choices,
+                variable=source_var,
+                width=200,
+                font=("Arial", 9),
+                state="normal"
+            )
+            source_combo.pack(side="left", padx=(0, 10))
+
+            ctk.CTkLabel(
+                lp_header_frame,
+                text="Target:",
+                font=("Arial", 9, "bold")
+            ).pack(side="left", padx=(0, 4))
+
+            target_var = ctk.StringVar(value=lp_data.get("target", "") if lp_data else "")
+            target_combo = ctk.CTkComboBox(
+                lp_header_frame,
+                values=language_choices,
+                variable=target_var,
+                width=200,
+                font=("Arial", 9),
+                state="normal"
+            )
+            target_combo.pack(side="left", padx=(0, 5))
+
+            # Type-ahead filtering for source/target dropdowns
+            def bind_typeahead(combo_widget):
+                def on_type(_event=None):
+                    typed = combo_widget.get().strip().lower()
+                    if not language_choices:
+                        return
+                    if typed:
+                        filtered = [lang for lang in language_choices if typed in lang.lower()]
+                        combo_widget.configure(values=filtered if filtered else language_choices)
+                    else:
+                        combo_widget.configure(values=language_choices)
+                combo_widget.bind("<KeyRelease>", on_type)
+
+            bind_typeahead(source_combo)
+            bind_typeahead(target_combo)
+
+            # WC Fields grid
+            wc_frame = ctk.CTkFrame(lp_section_frame, fg_color="transparent")
+            wc_frame.pack(fill="x", padx=10, pady=(5, 10))
+            
+            wc_labels = ["Context:", "100%:", "Repetitions:", "Fuzzy Matches:", "New Words:", "Total Words:"]
+            wc_fields = ["context", "fuzzy_100", "repetitions", "fuzzy_matches", "new_words", "total_words"]
+            wc_widgets = {}
+
+            for i, (label, field) in enumerate(zip(wc_labels, wc_fields)):
+                row = i // 2
+                col = i % 2
+
+                # Label
+                ctk.CTkLabel(
+                    wc_frame,
+                    text=label,
+                    font=("Arial", 9),
+                    width=80,
+                    anchor="e"
+                ).grid(row=row, column=col*2, padx=5, pady=3, sticky="e")
+
+                # Entry
+                entry = ctk.CTkEntry(
+                    wc_frame,
+                    width=60,
+                    height=25,
+                    font=("Arial", 9)
+                )
+                entry.grid(row=row, column=col*2+1, padx=5, pady=3, sticky="w")
+
+                # Populate if editing existing
+                if lp_data and field in lp_data:
+                    entry.insert(0, str(lp_data[field]))
+
+                # Total words is auto-calculated
+                if field == "total_words":
+                    entry.configure(state="disabled")
+
+                wc_widgets[field] = entry
+
+            # Keep total words auto-synced: sum of the five base buckets
+            def update_total_words(_event=None):
+                total = 0
+                for base_field in ["context", "fuzzy_100", "repetitions", "fuzzy_matches", "new_words"]:
+                    raw_value = wc_widgets[base_field].get().strip()
+                    if raw_value:
+                        try:
+                            total += int(raw_value)
+                        except ValueError:
+                            # Ignore partial non-numeric typing; strict validation happens on save
+                            pass
+
+                total_widget = wc_widgets["total_words"]
+                total_widget.configure(state="normal")
+                total_widget.delete(0, "end")
+                total_widget.insert(0, str(total))
+                total_widget.configure(state="disabled")
+
+            for base_field in ["context", "fuzzy_100", "repetitions", "fuzzy_matches", "new_words"]:
+                wc_widgets[base_field].bind("<KeyRelease>", update_total_words)
+
+            # Initialize computed total for new sections
+            update_total_words()
+            
+            lp_entries.append({
+                "frame": lp_section_frame,
+                "source_var": source_var,
+                "target_var": target_var,
+                "wc_widgets": wc_widgets
+            })
+        
+        # Create initial LP section
+        create_lp_section(main_frame)
+        
+        # Button frame
+        button_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        button_frame.pack(fill="x", padx=10, pady=(5, 10))
+        
+        def add_lp_section():
+            """Add another LP section"""
+            create_lp_section(main_frame)
+            dialog.after(100, lambda: main_frame._parent_canvas.yview_moveto(1.0))  # Scroll to bottom
+        
+        ctk.CTkButton(
+            button_frame,
+            text="+ Add Another LP",
+            command=add_lp_section,
+            width=150,
+            height=28,
+            font=("Arial", 9),
+            fg_color="#3498db",
+            hover_color="#2980b9"
+        ).pack(side="left", padx=5)
+        
+        def on_ok():
+            """Save manual WC data and refresh services"""
+            try:
+                # Validate and collect data
+                saved_count = 0
+                new_lps = []
+
+                for entry_data in lp_entries:
+                    source_lang = entry_data["source_var"].get().strip()
+                    target_lang = entry_data["target_var"].get().strip()
+
+                    if not source_lang or not target_lang:
+                        messagebox.showerror("Missing Language", "Please select both Source and Target languages")
+                        return
+
+                    if source_lang == target_lang:
+                        messagebox.showerror("Invalid Language Pair", "Source and Target cannot be the same")
+                        return
+
+                    if language_choices:
+                        if source_lang not in language_choices or target_lang not in language_choices:
+                            messagebox.showerror(
+                                "Invalid Language",
+                                "Please select Source and Target from the rate card language list"
+                            )
+                            return
+
+                    lp_name = f"{source_lang} > {target_lang}"
+
+                    wc_data = {}
+
+                    # Validate numeric fields (total_words is auto-calculated and disabled)
+                    for field in ["context", "fuzzy_100", "repetitions", "fuzzy_matches", "new_words"]:
+                        widget = entry_data["wc_widgets"][field]
+                        value_str = widget.get().strip()
+                        if value_str:
+                            try:
+                                wc_data[field] = int(value_str)
+                            except ValueError:
+                                messagebox.showerror("Invalid Input", f"'{field}' must be a whole number")
+                                return
+
+                    # Always store auto-calculated total_words
+                    wc_data["total_words"] = (
+                        wc_data.get("context", 0)
+                        + wc_data.get("fuzzy_100", 0)
+                        + wc_data.get("repetitions", 0)
+                        + wc_data.get("fuzzy_matches", 0)
+                        + wc_data.get("new_words", 0)
+                    )
+
+                    if wc_data["total_words"] <= 0:
+                        messagebox.showerror("No Data", "Please enter at least one word count value greater than zero")
+                        return
+
+                    self.manual_wc_data[lp_name] = wc_data
+                    saved_count += 1
+
+                    # Add to language_pairs if not already there
+                    if lp_name not in self.language_pairs:
+                        self.language_pairs.append(lp_name)
+                        new_lps.append(lp_name)
+
+                    print(f"[DEBUG] Stored manual WC for {lp_name}: {wc_data}")
+
+                if saved_count == 0:
+                    messagebox.showwarning("No Data", "Please enter at least one word count value")
+                    return
+
+                dialog.grab_release()
+                dialog.destroy()
+                self._manual_wc_dialog = None
+
+                # Refresh services table with new data if workflow selected
+                if self.selected_workflow:
+                    services = self.account_workflow_manager.get_workflow_services(
+                        self.current_account,
+                        self.selected_workflow
+                    )
+                    self.populate_services_table(services)
+                    self.update_quantities_from_quoteme(self.selected_workflow)
+                    if new_lps:
+                        messagebox.showinfo(
+                            "Success",
+                            f"Manual WC data applied ({saved_count} LP(s) saved).\nAdded LP column(s): {', '.join(new_lps)}"
+                        )
+                    else:
+                        messagebox.showinfo("Success", f"Manual WC data applied ({saved_count} LP(s) saved)")
+                else:
+                    messagebox.showinfo(
+                        "Success",
+                        f"Manual WC data saved ({saved_count} LP(s) saved)\n\nNow select a workflow to view services with this data"
+                    )
+            except Exception as e:
+                messagebox.showerror("Error", f"Error saving WC data: {e}")
+        
+        def on_cancel():
+            """Close dialog without saving"""
+            dialog.grab_release()
+            dialog.destroy()
+            self._manual_wc_dialog = None
+        
+        ctk.CTkButton(
+            button_frame,
+            text="OK",
+            command=on_ok,
+            width=150,
+            height=28,
+            font=("Arial", 9, "bold"),
+            fg_color="#27ae60",
+            hover_color="#229954"
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            button_frame,
+            text="Cancel",
+            command=on_cancel,
+            width=150,
+            height=28,
+            font=("Arial", 9),
+            fg_color="#95a5a6",
+            hover_color="#7f8c8d"
+        ).pack(side="left", padx=5)
+    
+    def _on_rush_rate_changed(self, event=None):
+        """Handle rush rate value change"""
+        try:
+            rush_value_str = self.rush_rate_entry.get().strip()
+            
+            if rush_value_str:
+                self.rush_rate_value = float(rush_value_str)
+                print(f"[DEBUG] Rush rate set to: {self.rush_rate_value}%")
+            else:
+                self.rush_rate_value = None
+                print(f"[DEBUG] Rush rate cleared")
+            
+            # Refresh services to add/remove Rush Premium and recalculate quantities
+            if self.selected_workflow:
+                services = self.account_workflow_manager.get_workflow_services(
+                    self.current_account,
+                    self.selected_workflow
+                )
+                self.populate_services_table(services)
+                # Recalculate quantities and Rush Premium rate
+                self.update_quantities_from_quoteme(self.selected_workflow)
+        except ValueError:
+            # Invalid number, just ignore
+            pass
+
+    def _schedule_rush_recalculation(self, event=None):
+        """Debounce Rush Premium recalculation when table values change."""
+        if not self.selected_workflow:
+            return
+        if self.rush_rate_value is None or self.rush_rate_value <= 0:
+            return
+        if "Rush Premium" not in self.workflow_service_widgets:
+            return
+
+        if hasattr(self, "_rush_recalc_after_id") and self._rush_recalc_after_id:
+            try:
+                self.root.after_cancel(self._rush_recalc_after_id)
+            except Exception:
+                pass
+
+        self._rush_recalc_after_id = self.root.after(150, self._recalculate_rush_premium_from_current_table)
+
+    def _recalculate_rush_premium_from_current_table(self):
+        """Recalculate Rush Premium from current table values without resetting other services."""
+        self._rush_recalc_after_id = None
+
+        if not self.selected_workflow:
+            return
+        if self.rush_rate_value is None or self.rush_rate_value <= 0:
+            return
+        if "Rush Premium" not in self.workflow_service_widgets:
+            return
+
+        rush_qty = self.rush_rate_value / 100.0
+
+        for lp in self.language_pairs:
+            total_cost = 0.0
+            for service, lp_map in self.workflow_service_widgets.items():
+                if service == "Rush Premium":
+                    continue
+                if lp not in lp_map:
+                    continue
+                try:
+                    qty_str = lp_map[lp]["quantity"].get().strip()
+                    rate_str = lp_map[lp]["rate"].get().strip()
+                    if qty_str and rate_str:
+                        total_cost += float(qty_str) * float(rate_str)
+                except (ValueError, KeyError):
+                    pass
+
+            try:
+                widgets = self.workflow_service_widgets["Rush Premium"][lp]
+                widgets["quantity"].delete(0, "end")
+                widgets["quantity"].insert(0, str(rush_qty))
+                widgets["rate"].delete(0, "end")
+                widgets["rate"].insert(0, str(total_cost))
+                print(f"[DEBUG]   ✓ Live Rush Premium recalc for {lp}: Qty={rush_qty}, Rate={total_cost}")
+            except KeyError:
+                pass
+    
     def _show_quoteme_mapping_dialog(self, services: List[str], workflow_name: str):
         """
         Show dialog to map QuoteMe word count fields to workflow services.
@@ -4633,8 +5129,9 @@ class OneStopShopMain:
             
             # Load existing fields for this service if available
             existing_fields = []
-            if service in existing_mapping:
-                existing_fields = existing_mapping[service].get("fields", [])
+            existing_service_cfg = self.quoteme_value_mapper.get_service_config_from_mapping(existing_mapping, service)
+            if existing_service_cfg:
+                existing_fields = existing_service_cfg.get("fields", [])
             
             for field in self.quoteme_value_mapper.available_fields:
                 var = BooleanVar(value=(field in existing_fields))
@@ -4651,8 +5148,8 @@ class OneStopShopMain:
                 cb.pack(anchor="w", side="left", padx=5, pady=2)
             
             # Initialize service config
-            if service in existing_mapping:
-                service_configs[service] = existing_mapping[service].copy()
+            if existing_service_cfg:
+                service_configs[service] = existing_service_cfg.copy()
             else:
                 service_configs[service] = {
                     "fields": [],
@@ -4684,7 +5181,7 @@ class OneStopShopMain:
         
         def save_mapping():
             # Build mapping dict from checkbox states
-            mapping = {}
+            mapping_updates = {}
             for service, config in service_configs.items():
                 field_vars = config.pop("field_vars", {})
                 selected_fields = [field for field, var in field_vars.items() if var.get()]
@@ -4692,33 +5189,76 @@ class OneStopShopMain:
                 if selected_fields or config.get("service_type") != "Word":
                     # Save config even if no fields selected (might be pre-filled with hourly/fee settings)
                     config["fields"] = selected_fields
-                    mapping[service] = config
+                    mapping_updates[service] = config
             
-            if not mapping:
+            if not mapping_updates:
                 messagebox.showwarning(
                     "No Fields Selected",
                     "Please select at least one field for at least one service"
                 )
                 return
+
+            # Merge updates into existing account-level mapping so other workflow mappings are preserved
+            existing = self.quoteme_value_mapper.load_mapping(self.current_account)
+            merged_mapping = {
+                k: v for k, v in existing.items()
+                if not str(k).startswith("_")
+            }
+            merged_mapping.update(mapping_updates)
             
             # Add skip-prompt metadata if checked
             if skip_prompt_var.get():
-                # Load existing mapping to preserve skip-prompts
-                existing = self.quoteme_value_mapper.load_mapping(self.current_account)
                 skip_prompts = existing.get("_workflow_skip_prompts", {})
                 skip_prompts[workflow_name] = True
-                mapping["_workflow_skip_prompts"] = skip_prompts
+                merged_mapping["_workflow_skip_prompts"] = skip_prompts
             else:
                 # Preserve existing skip-prompts even if not checked this time
-                existing = self.quoteme_value_mapper.load_mapping(self.current_account)
                 if "_workflow_skip_prompts" in existing:
-                    mapping["_workflow_skip_prompts"] = existing["_workflow_skip_prompts"]
+                    merged_mapping["_workflow_skip_prompts"] = existing["_workflow_skip_prompts"]
             
             # Save the account-level mapping
             self.quoteme_value_mapper.save_mapping(
                 self.current_account,
-                mapping
+                merged_mapping
             )
+
+            # Persist Fee service default quantities from Service Config minimum values.
+            # These defaults are applied to all LPs for each Fee service in the services table.
+            try:
+                fee_defaults_path = Path(__file__).parent.parent / "Core" / "accounts" / self.current_account / "fee_service_defaults.json"
+                existing_defaults = {}
+                if fee_defaults_path.exists():
+                    with open(fee_defaults_path, 'r', encoding='utf-8') as f:
+                        existing_defaults = json.load(f).get("defaults", {})
+
+                for svc_name, svc_cfg in merged_mapping.items():
+                    if str(svc_name).startswith("_"):
+                        continue
+                    if not isinstance(svc_cfg, dict):
+                        continue
+                    if svc_cfg.get("service_type") != "Fee":
+                        continue
+
+                    min_qty = svc_cfg.get("minimum")
+                    if min_qty is None:
+                        continue
+                    try:
+                        min_qty_float = float(min_qty)
+                        if min_qty_float < 0:
+                            min_qty_float = 0.0
+                        existing_defaults[svc_name] = min_qty_float
+                    except (TypeError, ValueError):
+                        continue
+
+                fee_defaults_data = {
+                    "description": f"Fee Service default quantities for {self.current_account}",
+                    "defaults": existing_defaults
+                }
+                fee_defaults_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(fee_defaults_path, 'w', encoding='utf-8') as f:
+                    json.dump(fee_defaults_data, f, indent=2, ensure_ascii=False)
+            except Exception as e:
+                print(f"[DEBUG] Warning: Failed to persist fee defaults from Service Config: {e}")
             
             dialog.destroy()
             
@@ -5040,6 +5580,10 @@ class OneStopShopMain:
             
             # Load target currency and conversion rate for this rate card
             self._load_currency_conversion(rate_card_name)
+            
+            # Check and prompt for min fee thresholds if not set
+            clean_rc_name = rate_card_name.replace("[Master] ", "")
+            self._check_and_show_min_fee_dialog(clean_rc_name)
         else:
             display_name = rate_card_name.replace("[Master] ", "")
             self.rate_card_info.configure(text=f"⚠️ Failed to load rate card: {display_name}")
@@ -5161,6 +5705,305 @@ class OneStopShopMain:
                     print(f"[DEBUG] Rates recalculated with {new_currency} @ {rate}")
         except ValueError:
             print(f"[DEBUG] Could not parse conversion rate: {rate_str}")
+    
+    def _check_and_show_min_fee_dialog(self, rate_card_name: str):
+        """Check if min fee thresholds exist, if not show dialog to add them"""
+        if not self.current_account:
+            return
+        
+        # Check if min_fees already exist
+        if self.service_mapper.min_fee_exists(self.current_account, rate_card_name):
+            print(f"[DEBUG] Min fee thresholds already exist for {rate_card_name}")
+            return
+        
+        # Show dialog to add min_fees
+        self._show_min_fee_configuration_dialog(rate_card_name)
+    
+    def _show_min_fee_configuration_dialog(self, rate_card_name: str):
+        """Show dialog for user to configure min fee thresholds"""
+        if not self.current_account:
+            return
+        
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title(f"Min Fee Thresholds - {rate_card_name}")
+        dialog.geometry("500x300")
+        dialog.resizable(False, False)
+        
+        # Header
+        header = ctk.CTkFrame(dialog, fg_color="#1f538d", height=60)
+        header.pack(fill="x", padx=0, pady=(0, 10))
+        header.pack_propagate(False)
+        
+        ctk.CTkLabel(
+            header,
+            text=f"Configure Min Fee Thresholds for {rate_card_name}",
+            font=("Arial", 13, "bold"),
+            text_color="white"
+        ).pack(pady=15)
+        
+        # Instructions
+        ctk.CTkLabel(
+            dialog,
+            text="Define minimum fee thresholds for Front Translation (FT) and Back Translation (BT).\nLeave blank to skip.",
+            font=("Arial", 10),
+            text_color="#bdc3c7"
+        ).pack(padx=15, pady=(10, 15))
+        
+        # FT_Min frame
+        ft_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        ft_frame.pack(fill="x", padx=15, pady=10)
+        
+        ctk.CTkLabel(
+            ft_frame,
+            text="FT_Min (Front Translation Minimum):",
+            font=("Arial", 11, "bold")
+        ).pack(anchor="w")
+        
+        ft_min_var = ctk.StringVar()
+        ft_min_entry = ctk.CTkEntry(
+            ft_frame,
+            textvariable=ft_min_var,
+            placeholder_text="e.g., 90.00",
+            font=("Arial", 11),
+            width=300
+        )
+        ft_min_entry.pack(anchor="w", pady=5)
+        
+        # BT_Min frame
+        bt_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        bt_frame.pack(fill="x", padx=15, pady=10)
+        
+        ctk.CTkLabel(
+            bt_frame,
+            text="BT_Min (Back Translation Minimum):",
+            font=("Arial", 11, "bold")
+        ).pack(anchor="w")
+        
+        bt_min_var = ctk.StringVar()
+        bt_min_entry = ctk.CTkEntry(
+            bt_frame,
+            textvariable=bt_min_var,
+            placeholder_text="e.g., 90.00",
+            font=("Arial", 11),
+            width=300
+        )
+        bt_min_entry.pack(anchor="w", pady=5)
+        
+        # Button frame
+        button_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        button_frame.pack(fill="x", padx=15, pady=20)
+        
+        def save_min_fees():
+            """Save min fee thresholds"""
+            thresholds = {}
+            
+            ft_val = ft_min_var.get().strip()
+            if ft_val:
+                try:
+                    thresholds["FT_Min"] = float(ft_val)
+                except ValueError:
+                    messagebox.showerror("Invalid", "FT_Min must be a number")
+                    return
+            
+            bt_val = bt_min_var.get().strip()
+            if bt_val:
+                try:
+                    thresholds["BT_Min"] = float(bt_val)
+                except ValueError:
+                    messagebox.showerror("Invalid", "BT_Min must be a number")
+                    return
+            
+            # Save
+            self.service_mapper.save_min_fee_thresholds(
+                self.current_account,
+                rate_card_name,
+                thresholds
+            )
+            print(f"[DEBUG] Saved initial min fee thresholds for {rate_card_name}: {thresholds}")
+            
+            # IMPORTANT: If services table already has quantities, recalculate with new thresholds
+            if self.workflow_service_widgets:
+                print(f"[DEBUG] Recalculating min fees with new thresholds...")
+                service_order = list(self.workflow_service_widgets.keys())
+                self._apply_min_fee_adjustments(service_order, rate_card_name)
+                print(f"[DEBUG] Min fees applied to {len(service_order)} services")
+            
+            messagebox.showinfo("Success", f"Min fee thresholds saved for {rate_card_name}")
+            dialog.destroy()
+        
+        def skip():
+            """Skip setting min fees for now"""
+            dialog.destroy()
+        
+        ctk.CTkButton(
+            button_frame,
+            text="Save",
+            command=save_min_fees,
+            width=150,
+            font=("Arial", 11, "bold"),
+            fg_color="#27ae60",
+            hover_color="#229954"
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            button_frame,
+            text="Skip",
+            command=skip,
+            width=150,
+            font=("Arial", 11),
+            fg_color="#95a5a6",
+            hover_color="#7f8c8d"
+        ).pack(side="left", padx=5)
+    
+    def open_min_fee_editor(self):
+        """Open dialog to edit min fee thresholds for current rate card"""
+        if not self.selected_rate_card or not self.current_account:
+            messagebox.showwarning("Error", "Please select a rate card first")
+            return
+        
+        rate_card_name = self.selected_rate_card.replace("[Master] ", "")
+        self._show_min_fee_editor_dialog(rate_card_name)
+    
+    def _show_min_fee_editor_dialog(self, rate_card_name: str):
+        """Show dialog to edit existing min fee thresholds"""
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title(f"Edit Min Fee Thresholds - {rate_card_name}")
+        dialog.geometry("500x400")
+        dialog.resizable(False, False)
+        
+        # Store reference to prevent garbage collection
+        self._min_fee_dialog = dialog
+        
+        # Make it modal
+        dialog.grab_set()
+        dialog.transient(self.root)
+        
+        # Header
+        header = ctk.CTkFrame(dialog, fg_color="#1f538d", height=60)
+        header.pack(fill="x", padx=0, pady=(0, 10))
+        header.pack_propagate(False)
+        
+        ctk.CTkLabel(
+            header,
+            text=f"Edit Min Fee Thresholds - {rate_card_name}",
+            font=("Arial", 13, "bold"),
+            text_color="white"
+        ).pack(pady=15)
+        
+        # Load current thresholds
+        current_thresholds = self.service_mapper.load_min_fee_thresholds(
+            self.current_account,
+            rate_card_name
+        )
+        
+        # FT_Min frame
+        ft_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        ft_frame.pack(fill="x", padx=15, pady=15)
+        
+        ctk.CTkLabel(
+            ft_frame,
+            text="FT_Min (Front Translation Minimum):",
+            font=("Arial", 11, "bold")
+        ).pack(anchor="w")
+        
+        ft_min_var = ctk.StringVar(value=str(current_thresholds.get("FT_Min", "")))
+        ft_min_entry = ctk.CTkEntry(
+            ft_frame,
+            textvariable=ft_min_var,
+            placeholder_text="e.g., 90.00",
+            font=("Arial", 11),
+            width=300
+        )
+        ft_min_entry.pack(anchor="w", pady=5)
+        
+        # BT_Min frame
+        bt_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        bt_frame.pack(fill="x", padx=15, pady=15)
+        
+        ctk.CTkLabel(
+            bt_frame,
+            text="BT_Min (Back Translation Minimum):",
+            font=("Arial", 11, "bold")
+        ).pack(anchor="w")
+        
+        bt_min_var = ctk.StringVar(value=str(current_thresholds.get("BT_Min", "")))
+        bt_min_entry = ctk.CTkEntry(
+            bt_frame,
+            textvariable=bt_min_var,
+            placeholder_text="e.g., 90.00",
+            font=("Arial", 11),
+            width=300
+        )
+        bt_min_entry.pack(anchor="w", pady=5)
+        
+        # Button frame
+        button_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        button_frame.pack(fill="x", padx=15, pady=20)
+        
+        def save_changes():
+            """Save updated min fee thresholds"""
+            thresholds = {}
+            
+            ft_val = ft_min_var.get().strip()
+            if ft_val:
+                try:
+                    thresholds["FT_Min"] = float(ft_val)
+                except ValueError:
+                    messagebox.showerror("Invalid", "FT_Min must be a number")
+                    return
+            
+            bt_val = bt_min_var.get().strip()
+            if bt_val:
+                try:
+                    thresholds["BT_Min"] = float(bt_val)
+                except ValueError:
+                    messagebox.showerror("Invalid", "BT_Min must be a number")
+                    return
+            
+            # Save
+            self.service_mapper.save_min_fee_thresholds(
+                self.current_account,
+                rate_card_name,
+                thresholds
+            )
+            print(f"[DEBUG] Saved min fee thresholds for {rate_card_name}: {thresholds}")
+            
+            # IMPORTANT: Recalculate and apply min fees to services table with new thresholds
+            if self.workflow_service_widgets:
+                print(f"[DEBUG] Recalculating min fees with new thresholds...")
+                service_order = list(self.workflow_service_widgets.keys())
+                self._apply_min_fee_adjustments(service_order, rate_card_name)
+                print(f"[DEBUG] Min fees reapplied to {len(service_order)} services")
+            
+            messagebox.showinfo("Success", f"Min fee thresholds updated for {rate_card_name}")
+            dialog.grab_release()
+            dialog.destroy()
+            self._min_fee_dialog = None
+        
+        ctk.CTkButton(
+            button_frame,
+            text="Save Changes",
+            command=save_changes,
+            width=150,
+            font=("Arial", 11, "bold"),
+            fg_color="#27ae60",
+            hover_color="#229954"
+        ).pack(side="left", padx=5)
+        
+        def on_cancel():
+            dialog.grab_release()
+            dialog.destroy()
+            self._min_fee_dialog = None
+        
+        ctk.CTkButton(
+            button_frame,
+            text="Cancel",
+            command=on_cancel,
+            width=150,
+            font=("Arial", 11),
+            fg_color="#95a5a6",
+            hover_color="#7f8c8d"
+        ).pack(side="left", padx=5)
     
     def _recalculate_rates(self, conversion_rate: float):
         """Recalculate all service rates using the conversion rate (Word & Hourly only, not Fee)"""
@@ -5768,6 +6611,14 @@ class OneStopShopMain:
         
         self.workflow_service_widgets = {}
         
+        # Add Rush Premium service if rush rate is set (session-only, not persisted)
+        services_to_display = list(services)  # Make a copy to avoid modifying the original
+        if self.rush_rate_value is not None and self.rush_rate_value > 0:
+            # Check if Rush Premium is not already in the list
+            if "Rush Premium" not in [s if isinstance(s, str) else s.get("name") for s in services_to_display]:
+                services_to_display.append("Rush Premium")
+                print(f"[DEBUG] Added Rush Premium service (session-only)")
+        
         # Load fee service defaults for this account
         fee_defaults = {}
         if self.current_account:
@@ -5783,7 +6634,7 @@ class OneStopShopMain:
         if not services or not self.language_pairs:
             msg_text = "Select a workflow to view services"
             if not self.language_pairs:
-                msg_text = "No language pairs available. Parse QuoteMe data first."
+                msg_text = "No language pairs available. Parse QuoteMe data or use Manual WC."
             
             self.services_empty_label = ctk.CTkLabel(
                 self.services_table_frame,
@@ -5864,7 +6715,7 @@ class OneStopShopMain:
         print(f"  Source Type: {self.source_type_var.get()}")
         
         row_idx = 1
-        for service in services:
+        for service in services_to_display:
             # Extract service name and attributes (handle both string and dict formats)
             if isinstance(service, dict):
                 service_name = service.get("name", str(service))
@@ -5919,11 +6770,15 @@ class OneStopShopMain:
                 
                 # Get service type to check if it's a Fee service
                 service_type = "Word"  # Default
-                if self.current_account:
+                
+                # Special handling for Rush Premium (session-only service)
+                if service_name == "Rush Premium":
+                    service_type = "Fee"  # Rush Premium is always a Fee service
+                elif self.current_account:
                     try:
-                        mapping = self.quoteme_value_mapper.load_mapping(self.current_account)
-                        if service_name in mapping:
-                            service_type = mapping[service_name].get("service_type", "Word")
+                        service_cfg = self.quoteme_value_mapper.get_service_config(self.current_account, service_name)
+                        if service_cfg:
+                            service_type = service_cfg.get("service_type", "Word")
                     except:
                         pass
                 
@@ -5956,30 +6811,64 @@ class OneStopShopMain:
                     border_width=2 if is_fee_service else 1
                 )
                 quantity_entry.grid(row=row_idx, column=col_qty, sticky="ew", padx=1, pady=1)
+
+                # Recalculate Rush Premium whenever values in the services table are edited
+                quantity_entry.bind("<KeyRelease>", self._schedule_rush_recalculation, add="+")
+                quantity_entry.bind("<FocusOut>", self._schedule_rush_recalculation, add="+")
+                quantity_entry.bind("<Return>", self._schedule_rush_recalculation, add="+")
+
+                # Apply Fee service default quantity if available.
+                # Priority: Service Config minimum (for Fee type) -> fee_service_defaults.json
+                default_fee_qty = None
+                if is_fee_service and service_name != "Rush Premium":
+                    try:
+                        cfg = self.quoteme_value_mapper.get_service_config(self.current_account, service_name)
+                        if cfg and cfg.get("service_type") == "Fee":
+                            default_fee_qty = cfg.get("minimum")
+                    except Exception:
+                        default_fee_qty = None
+
+                    if default_fee_qty is None and service_name in fee_defaults:
+                        default_fee_qty = fee_defaults[service_name]
+
+                    if default_fee_qty is not None and str(default_fee_qty) != "":
+                        quantity_entry.insert(0, str(default_fee_qty))
+                        print(f"[DEBUG] Applied default quantity to {service_name}: {default_fee_qty}")
                 
-                # Apply Fee service default quantity if available
-                if is_fee_service and service_name in fee_defaults:
-                    quantity_entry.insert(0, fee_defaults[service_name])
-                    print(f"[DEBUG] Applied default quantity to {service_name}: {fee_defaults[service_name]}")
+                # Store LP for binding closure with service type metadata
+                service_data[lp] = {
+                    "quantity": quantity_entry,
+                    "rate": None,  # Placeholder, will be set later
+                    "service_type": service_type,  # Store service type (Word/Hourly/Fee)
+                    "original_quantity": None  # Will store original quantity before min fee adjustments
+                }
                 
                 # Bind on-focus-out or key release to sync quantities across LPs for Fee services
                 if is_fee_service:
-                    def on_fee_qty_change(event, service=service_name, qty_widget=quantity_entry):
-                        """Sync quantity across all LPs for this Fee service"""
-                        new_qty = qty_widget.get()
-                        if new_qty:  # Only sync if there's a value
-                            print(f"[DEBUG] Fee service quantity changed: {service} = {new_qty}")
-                            # Update same service in all other LPs
-                            if service in self.workflow_service_widgets:
-                                for other_lp, other_widgets in self.workflow_service_widgets[service].items():
-                                    if other_lp != lp:  # Don't update the current LP
+                    # Create a proper closure for this specific service and LP
+                    def create_fee_qty_change_handler(service_name, current_lp, qty_widget):
+                        def on_fee_qty_change(event):
+                            """Sync quantity across all LPs for this Fee service"""
+                            new_qty = qty_widget.get().strip()
+                            if new_qty:  # Only sync if there's a value
+                                print(f"[DEBUG] Fee service quantity changed: {service_name} in {current_lp} = {new_qty}")
+                                # Update same service in ALL LPs
+                                if service_name in self.workflow_service_widgets:
+                                    all_lps = list(self.workflow_service_widgets[service_name].keys())
+                                    print(f"[DEBUG] Syncing {service_name} to all {len(all_lps)} LPs: {all_lps}")
+                                    for other_lp in all_lps:
+                                        other_widgets = self.workflow_service_widgets[service_name][other_lp]
                                         other_widgets["quantity"].delete(0, "end")
                                         other_widgets["quantity"].insert(0, new_qty)
-                                        print(f"[DEBUG]   Updated {service} in {other_lp} to {new_qty}")
+                                        print(f"[DEBUG]   ✓ Updated {service_name} in {other_lp} to {new_qty}")
+                                    # Keep Rush Premium aligned after fee quantity sync
+                                    self._schedule_rush_recalculation()
+                        return on_fee_qty_change
                     
                     # Bind to FocusOut and Enter key
-                    quantity_entry.bind("<FocusOut>", on_fee_qty_change)
-                    quantity_entry.bind("<Return>", on_fee_qty_change)
+                    handler = create_fee_qty_change_handler(service_name, lp, quantity_entry)
+                    quantity_entry.bind("<FocusOut>", handler, add="+")
+                    quantity_entry.bind("<Return>", handler, add="+")
                 
                 # Rate entry
                 rate_entry = ctk.CTkEntry(
@@ -5992,11 +6881,19 @@ class OneStopShopMain:
                     border_color="#505050"
                 )
                 rate_entry.grid(row=row_idx, column=col_rate, sticky="ew", padx=1, pady=1)
+                rate_entry.bind("<KeyRelease>", self._schedule_rush_recalculation, add="+")
+                rate_entry.bind("<FocusOut>", self._schedule_rush_recalculation, add="+")
+                rate_entry.bind("<Return>", self._schedule_rush_recalculation, add="+")
                 
-                service_data[lp] = {
-                    "quantity": quantity_entry,
-                    "rate": rate_entry
-                }
+                # Update the rate entry and store original quantity
+                service_data[lp]["rate"] = rate_entry
+                # Store original quantity (will be used to restore when recalculating min fees)
+                try:
+                    original_qty = quantity_entry.get()
+                    if original_qty and original_qty != "0":
+                        service_data[lp]["original_quantity"] = original_qty
+                except:
+                    pass
             
             # Store using service name (not dict) as key for consistent access
             self.workflow_service_widgets[service_name] = service_data
@@ -6016,8 +6913,8 @@ class OneStopShopMain:
             if rate_card:
                 self.update_rates_in_table(rate_card)
         
-        # Try to populate quantities from QuoteMe mapping (if available)
-        if self.quoteme_data and self.selected_workflow:
+        # Try to populate quantities from QuoteMe mapping or Manual WC data
+        if self.selected_workflow and (self.quoteme_data or self.manual_wc_data):
             self.update_quantities_from_quoteme(self.selected_workflow)
     
     def update_rates_in_table(self, rate_card: dict):
@@ -6053,15 +6950,27 @@ class OneStopShopMain:
     
     def update_quantities_from_quoteme(self, workflow_name: str):
         """
-        Populate service quantities from QuoteMe data based on saved account-level mapping.
-        Each LP gets its own word count data from the corresponding quoteme_data entry.
+        Populate service quantities from QuoteMe data or manual WC data based on saved account-level mapping.
+        Each LP gets its own word count data from the corresponding quoteme_data entry or manual_wc_data.
         Handles Word, Hourly, and Fee service types with cumulative calculations for Fee services.
         """
         print(f"\n[DEBUG] update_quantities_from_quoteme called for workflow: {workflow_name}")
-        print(f"[DEBUG] quoteme_data: {bool(self.quoteme_data)}, language_pairs: {self.language_pairs}")
+        print(f"[DEBUG] quoteme_data: {bool(self.quoteme_data)}, language_pairs: {self.language_pairs}, manual_wc_data: {bool(self.manual_wc_data)}")
         
-        if not self.quoteme_data or not workflow_name or not self.language_pairs:
-            print(f"[DEBUG] Returning early - quoteme_data: {bool(self.quoteme_data)}, language_pairs: {bool(self.language_pairs)}")
+        # Clear cache - new data is being processed
+        self.calculated_quantities_cache = {}
+        print(f"[DEBUG] Cleared calculated quantities cache")
+        
+        # Proceed if we have either QuoteMe data OR manual WC data
+        has_quoteme_data = bool(self.quoteme_data)
+        has_manual_wc_data = bool(self.manual_wc_data)
+        
+        if not workflow_name or (not self.language_pairs and not has_manual_wc_data):
+            print(f"[DEBUG] Returning early - workflow_name: {workflow_name}, language_pairs: {bool(self.language_pairs)}, manual_wc_data: {bool(self.manual_wc_data)}")
+            return
+        
+        if not has_quoteme_data and not has_manual_wc_data:
+            print(f"[DEBUG] No QuoteMe or manual WC data available")
             return
         
         # Load the account-level mapping (shared across all workflows)
@@ -6074,13 +6983,35 @@ class OneStopShopMain:
             print(f"[DEBUG] No mapping found for account '{self.current_account}' - aborting")
             return  # No mapping defined for this account
         
-        # Create a mapping of LP name to its corresponding quoteme_data
+        # Create a mapping of LP name to its corresponding word count data
+        # Supports both QuoteMe data and manual WC data
         lp_data_map = {}
-        for idx, quoteme_lp_data in enumerate(self.quoteme_data):
-            if quoteme_lp_data and idx < len(self.language_pairs):
-                lp_name = self.language_pairs[idx]
-                lp_data_map[lp_name] = quoteme_lp_data
-                print(f"[DEBUG] LP {idx}: '{lp_name}' -> quoteme_data")
+        
+        # Add QuoteMe data if available
+        if self.quoteme_data:
+            for idx, quoteme_lp_data in enumerate(self.quoteme_data):
+                if quoteme_lp_data and idx < len(self.language_pairs):
+                    lp_name = self.language_pairs[idx]
+                    lp_data_map[lp_name] = quoteme_lp_data
+                    print(f"[DEBUG] LP {idx}: '{lp_name}' -> quoteme_data")
+        
+        # Add manual WC data (either standalone or as override for QuoteMe)
+        if self.manual_wc_data:
+            import types
+            for lp_name, wc_dict in self.manual_wc_data.items():
+                # Create a simple object with the WC fields
+                synthetic_wc = types.SimpleNamespace(
+                    context=wc_dict.get("context", 0),
+                    fuzzy_100=wc_dict.get("fuzzy_100", 0),
+                    repetitions=wc_dict.get("repetitions", 0),
+                    fuzzy_matches=wc_dict.get("fuzzy_matches", 0),
+                    new_words=wc_dict.get("new_words", 0),
+                    total_words=wc_dict.get("total_words", 0)
+                )
+                # Bind compatibility method to this specific object to avoid late-binding issues
+                synthetic_wc.get_effective_wc = (lambda obj: (lambda use_cumulative=False: obj))(synthetic_wc)
+                lp_data_map[lp_name] = synthetic_wc
+                print(f"[DEBUG] LP: '{lp_name}' -> manual_wc_data: {wc_dict}")
         
         # Build ordered list of services (from workflow_service_widgets which preserves order)
         service_order = list(self.workflow_service_widgets.keys())
@@ -6088,12 +7019,17 @@ class OneStopShopMain:
         
         # Apply quantities to services based on account-level mapping
         for service_idx, service in enumerate(service_order):
-            if service not in mapping:
-                print(f"[DEBUG] Service '{service}' NOT in mapping - skipping")
+            # Skip Rush Premium - it's handled separately as session-only service
+            if service == "Rush Premium":
+                print(f"[DEBUG] Skipping Rush Premium (session-only, calculated separately)")
                 continue
-            
+
+            service_config = self.quoteme_value_mapper.get_service_config_from_mapping(mapping, service)
+            if not service_config:
+                print(f"[DEBUG] Service '{service}' NOT in mapping (even after canonical/normalized match) - skipping")
+                continue
+
             print(f"[DEBUG] Processing service: {service}")
-            service_config = mapping[service]
             service_type = service_config.get("service_type", "Word")
             print(f"[DEBUG]   Service type: {service_type}")
             print(f"[DEBUG]   Service config: {service_config}")
@@ -6107,8 +7043,15 @@ class OneStopShopMain:
                     print(f"[DEBUG]     LP '{lp}' not in lp_data_map - skipping")
                     continue
                 
-                quoteme_lp_data = lp_data_map[lp]
-                word_count_data = quoteme_lp_data.get_effective_wc(use_cumulative=True)
+                lp_wc_data = lp_data_map[lp]
+                
+                # Get effective word count data (for QuoteMe objects with cumulative calculation)
+                # For synthetic manual WC objects, just use them directly
+                if hasattr(lp_wc_data, 'get_effective_wc'):
+                    word_count_data = lp_wc_data.get_effective_wc(use_cumulative=True)
+                else:
+                    word_count_data = lp_wc_data
+                
                 print(f"[DEBUG]     Word count data: {word_count_data}")
                 
                 # Calculate quantity based on service type
@@ -6138,11 +7081,26 @@ class OneStopShopMain:
                     widgets["rate"].delete(0, "end")
                     widgets["rate"].insert(0, str(fee_value))
                     print(f"[DEBUG]     Fee service - Set rate to: {fee_value}")
-                    
-                    # Set quantity to 1 for Fee services
+
+                    # Set quantity from Fee default (Service Config minimum), fallback to 1
+                    fee_qty_value = service_config.get("minimum", 1)
+                    try:
+                        fee_qty_value = float(fee_qty_value)
+                    except (TypeError, ValueError):
+                        fee_qty_value = 1.0
+
+                    if fee_qty_value < 0:
+                        fee_qty_value = 0.0
+
                     widgets["quantity"].delete(0, "end")
-                    widgets["quantity"].insert(0, "1")
-                    print(f"[DEBUG]     Fee service - Set quantity to: 1")
+                    widgets["quantity"].insert(0, str(fee_qty_value))
+                    print(f"[DEBUG]     Fee service - Set quantity to default: {fee_qty_value}")
+
+                    # Cache the calculated quantity for this service/LP
+                    if service not in self.calculated_quantities_cache:
+                        self.calculated_quantities_cache[service] = {}
+                    self.calculated_quantities_cache[service][lp] = str(fee_qty_value)
+                    print(f"[DEBUG]     Cached quantity for {service}/{lp}: {fee_qty_value}")
                 else:
                     # Word or Hourly: use normal calculation
                     quantity = self.quoteme_value_mapper.calculate_service_value(
@@ -6153,6 +7111,335 @@ class OneStopShopMain:
                     
                     widgets["quantity"].delete(0, "end")
                     widgets["quantity"].insert(0, str(quantity))
+                    
+                    # Cache the calculated quantity for this service/LP
+                    if service not in self.calculated_quantities_cache:
+                        self.calculated_quantities_cache[service] = {}
+                    self.calculated_quantities_cache[service][lp] = str(quantity)
+                    print(f"[DEBUG]     Cached quantity for {service}/{lp}: {quantity}")
+        
+        # Calculate and apply Rush Premium service if rush_rate is set
+        print(f"[DEBUG] Rush rate value: {self.rush_rate_value}, Rush Premium in widgets: {'Rush Premium' in self.workflow_service_widgets}")
+        if self.rush_rate_value is not None and self.rush_rate_value > 0:
+            print(f"[DEBUG] Calculating Rush Premium at {self.rush_rate_value}% of total cost")
+            
+            if "Rush Premium" not in self.workflow_service_widgets:
+                print(f"[DEBUG] WARNING: Rush Premium not found in workflow_service_widgets!")
+                print(f"[DEBUG] Available services: {list(self.workflow_service_widgets.keys())}")
+            else:
+                for lp in self.language_pairs:
+                    # Calculate total cost of all services (excluding Rush Premium itself)
+                    total_cost = 0.0
+                    for service in service_order:
+                        if service == "Rush Premium":
+                            continue
+                        if service not in self.workflow_service_widgets:
+                            continue
+                        try:
+                            qty_str = self.workflow_service_widgets[service][lp]["quantity"].get()
+                            rate_str = self.workflow_service_widgets[service][lp]["rate"].get()
+                            if qty_str and rate_str:
+                                total_cost += float(qty_str) * float(rate_str)
+                                print(f"[DEBUG]     {service}: {qty_str} * {rate_str} = {float(qty_str) * float(rate_str)}, running total: {total_cost}")
+                        except (ValueError, KeyError) as e:
+                            print(f"[DEBUG]     Error calculating {service}: {e}")
+                            pass
+                    
+                    # Rush Premium model:
+                    #   Qty = rush percentage as decimal (e.g., 15 -> 0.15)
+                    #   Rate = total cost of services above
+                    rush_premium_qty = self.rush_rate_value / 100.0
+                    rush_premium_rate = total_cost
+                    
+                    try:
+                        widgets = self.workflow_service_widgets["Rush Premium"][lp]
+                        widgets["quantity"].delete(0, "end")
+                        widgets["quantity"].insert(0, str(rush_premium_qty))
+                        widgets["rate"].delete(0, "end")
+                        widgets["rate"].insert(0, str(rush_premium_rate))
+                        print(f"[DEBUG]   ✓ Rush Premium for {lp}: Qty={rush_premium_qty}, Rate={rush_premium_rate}")
+                    except KeyError as e:
+                        print(f"[DEBUG]   ERROR: Failed to set Rush Premium for {lp}: {e}")
+
+        
+        # Apply min fee adjustments for each language pair
+        clean_rc_name = self.selected_rate_card.replace("[Master] ", "") if self.selected_rate_card else ""
+        if clean_rc_name:
+            self._apply_min_fee_adjustments(service_order, clean_rc_name)
+
+    def _apply_min_fee_adjustments(self, service_order: list, rate_card_name: str):
+        """
+        Apply min fee thresholds (FT_Min and BT_Min) to services.
+        
+        Process:
+        1. Load FT_Min and BT_Min from stored config
+        2. For each LP, calculate total cost of FT services
+        3. If total < FT_Min: collapse FT services (MTFull Edit Proof gets qty=1, rate=FT_Min; others get qty=0)
+        4. Same for BT services with BT_Min
+        """
+        if not self.current_account or not service_order:
+            return
+        
+        # Load min fee thresholds
+        ft_min = self.quoteme_value_mapper.get_min_fee_threshold_from_file(
+            self.current_account,
+            rate_card_name,
+            "FT_Min"
+        )
+        bt_min = self.quoteme_value_mapper.get_min_fee_threshold_from_file(
+            self.current_account,
+            rate_card_name,
+            "BT_Min"
+        )
+        
+        if not ft_min and not bt_min:
+            print(f"[DEBUG] No min fee thresholds configured for {rate_card_name}")
+            return
+        
+        print(f"[DEBUG] Applying min fee adjustments - FT_Min: {ft_min}, BT_Min: {bt_min}")
+        
+        # Process each language pair
+        first_service = self.workflow_service_widgets.get(service_order[0]) if service_order else None
+        if not first_service:
+            return
+        
+        # Debug: Log which services are identified as FT/BT with canonical mapping
+        service_classifications = {}
+        for service in service_order:
+            canonical = self.quoteme_value_mapper._find_canonical_service_name(service)
+            is_ft = self.quoteme_value_mapper.is_ft_service(service)
+            is_bt = self.quoteme_value_mapper.is_bt_service(service)
+            classification = "FT" if is_ft else ("BT" if is_bt else "Fee/Other")
+            service_classifications[service] = {"canonical": canonical, "type": classification}
+            print(f"[DEBUG] Service: '{service}' → Canonical: '{canonical}' → Type: {classification}")
+        
+        ft_services_list = [s for s, info in service_classifications.items() if info["type"] == "FT"]
+        bt_services_list = [s for s, info in service_classifications.items() if info["type"] == "BT"]
+        print(f"[DEBUG] Identified FT services: {ft_services_list}")
+        print(f"[DEBUG] Identified BT services: {bt_services_list}")
+
+        # Load account-level QuoteMe mapping once for FT_Min target service selection.
+        # FT_Min should apply to the FT service that carries New Words in the current workflow.
+        account_mapping = self.quoteme_value_mapper.load_mapping(self.current_account)
+        
+        for lp in first_service.keys():
+            # FIRST: Restore quantities from cache (original calculated values from QuoteMe)
+            print(f"[DEBUG] Restoring quantities from cache for LP '{lp}'...")
+            for service in service_order:
+                if service not in self.workflow_service_widgets:
+                    continue
+                
+                # Check if we have cached quantity
+                if service in self.calculated_quantities_cache and lp in self.calculated_quantities_cache[service]:
+                    cached_qty = self.calculated_quantities_cache[service][lp]
+                    service_lp_data = self.workflow_service_widgets[service].get(lp)
+                    if service_lp_data:
+                        service_lp_data["quantity"].delete(0, "end")
+                        service_lp_data["quantity"].insert(0, cached_qty)
+                        print(f"[DEBUG]   ✓ Restored {service} to cached quantity: {cached_qty}")
+            
+            # SECOND: Store original quantities in widget metadata (for reference during this session)
+            print(f"[DEBUG] Storing original quantities for LP '{lp}'...")
+            for service in service_order:
+                if service not in self.workflow_service_widgets:
+                    continue
+                service_lp_data = self.workflow_service_widgets[service].get(lp)
+                if service_lp_data:
+                    current_qty = service_lp_data["quantity"].get()
+                    if current_qty and current_qty != "0":
+                        service_lp_data["original_quantity"] = current_qty
+                        print(f"[DEBUG]   Stored original quantity for {service}: {current_qty}")
+# Restore original quantities (for re-calculation when threshold changes)
+            print(f"[DEBUG] Restoring original quantities for LP '{lp}'...")
+            for service in service_order:
+                if service not in self.workflow_service_widgets:
+                    continue
+                service_lp_data = self.workflow_service_widgets[service].get(lp)
+                if service_lp_data and service_lp_data.get("original_quantity"):
+                    original_qty = service_lp_data["original_quantity"]
+                    service_lp_data["quantity"].delete(0, "end")
+                    service_lp_data["quantity"].insert(0, original_qty)
+                    print(f"[DEBUG]   Restored {service} to original quantity: {original_qty}")
+            
+            # Calculate FT services total cost (WORD SERVICES ONLY - EXCLUDE BT)
+            ft_total_cost = 0.0
+            ft_services = []
+            
+            for service in service_order:
+                if service not in self.workflow_service_widgets:
+                    continue
+                
+                # Explicitly exclude BT services (Back Translation)
+                if self.quoteme_value_mapper.is_bt_service(service):
+                    print(f"[DEBUG]   Skipping '{service}' - it's a BT service (only used for BT_min, not FT_min)")
+                    continue
+                
+                if self.quoteme_value_mapper.is_ft_service(service):
+                    service_widgets = self.workflow_service_widgets[service].get(lp)
+                    service_type = service_widgets.get("service_type", "Word") if service_widgets else "Word"
+                    
+                    # Only include WORD services in FT calculation (exclude Hourly)
+                    if service_type != "Word":
+                        print(f"[DEBUG]   Skipping FT service '{service}' - not a Word service (type={service_type})")
+                        continue
+                    
+                    ft_services.append(service)
+                    try:
+                        qty_str = self.workflow_service_widgets[service][lp]["quantity"].get()
+                        rate_str = self.workflow_service_widgets[service][lp]["rate"].get()
+                        if qty_str and rate_str:
+                            cost = float(qty_str) * float(rate_str)
+                            ft_total_cost += cost
+                            print(f"[DEBUG]   FT service '{service}' in '{lp}': qty={qty_str}, rate={rate_str}, cost={cost}, total_so_far={ft_total_cost}")
+                    except (ValueError, KeyError) as e:
+                        print(f"[DEBUG]   Error calculating FT service '{service}': {e}")
+                        pass
+            
+            # Apply FT_Min if threshold exceeded
+            if ft_min and ft_total_cost < ft_min:
+                print(f"[DEBUG] FT total cost ({ft_total_cost}) below FT_Min ({ft_min}) for LP '{lp}'")
+                print(f"[DEBUG]   FT services found: {ft_services}")
+
+                # Select FT service that takes New Words in this workflow.
+                # This keeps FT_Min independent from any single canonical service label.
+                ft_target_service = None
+                for service in ft_services:
+                    service_cfg = self.quoteme_value_mapper.get_service_config_from_mapping(account_mapping, service) if account_mapping else {}
+                    mapped_fields = service_cfg.get("fields", []) if isinstance(service_cfg, dict) else []
+                    if "New Words" in mapped_fields:
+                        ft_target_service = service
+                        print(f"[DEBUG]   ✓ Selected FT_Min target by New Words mapping: {ft_target_service}")
+                        break
+
+                # Fallback 1: preserve historical behavior when available
+                if not ft_target_service:
+                    for service in ft_services:
+                        canonical = self.quoteme_value_mapper._find_canonical_service_name(service)
+                        print(f"[DEBUG]   Checking FT fallback candidate '{service}' → canonical: '{canonical}'")
+                        if canonical and "MT full" in canonical and "EditProof" in canonical:
+                            ft_target_service = service
+                            print(f"[DEBUG]   ✓ Selected FT_Min fallback target: {ft_target_service} (canonical MT full EditProof)")
+                            break
+
+                # Fallback 2: first FT word service in current workflow
+                if not ft_target_service and ft_services:
+                    ft_target_service = ft_services[0]
+                    print(f"[DEBUG]   ✓ Selected FT_Min final fallback target: {ft_target_service} (first FT service)")
+
+                if ft_target_service and ft_target_service in self.workflow_service_widgets:
+                    # Set FT target service to Qty=1, Rate=FT_Min
+                    widgets = self.workflow_service_widgets[ft_target_service][lp]
+                    widgets["quantity"].delete(0, "end")
+                    widgets["quantity"].insert(0, "1")
+                    widgets["rate"].delete(0, "end")
+                    widgets["rate"].insert(0, str(ft_min))
+                    print(f"[DEBUG]   Applied FT_Min to {ft_target_service}: Qty=1, Rate={ft_min}")
+
+                    # Set other FT services to Qty=0
+                    for service in ft_services:
+                        if service != ft_target_service:
+                            try:
+                                widgets = self.workflow_service_widgets[service][lp]
+                                widgets["quantity"].delete(0, "end")
+                                widgets["quantity"].insert(0, "0")
+                                print(f"[DEBUG]   Set {service} to Qty=0")
+                            except KeyError:
+                                pass
+            
+            # Calculate BT services total cost (WORD SERVICES ONLY)
+            bt_total_cost = 0.0
+            bt_services = []
+            
+            for service in service_order:
+                if service not in self.workflow_service_widgets:
+                    continue
+                
+                if self.quoteme_value_mapper.is_bt_service(service):
+                    service_widgets = self.workflow_service_widgets[service].get(lp)
+                    service_type = service_widgets.get("service_type", "Word") if service_widgets else "Word"
+                    
+                    # Only include WORD services in BT calculation (exclude Hourly)
+                    if service_type != "Word":
+                        print(f"[DEBUG]   Skipping BT service '{service}' - not a Word service (type={service_type})")
+                        continue
+                    
+                    bt_services.append(service)
+                    try:
+                        qty_str = self.workflow_service_widgets[service][lp]["quantity"].get()
+                        rate_str = self.workflow_service_widgets[service][lp]["rate"].get()
+                        if qty_str and rate_str:
+                            bt_total_cost += float(qty_str) * float(rate_str)
+                    except (ValueError, KeyError):
+                        pass
+            
+            # Apply BT_Min if threshold exceeded
+            if bt_min and bt_total_cost < bt_min:
+                print(f"[DEBUG] BT total cost ({bt_total_cost}) below BT_Min ({bt_min}) for LP '{lp}'")
+                
+                # Find main BT service to apply min fee to using canonical matching
+                bt_service = None
+                for service in bt_services:
+                    canonical = self.quoteme_value_mapper._find_canonical_service_name(service)
+                    print(f"[DEBUG]   Checking BT service '{service}' → canonical: '{canonical}'")
+                    if canonical and canonical == "Back Translation":
+                        bt_service = service
+                        print(f"[DEBUG]   ✓ Found Back Translation service: {bt_service} (canonical: {canonical})")
+                        break
+                
+                if not bt_service:
+                    print(f"[DEBUG]   WARNING: No 'Back Translation' service found in BT services: {bt_services}")
+                    print(f"[DEBUG]   Available canonical mappings:")
+                    for service in bt_services:
+                        canonical = self.quoteme_value_mapper._find_canonical_service_name(service)
+                        print(f"[DEBUG]      '{service}' → '{canonical}'")
+                
+                if bt_service and bt_service in self.workflow_service_widgets:
+                    # Set Back Translation to Qty=1, Rate=BT_Min
+                    widgets = self.workflow_service_widgets[bt_service][lp]
+                    widgets["quantity"].delete(0, "end")
+                    widgets["quantity"].insert(0, "1")
+                    widgets["rate"].delete(0, "end")
+                    widgets["rate"].insert(0, str(bt_min))
+                    print(f"[DEBUG]   Applied BT_Min to {bt_service}: Qty=1, Rate={bt_min}")
+        
+        # THIRD: Recalculate Fee services after min fees applied (since their rates depend on previous services)
+        print(f"[DEBUG] Recalculating Fee services after min fee adjustments...")
+        for service in service_order:
+            if service not in self.workflow_service_widgets:
+                continue
+            
+            if self.quoteme_value_mapper.is_fee_service(service):
+                print(f"[DEBUG]   Recalculating Fee service: {service}")
+                
+                for lp in first_service.keys():
+                    # Calculate SUMPRODUCT of all services BEFORE this Fee service
+                    fee_value = 0.0
+                    service_idx = service_order.index(service)
+                    
+                    for prev_idx in range(service_idx):
+                        prev_service = service_order[prev_idx]
+                        if prev_service not in self.workflow_service_widgets:
+                            continue
+                        
+                        try:
+                            prev_qty_str = self.workflow_service_widgets[prev_service][lp]["quantity"].get()
+                            prev_rate_str = self.workflow_service_widgets[prev_service][lp]["rate"].get()
+                            
+                            if prev_qty_str and prev_rate_str:
+                                prev_qty = float(prev_qty_str)
+                                prev_rate = float(prev_rate_str)
+                                fee_value += prev_qty * prev_rate
+                                print(f"[DEBUG]     Added {prev_service} ({prev_qty} * {prev_rate} = {prev_qty*prev_rate}) → Total: {fee_value}")
+                        except (ValueError, KeyError) as e:
+                            print(f"[DEBUG]     Error processing {prev_service}: {e}")
+                            pass
+                    
+                    # Update Fee service rate
+                    if service in self.workflow_service_widgets and lp in self.workflow_service_widgets[service]:
+                        widgets = self.workflow_service_widgets[service][lp]
+                        widgets["rate"].delete(0, "end")
+                        widgets["rate"].insert(0, str(fee_value))
+                        print(f"[DEBUG]   Updated {service} rate for LP '{lp}' to: {fee_value}")
 
     def refresh_pa_integration_tab(self):
         """Reload PA Template Mapper in the Configure Template sub-tab for current account"""

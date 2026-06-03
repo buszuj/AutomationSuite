@@ -3,17 +3,17 @@
   "account": "PXL",
   "rate_card": "Menarini_SPONSOR MANDATE_RC",
   "mappings": {
-    "File Preparation": "File Preparation",
-    "Reconciliation": "Reconciliation",
-    "Revisions": "Revisions",
-    "Project Management": "Project Management",
-    "TM - Exact Matches": "TM - Exact Matches",
-    "Proofreading": "Proofreading",
-    "Desktop Publishing": "Desktop Publishing",
-    "TM - Fuzzy Matches": "TM - Fuzzy Matches",
-    "Review": "Review",
-    "Formatting": "Formatting",
     "Trans./Edit/Proof.": "Trans./Edit/Proof.",
-    "Translation and Proofreading": "Translation and Proofreading"
+    "Review": "Review",
+    "TM - Fuzzy Matches": "TM - Fuzzy Matches",
+    "Desktop Publishing": "Desktop Publishing",
+    "Reconciliation": "Reconciliation",
+    "Project Management": "Project Management",
+    "Translation and Proofreading": "Translation and Proofreading",
+    "File Preparation": "File Preparation",
+    "Revisions": "Revisions",
+    "Formatting": "Formatting",
+    "TM - Exact Matches": "TM - Exact Matches",
+    "Proofreading": "Proofreading"
   }
 }
