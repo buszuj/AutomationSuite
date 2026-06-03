@@ -47,6 +47,29 @@
       "increment": 1.0,
       "minimum": 0
     },
+    "Translation": {
+      "fields": [
+        "New Words"
+      ],
+      "service_type": "Word",
+      "divider": 1.0,
+      "increment": 1.0,
+      "minimum": 0
+    },
+    "Review": {
+      "fields": [],
+      "service_type": "Hourly",
+      "divider": 1.0,
+      "increment": 1.0,
+      "minimum": 0.0
+    },
+    "Formatting": {
+      "fields": [],
+      "service_type": "Hourly",
+      "divider": 1000.0,
+      "increment": 0.5,
+      "minimum": 1.0
+    },
     "_workflow_skip_prompts": {
       "Translation + Proofreading": true,
       "FT + BT": true

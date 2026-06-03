@@ -1,7 +1,7 @@
 {
-  "description": "Service mapping for Regeneron_RC under account ICON",
+  "description": "Service mapping for Pfizer_RC under account ICON",
   "account": "ICON",
-  "rate_card": "Regeneron_RC",
+  "rate_card": "Pfizer_RC",
   "mappings": {
     "Engineering": "Engineering",
     "Proofreading": "Proofreading",
@@ -9,6 +9,7 @@
     "TM - Exact Matches": "TM - Exact Matches",
     "Review": "Review",
     "Localization": "Localization",
+    "Secondary Review": "Secondary Review",
     "TM - Fuzzy Matches": "TM - Fuzzy Matches",
     "Formatting": "Formatting",
     "Desktop Publishing": "Desktop Publishing",
@@ -16,9 +17,8 @@
     "File Preparation": "File Preparation",
     "Reconciliation": "Reconciliation",
     "Revisions": "Revisions",
-    "Script Preparation": "File Preparation",
     "Linguistic QA": "Localization QA",
-    "PM fee": "Project Management",
+    "Review/proofreading": "Proofreading",
     "Trans./Edit/Proof. (>FOR)": "Trans./Edit/Proof."
   }
 }
