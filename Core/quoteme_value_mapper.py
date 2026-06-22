@@ -71,6 +71,7 @@ class QuoteMeValueMapper:
             Dict mapping service_name -> {
                 "fields": [list of field names],
                 "service_type": "Word|Hourly|Fee",
+                "rate_source_service": str (optional; rate-card service column used to fetch rates),
                 "divider": float (if hourly),
                 "increment": float (if hourly),
                 "minimum": float (if hourly)

@@ -20,8 +20,6 @@
     "TM - Repetitions",
     "TM - New Word",
     "Formatting",
-    "Post-DTP Proofreading",
-    "Proofreading",
     "Trans./Edit/Proof.",
     "Review",
     "Editing",
@@ -29,7 +27,10 @@
     "File Conversion",
     "Desktop Publishing",
     "Desktop Publishing (DTP)",
-    "Localization QA"
+    "Localization QA",
+    "Handwritten",
+    "Translation and Proofreading",
+    "Translation"
   ],
   "bt_services": [
     "Back Translation"
@@ -44,7 +45,6 @@
     "Data Entry",
     "Engineering",
     "Government Fee",
-    "Handwritten",
     "Interpretation Services",
     "Localization",
     "Medical Review",
@@ -55,15 +55,15 @@
     "Program Management",
     "Project Management",
     "Quality Management",
-    "Reconciliation",
     "Redaction",
     "Revisions",
+    "Reconciliation",
     "Rush Premium",
     "Screenshot Review",
     "Secondary Review",
     "Sidlayout",
     "Transcription",
-    "Translation",
-    "Translation and Proofreading"
+    "Post-DTP Proofreading",
+    "Proofreading"
   ]
 }

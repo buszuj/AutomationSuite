@@ -13,8 +13,10 @@ from pathlib import Path
 import sys
 import subprocess
 import importlib.util
+import importlib
 import os
 from datetime import datetime
+from typing import List, Optional
 
 # Add Core to path for PA Template modules
 core_path = Path(__file__).parent.parent / "Core"
@@ -31,17 +33,20 @@ from account_workflow_manager import AccountWorkflowManager
 from language_normalizer import LanguageNormalizer
 from service_mapper import ServiceMapper
 from quoteme_value_mapper import QuoteMeValueMapper
-from excel_rate_card_loader import load_excel_rate_card
+try:
+    from Rate_Card_Builder.excel_rate_card_loader import load_excel_rate_card
+except ImportError:
+    load_excel_rate_card = None
 
 # Import the parser UI (from same directory)
 from quoteme_parser_ui import create_parser_tab
 
 # Import Rate Card Builder integrated component
 try:
-    from rate_card_builder_integrated import setup_rate_cards_tab
+    from Rate_Card_Builder.rate_card_builder_integrated import setup_rate_cards_tab
 except ImportError:
     setup_rate_cards_tab = None
-
+    
 
 class DataViewerWindow:
     """Window to display raw data in a spreadsheet-like view with pagination and search"""
@@ -442,6 +447,7 @@ class OneStopShopMain:
         
         # Service Mapper for rate card normalization
         self.service_mapper = ServiceMapper()
+        self._ensure_tpus_canonical_services()
         
         # QuoteMe Value Mapper for word count field mapping
         self.quoteme_value_mapper = QuoteMeValueMapper()
@@ -449,16 +455,239 @@ class OneStopShopMain:
         # Rate card and workflow tracking
         self.selected_workflow = None
         self.selected_rate_card = None
+        self.service_mapping_conflicts = {}  # Stores conflict report for the currently loaded rate card
         self.cached_rate_card = None  # Cache normalized rate card to persist across workflow changes
         self.quoteme_data = None  # Stores parsed QuoteMe data
         self.language_pairs = []  # Language pairs from QuoteMe
         self.source_type_var = ctk.StringVar(value="Dead Source")  # Live Source or Dead Source
         self.workflow_service_data = {}  # Stores service data: {service_name: {lp: {quantity, rate}}}
+        self.selected_entity_var = ctk.StringVar(value="TPUS")
+        self.entity_dropdown = None
         
         # Setup menu bar BEFORE UI
         self.setup_menu_bar()
         
         self.setup_ui()
+
+    def _load_pa_services(self):
+        """Load PA_SERVICES from WF_Matrix with a safe fallback."""
+        try:
+            from WF_Matrix import PA_SERVICES
+            return PA_SERVICES
+        except Exception as e:
+            print(f"[DEBUG] Could not load PA_SERVICES: {e}")
+            return {}
+
+    def _infer_default_uom(self, service_name: str) -> str:
+        """Best-effort UofM default for canonical services not yet present in TPUS."""
+        lower = service_name.lower()
+        if "fee" in lower or "courier" in lower or "rush" in lower or "notary" in lower or "apostille" in lower or "certification" in lower:
+            return "Fee"
+        if "desktop" in lower or "format" in lower or "review" in lower or "reconciliation" in lower or "proof" in lower or "editing" in lower or "management" in lower or "assessment" in lower or "engineering" in lower:
+            return "Hour"
+        return "Word"
+
+    def _persist_tpus_services_to_wf_matrix(self, tpus_rows: list):
+        """Persist TPUS_PA_SERVICES block in Core/WF_Matrix.py."""
+        wf_path = Path(__file__).parent.parent / "Core" / "WF_Matrix.py"
+        if not wf_path.exists():
+            return
+
+        marker = "TPUS_PA_SERVICES = ["
+        with open(wf_path, "r", encoding="utf-8") as f:
+            text = f.read()
+
+        start = text.find(marker)
+        if start == -1:
+            return
+
+        open_idx = text.find("[", start)
+        if open_idx == -1:
+            return
+
+        depth = 0
+        end_idx = -1
+        for i in range(open_idx, len(text)):
+            ch = text[i]
+            if ch == "[":
+                depth += 1
+            elif ch == "]":
+                depth -= 1
+                if depth == 0:
+                    end_idx = i
+                    break
+
+        if end_idx == -1:
+            return
+
+        new_block_lines = ["TPUS_PA_SERVICES = ["]
+        for row in tpus_rows:
+            safe_row = row[:4] if isinstance(row, list) else ["", "", "", ""]
+            while len(safe_row) < 4:
+                safe_row.append("")
+            new_block_lines.append(f"    {repr(safe_row)},")
+        new_block_lines.append("]")
+        new_block = "\n".join(new_block_lines)
+
+        updated_text = text[:start] + new_block + text[end_idx + 1:]
+        with open(wf_path, "w", encoding="utf-8") as f:
+            f.write(updated_text)
+
+    def _ensure_tpus_canonical_services(self):
+        """Ensure TPUS contains all canonical services and persist it for Entity Manager usage."""
+        try:
+            import WF_Matrix
+            importlib.reload(WF_Matrix)
+
+            pa_services = WF_Matrix.PA_SERVICES
+            canonical_services = self.service_mapper.canonical_services or []
+            if not canonical_services:
+                return
+
+            current_tpus = pa_services.get("TPUS", [])
+            header = ["Service Group 1", "Service Group 2", "Service", "Default UofM"]
+            if current_tpus and isinstance(current_tpus[0], list) and len(current_tpus[0]) >= 4:
+                header = current_tpus[0][:4]
+
+            existing_by_service = {}
+            for row in current_tpus[1:]:
+                if isinstance(row, list) and len(row) >= 4:
+                    svc = str(row[2]).strip()
+                    if svc:
+                        existing_by_service[svc] = row[:4]
+
+            canonical_rows = [header]
+            for svc in canonical_services:
+                if svc in existing_by_service:
+                    canonical_rows.append(existing_by_service[svc])
+                else:
+                    canonical_rows.append([
+                        "Language Services",
+                        "Translation",
+                        svc,
+                        self._infer_default_uom(svc)
+                    ])
+
+            # Update in-memory and persist to file so Entity Manager reload sees canonical TPUS.
+            WF_Matrix.PA_SERVICES["TPUS"] = canonical_rows
+            self._persist_tpus_services_to_wf_matrix(canonical_rows)
+
+            # Ensure every existing entity also contains all TPUS services.
+            # This keeps legacy entities aligned with canonical service coverage.
+            importlib.reload(WF_Matrix)
+            import sync_entities
+            importlib.reload(sync_entities)
+            sync_entities.sync_all_entities_to_master()
+            importlib.reload(WF_Matrix)
+        except Exception as e:
+            print(f"[DEBUG] Failed to enforce TPUS canonical services: {e}")
+
+    def _get_available_entities(self):
+        """Get available entities with TPUS first if present."""
+        pa_services = self._load_pa_services()
+        entities = sorted(pa_services.keys())
+        if "TPUS" in entities:
+            entities.remove("TPUS")
+            entities.insert(0, "TPUS")
+        return entities
+
+    def _refresh_entity_dropdown(self):
+        """Refresh Job Data entity dropdown values from WF_Matrix."""
+        if not self.entity_dropdown:
+            return
+
+        entities = self._get_available_entities()
+        current = self.selected_entity_var.get().strip()
+        if not current or current not in entities:
+            current = "TPUS" if "TPUS" in entities else (entities[0] if entities else "")
+
+        self.entity_dropdown.configure(values=entities)
+        self.selected_entity_var.set(current)
+        if current:
+            self.entity_dropdown.set(current)
+
+    def _on_job_entity_changed(self, _choice=None):
+        """Re-render services table when Job Data entity selection changes."""
+        try:
+            self._refresh_entity_dropdown()
+            if self.selected_workflow and self.current_account:
+                services = self.account_workflow_manager.get_workflow_services(
+                    self.current_account,
+                    self.selected_workflow
+                )
+                self.populate_services_table(services)
+        except Exception as e:
+            print(f"[DEBUG] Failed to refresh services on entity change: {e}")
+
+    def _get_display_service_name(self, canonical_service: str) -> str:
+        """Get service name to display in Services by LP for selected entity."""
+        entity_name = self.selected_entity_var.get().strip() if hasattr(self, "selected_entity_var") else "TPUS"
+        if not entity_name:
+            entity_name = "TPUS"
+
+        try:
+            from entity_service_mapper import EntityServiceMapper
+            entity_mapper = EntityServiceMapper()
+            return self._resolve_service_for_entity(canonical_service, entity_name, entity_mapper)
+        except Exception as e:
+            print(f"[DEBUG] Display name resolution failed for {canonical_service}: {e}")
+            return canonical_service
+
+    def _get_entity_service_profile(self, entity_name: str):
+        """
+        Build lookup of service metadata for an entity.
+
+        Returns dict keyed by exact service name with values:
+        {"group1": str, "group2": str, "uom": str}
+        """
+        pa_services = self._load_pa_services()
+        rows = pa_services.get(entity_name, [])
+        profile = {}
+
+        for row in rows[1:]:
+            if not isinstance(row, list) or len(row) < 4:
+                continue
+            service_name = str(row[2]).strip()
+            if not service_name:
+                continue
+            profile[service_name] = {
+                "group1": str(row[0]).strip() if row[0] is not None else "",
+                "group2": str(row[1]).strip() if row[1] is not None else "",
+                "uom": str(row[3]).strip() if row[3] is not None else ""
+            }
+
+        return profile
+
+    def _resolve_service_for_entity(self, canonical_service: str, entity_name: str, entity_mapper):
+        """
+        Resolve canonical service name to the selected entity's visible service name.
+        Priority:
+        1) TPUS canonical (identity)
+        2) EntityServiceMapper reverse mapping
+        3) ServiceMapper entity aliases
+        4) Canonical fallback
+        """
+        if not entity_name or entity_name == "TPUS":
+            return canonical_service
+
+        entity_service = None
+        try:
+            entity_service = entity_mapper.get_reverse_mapping(entity_name, canonical_service)
+        except Exception as e:
+            print(f"[DEBUG] Failed reverse mapping for {canonical_service} -> {entity_name}: {e}")
+
+        if entity_service:
+            return entity_service
+
+        try:
+            aliases = self.service_mapper.load_entity_service_aliases(entity_name)
+            alias_name = aliases.get(canonical_service, "")
+            if alias_name:
+                return alias_name
+        except Exception as e:
+            print(f"[DEBUG] Failed alias lookup for {canonical_service} in {entity_name}: {e}")
+
+        return canonical_service
     
     def setup_menu_bar(self):
         """Setup menu bar with configuration options"""
@@ -625,7 +854,7 @@ class OneStopShopMain:
                     dialog.destroy()
                     self._refresh_account_list_ui()
                     self.selected_account_var.set(account_name)
-                    messagebox.showinfo("Success", f"Account '{account_name}' created successfully!")
+
                 else:
                     messagebox.showerror("Error", "Account already exists or creation failed")
             except Exception as e:
@@ -704,7 +933,6 @@ class OneStopShopMain:
                 
                 self._refresh_account_list_ui()
                 self.selected_account_var.set("")
-                messagebox.showinfo("Success", f"Account '{account_name}' deleted!")
             else:
                 messagebox.showerror("Error", "Failed to delete account")
         except Exception as e:
@@ -1015,13 +1243,32 @@ class OneStopShopMain:
             messagebox.showerror("Error", f"Failed to open Entity Manager: {str(e)}")
     
     def open_service_mapper(self):
-        """Open service mapping management dialog"""
+        """Open service mapping management dialog (singleton – raises existing window if open)."""
         if not self.current_account:
             messagebox.showwarning("Warning", "Please select an account first")
             return
-        
+        account_name = str(self.current_account)
+
+        # Singleton guard: bring existing window to front instead of opening another
+        if hasattr(self, "_service_mapper_window") and self._service_mapper_window is not None:
+            try:
+                if self._service_mapper_window.winfo_exists():
+                    self._service_mapper_window.lift()
+                    self._service_mapper_window.focus_force()
+                    return
+            except Exception:
+                pass
+            self._service_mapper_window = None
+
         dialog = ctk.CTkToplevel(self.root)
-        dialog.title(f"Service Mapper - {self.current_account}")
+        self._service_mapper_window = dialog
+
+        def _on_mapper_close():
+            self._service_mapper_window = None
+            dialog.destroy()
+
+        dialog.protocol("WM_DELETE_WINDOW", _on_mapper_close)
+        dialog.title(f"Service Mapper - {account_name}")
         dialog.geometry("700x600")
         dialog.transient(self.root)
         dialog.grab_set()
@@ -1029,7 +1276,7 @@ class OneStopShopMain:
         # Title
         title_label = ctk.CTkLabel(
             dialog,
-            text=f"Manage Service Mappings for {self.current_account}",
+            text=f"Manage Service Mappings for {account_name}",
             font=("Arial", 14, "bold")
         )
         title_label.pack(pady=15, padx=20)
@@ -1074,18 +1321,93 @@ class OneStopShopMain:
         # Scrollable area for mappings
         scroll_frame = ctk.CTkScrollableFrame(mappings_frame, fg_color="transparent")
         scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Load account-level conflicts once for this dialog session
+        account_conflict_report = self.service_mapper.detect_account_mapping_conflicts(account_name)
+        account_conflicts = account_conflict_report.get("conflicts", {})
         
         def on_rate_card_select(rc_name: str):
-            """Update mappings display when rate card is selected"""
+            """Update mappings display when rate card is selected, including conflict details."""
             # Clear current mappings display
             for widget in scroll_frame.winfo_children():
                 widget.destroy()
             
             if not rc_name:
                 return
+
+            clean_rc_name = rc_name.replace("[Master] ", "").strip()
+
+            # Show conflicts related to this selected rate card
+            related_conflicts = []
+            for alias_norm, conflict_data in account_conflicts.items():
+                sources = conflict_data.get("sources", [])
+                if any(str(src.get("rate_card", "")).strip() == clean_rc_name for src in sources):
+                    related_conflicts.append((alias_norm, conflict_data))
+
+            if related_conflicts:
+                conflict_banner = ctk.CTkFrame(scroll_frame, fg_color="#5a2a2a", corner_radius=6)
+                conflict_banner.pack(fill="x", pady=(0, 10), padx=2)
+
+                ctk.CTkLabel(
+                    conflict_banner,
+                    text=f"⚠ {len(related_conflicts)} alias conflict(s) involve this rate card",
+                    font=("Arial", 11, "bold"),
+                    text_color="#ffd6d6",
+                    anchor="w"
+                ).pack(fill="x", padx=10, pady=(8, 4))
+
+                ctk.CTkLabel(
+                    conflict_banner,
+                    text="Same alias is mapped to different canonical services across saved mappings.",
+                    font=("Arial", 10),
+                    text_color="#ffd6d6",
+                    anchor="w",
+                    wraplength=620,
+                    justify="left"
+                ).pack(fill="x", padx=10, pady=(0, 8))
+
+                for alias_norm, conflict_data in sorted(related_conflicts, key=lambda x: x[0]):
+                    alias_variants = ", ".join(conflict_data.get("alias_variants", []))
+                    canonical_targets = " | ".join(conflict_data.get("canonical_services", []))
+                    cards = sorted({
+                        str(src.get("rate_card", ""))
+                        for src in conflict_data.get("sources", [])
+                        if src.get("rate_card")
+                    })
+
+                    item = ctk.CTkFrame(scroll_frame, fg_color="#4a2323", corner_radius=5)
+                    item.pack(fill="x", pady=4, padx=4)
+
+                    ctk.CTkLabel(
+                        item,
+                        text=f"Alias: {alias_variants or alias_norm}",
+                        font=("Arial", 10, "bold"),
+                        text_color="#ffd6d6",
+                        anchor="w"
+                    ).pack(fill="x", padx=10, pady=(7, 2))
+
+                    ctk.CTkLabel(
+                        item,
+                        text=f"Canonical targets: {canonical_targets}",
+                        font=("Arial", 10),
+                        text_color="#ffd6d6",
+                        anchor="w",
+                        wraplength=620,
+                        justify="left"
+                    ).pack(fill="x", padx=10, pady=2)
+
+                    ctk.CTkLabel(
+                        item,
+                        text=f"Seen in rate cards: {', '.join(cards)}",
+                        font=("Arial", 9),
+                        text_color="#ffb3b3",
+                        anchor="w",
+                        wraplength=620,
+                        justify="left"
+                    ).pack(fill="x", padx=10, pady=(2, 7))
             
             # Load mappings for this rate card
-            mappings = self.service_mapper.load_mapping(self.current_account, rc_name)
+            mappings = self.service_mapper.load_mapping(account_name, clean_rc_name)
             
             if not mappings:
                 no_mappings_label = ctk.CTkLabel(
@@ -1138,7 +1460,7 @@ class OneStopShopMain:
         close_btn = ctk.CTkButton(
             dialog,
             text="Close",
-            command=dialog.destroy,
+            command=_on_mapper_close,
             fg_color="#555",
             width=120
         )
@@ -1314,7 +1636,6 @@ class OneStopShopMain:
             # Process first row as preview
             preview_df = self.template_processor.process_dataframe(
                 source_data,
-                source_data,
                 self.current_account,
                 row_index=0
             )
@@ -1470,6 +1791,12 @@ class OneStopShopMain:
             
             # Import the module
             spec = importlib.util.spec_from_file_location("KickOff", str(kickoff_path))
+            if spec is None or spec.loader is None:
+                messagebox.showerror(
+                    "Automation Error",
+                    f"Failed to load KickOff module spec from:\n{kickoff_path}"
+                )
+                return
             kickoff_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(kickoff_module)
             
@@ -1993,9 +2320,9 @@ class OneStopShopMain:
         main_container = ctk.CTkFrame(data_tab, fg_color="transparent")
         main_container.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Configure grid columns with initial split (1:3) - left gets 25%, right gets 75%
-        main_container.grid_columnconfigure(0, weight=1, minsize=200)  # Min 200px for left pane
-        main_container.grid_columnconfigure(2, weight=3, minsize=300)  # Min 300px for right pane
+        # Left pane starts minimised; user can expand via the separator drag
+        main_container.grid_columnconfigure(0, weight=0, minsize=8)   # Collapsed by default
+        main_container.grid_columnconfigure(2, weight=1, minsize=300)  # Right pane takes all space
         main_container.grid_rowconfigure(0, weight=1)
         
         # Store references for resizing
@@ -2058,19 +2385,20 @@ class OneStopShopMain:
         # Make separator draggable for resizing
         def on_separator_drag(event):
             """Handle dragging the separator to resize panes"""
-            # Calculate new weights based on mouse position
             total_width = main_container.winfo_width()
-            # Get absolute position of separator and convert to relative position
-            sep_abs_x = separator.winfo_x()
             pointer_x = event.x_root
-            left_width = pointer_x - main_container.winfo_x()
+            # Use winfo_rootx() for correct screen-to-widget coordinate mapping
+            left_width = pointer_x - main_container.winfo_rootx()
             
-            # Update column weights to maintain aspect ratio
-            if left_width > 200 and (total_width - left_width) > 300:  # Respect minimums
-                new_left_weight = max(1, left_width // 50)
-                new_right_weight = max(1, (total_width - left_width) // 50)
-                main_container.grid_columnconfigure(0, weight=new_left_weight)
-                main_container.grid_columnconfigure(2, weight=new_right_weight)
+            # Clamp to sensible limits
+            if left_width < 8:
+                left_width = 8
+            right_width = total_width - left_width - separator.winfo_width()
+            if right_width < 300:
+                return  # Don't shrink right pane below minimum
+            # Drive sizes directly via minsize so there is no weight-ratio jump
+            main_container.grid_columnconfigure(0, weight=0, minsize=left_width)
+            main_container.grid_columnconfigure(2, weight=0, minsize=right_width)
         
         separator.bind("<B1-Motion>", on_separator_drag)
         separator.configure(cursor="sb_h_double_arrow")
@@ -2083,7 +2411,7 @@ class OneStopShopMain:
         
         # Right pane header
         right_header = ctk.CTkFrame(right_pane, fg_color="transparent")
-        right_header.grid(row=0, column=0, sticky="ew", padx=15, pady=(15, 10))
+        right_header.grid(row=0, column=0, sticky="ew", padx=15, pady=(5, 3))
         
         header_left = ctk.CTkFrame(right_header, fg_color="transparent")
         header_left.pack(side="left", fill="x", expand=True)
@@ -2097,38 +2425,40 @@ class OneStopShopMain:
         # Workflow selector section
         wf_frame = ctk.CTkFrame(right_pane, fg_color="transparent")
         wf_frame.grid(row=1, column=0, sticky="ew", padx=15, pady=10)
-        
-        wf_label_frame = ctk.CTkFrame(wf_frame, fg_color="transparent")
-        wf_label_frame.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        
-        ctk.CTkLabel(
-            wf_label_frame,
-            text="Choose Workflow:",
-            font=("Arial", 11, "bold")
-        ).pack(anchor="w", pady=(0, 5))
+
+        # Entity selector (global across account/workflow)
+        entity_values = self._get_available_entities()
+        default_entity = "TPUS" if "TPUS" in entity_values else (entity_values[0] if entity_values else "")
+        self.selected_entity_var.set(default_entity)
+
+        self.entity_dropdown = ctk.CTkComboBox(
+            wf_frame,
+            values=entity_values,
+            variable=self.selected_entity_var,
+            command=self._on_job_entity_changed,
+            state="readonly",
+            font=("Arial", 10),
+            height=32,
+            width=130
+        )
+        self.entity_dropdown.pack(side="left", padx=(0, 10))
+        if default_entity:
+            self.entity_dropdown.set(default_entity)
         
         self.workflow_dropdown = ctk.CTkComboBox(
-            wf_label_frame,
+            wf_frame,
             values=[],
             command=self.on_workflow_selected,
             state="readonly",
             font=("Arial", 11),
             height=32
         )
-        self.workflow_dropdown.pack(fill="x")
+        self.workflow_dropdown.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        self.workflow_dropdown.set("Choose Workflow...")
         
-        # Source Type Selector (on same row as Choose Workflow)
-        source_frame = ctk.CTkFrame(wf_frame, fg_color="transparent")
-        source_frame.pack(side="left", fill="x", padx=10)
-        
-        ctk.CTkLabel(
-            source_frame,
-            text="Source Type:",
-            font=("Arial", 10)
-        ).pack()
-        
+        # Source Type Selector (on same row as workflow dropdown)
         self.source_type_dropdown = ctk.CTkComboBox(
-            source_frame,
+            wf_frame,
             values=["Live Source", "Dead Source"],
             variable=self.source_type_var,
             command=self._on_source_type_changed,
@@ -2137,17 +2467,14 @@ class OneStopShopMain:
             height=32,
             width=150
         )
-        self.source_type_dropdown.pack(fill="x", pady=(3, 0))
+        self.source_type_dropdown.pack(side="left", padx=(0, 0))
+
+        # Keep entities list fresh in case Manage Entities changed WF_Matrix in-session
+        self._refresh_entity_dropdown()
         
         # Rate card selector section
         rc_frame = ctk.CTkFrame(right_pane, fg_color="transparent")
         rc_frame.grid(row=2, column=0, sticky="ew", padx=15, pady=10)
-        
-        ctk.CTkLabel(
-            rc_frame,
-            text="Select Rate Card:",
-            font=("Arial", 11, "bold")
-        ).pack(anchor="w", pady=(0, 5))
         
         # Top row: Rate card dropdown and Browse button
         rc_dropdown_frame = ctk.CTkFrame(rc_frame, fg_color="transparent")
@@ -2162,6 +2489,7 @@ class OneStopShopMain:
             height=32
         )
         self.rate_card_dropdown.pack(side="left", fill="x", expand=True)
+        self.rate_card_dropdown.set("Select Rate Card...")
         
         # Browse button to load rate card files
         ctk.CTkButton(
@@ -2318,6 +2646,13 @@ class OneStopShopMain:
         )
         self.services_table_frame.grid(row=4, column=0, sticky="nsew", padx=15, pady=(0, 15))
         
+        # Enable mousewheel scrolling on the services table
+        def _stf_scroll(event):
+            self.services_table_frame._parent_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        self._services_table_scroll_handler = _stf_scroll
+        self.services_table_frame.bind("<MouseWheel>", _stf_scroll)
+        self.services_table_frame._parent_canvas.bind("<MouseWheel>", _stf_scroll)
+        
         # Initial message for services table
         self.services_empty_label = ctk.CTkLabel(
             self.services_table_frame,
@@ -2348,7 +2683,8 @@ class OneStopShopMain:
             placeholder_text="e.g., 15"
         )
         self.rush_rate_entry.pack(side="left", padx=(0, 10))
-        self.rush_rate_entry.bind("<KeyRelease>", self._on_rush_rate_changed)
+        self.rush_rate_entry.bind("<FocusOut>", self._on_rush_rate_changed)
+        self.rush_rate_entry.bind("<Return>", self._on_rush_rate_changed)
         
         ctk.CTkLabel(
             rush_frame,
@@ -2397,7 +2733,7 @@ class OneStopShopMain:
         # ── 1.1 Manage Entities ──────────────────────────────────────────────
         entities_tab = config_subtabs.add("Manage Entities")
         try:
-            EntityManagerGUI(frame=entities_tab)
+            EntityManagerGUI(frame=entities_tab, on_entity_change=self._refresh_entity_dropdown)
         except Exception as e:
             ctk.CTkLabel(
                 entities_tab,
@@ -2429,7 +2765,10 @@ class OneStopShopMain:
             import sys
             sys.path.insert(0, str(Path(__file__).parent.parent / "Core"))
             from WF_Matrix import PA_SERVICES
-            entity_names = sorted([e for e in PA_SERVICES.keys() if e != "TPUS"])
+            entity_names = sorted(PA_SERVICES.keys())
+            if "TPUS" in entity_names:
+                entity_names.remove("TPUS")
+                entity_names.insert(0, "TPUS")
         except Exception:
             entity_names = []
 
@@ -3045,7 +3384,7 @@ class OneStopShopMain:
                     
                     # Extract service names (handle both string and dict formats)
                     service_names = []
-                    for svc in services:
+                    for svc in (services or []):
                         if isinstance(svc, dict):
                             service_names.append(svc.get("name", svc))
                         else:
@@ -3161,19 +3500,9 @@ class OneStopShopMain:
         service_widgets = {}
         service_frames = {}  # Track frames for visibility toggling
         
-        def on_search_change(*args):
-            """Filter services based on search query"""
-            query = search_var.get().lower().strip()
-            
-            for service, frame in service_frames.items():
-                if query == "":
-                    frame.pack(anchor="w", padx=10, pady=2, fill="x")
-                elif query in service.lower():
-                    frame.pack(anchor="w", padx=10, pady=2, fill="x")
-                else:
-                    frame.pack_forget()
+        from Core.service_search_engine import ServiceSearchEngine
         
-        search_var.trace("w", on_search_change)
+        search_var.trace_add("write", on_search_change)
         
         def on_service_selected(service_name, cb_var):
             """Handle service checkbox"""
@@ -3305,7 +3634,6 @@ class OneStopShopMain:
                             used_when
                         )
                 
-                messagebox.showinfo("Success", f"Workflow '{workflow_name}' created!")
                 add_dialog.destroy()
                 refresh_callback()  # Refresh Manage Workflows tab
                 self.refresh_workflow_dropdown()  # CRITICAL: Also refresh Job Data dropdown
@@ -3561,7 +3889,7 @@ class OneStopShopMain:
             traceback.print_exc()
             return {}
     
-    def get_rate_from_card(self, rate_card: dict, service: str, target_language: str = None) -> str:
+    def get_rate_from_card(self, rate_card: dict, service: str, target_language: Optional[str] = None) -> str:
         """
         Get rate for a service from a loaded rate card
         
@@ -3801,7 +4129,7 @@ class OneStopShopMain:
                 
                 # Extract service names (handle both string and dict formats)
                 service_names = []
-                for svc in services:
+                for svc in (services or []):
                     if isinstance(svc, dict):
                         service_names.append(svc.get("name", svc))
                     else:
@@ -3928,7 +4256,7 @@ class OneStopShopMain:
                     # Hide if doesn't match
                     frame.pack_forget()
         
-        search_var.trace("w", on_search_change)
+        search_var.trace_add("write", on_search_change)
         
         def on_service_selected(service_name, cb_var):
             """Handle service checkbox - add/remove from selected list"""
@@ -4123,10 +4451,6 @@ class OneStopShopMain:
                 selected_services_list  # Preserves order
             ):
                 add_dialog.destroy()
-                messagebox.showinfo("Success", f"Workflow '{wf_name}' created successfully")
-                # Refresh the workflows list in the Manage Workflows tab
-                if refresh_callback:
-                    refresh_callback()
                 self.refresh_workflow_dropdown()
             else:
                 messagebox.showerror("Error", f"Workflow '{wf_name}' already exists")
@@ -4155,7 +4479,7 @@ class OneStopShopMain:
         """Dialog to edit existing workflow for current account"""
         edit_dialog = ctk.CTkToplevel(parent_dialog)
         edit_dialog.title(f"Edit Workflow: {workflow_name}")
-        edit_dialog.geometry("600x500")
+        edit_dialog.geometry("700x600")
         edit_dialog.transient(parent_dialog)
         edit_dialog.grab_set()
         
@@ -4205,7 +4529,7 @@ class OneStopShopMain:
         
         # Extract service names (handle both string and dict formats)
         current_services = []
-        for svc in current_services_raw:
+        for svc in (current_services_raw or []):
             if isinstance(svc, dict):
                 current_services.append(svc.get("name", svc))
             else:
@@ -4233,7 +4557,7 @@ class OneStopShopMain:
                     # Hide if doesn't match
                     frame.pack_forget()
         
-        search_var.trace("w", on_search_change)
+        search_var.trace_add("write", on_search_change)
         
         def on_service_selected(service_name, cb_var):
             """Handle service checkbox - add/remove from selected list"""
@@ -4562,9 +4886,13 @@ class OneStopShopMain:
             messagebox.showwarning("No Workflow", "Please select a workflow first")
             return
         
-        if not self.quoteme_data:
-            messagebox.showwarning("No QuoteMe Data", "Please parse a QuoteMe email first to get word count data")
+        if not self.quoteme_data and not self.manual_wc_data:
+            messagebox.showwarning(
+                "No Word Count Data",
+                "Please parse a QuoteMe email or add Manual WC data first to configure services"
+            )
             return
+        
         
         # Get services for current workflow
         services = self.account_workflow_manager.get_workflow_services(
@@ -4590,6 +4918,9 @@ class OneStopShopMain:
     def on_workflow_selected(self, workflow_name: str):
         """Handle workflow selection - populate services table and check for QuoteMe mapping"""
         print(f"\n[DEBUG] on_workflow_selected called: workflow='{workflow_name}'")
+
+        # Pull latest entities in case Manage Entities changed WF_Matrix in-session.
+        self._refresh_entity_dropdown()
         
         if not workflow_name or not self.current_account:
             print(f"[DEBUG] Returning early - workflow_name: {workflow_name}, current_account: {self.current_account}")
@@ -4646,14 +4977,14 @@ class OneStopShopMain:
     def _show_manual_wc_dialog(self):
         """Show dialog for manually entering word count data for specific language pairs"""
         if not self.current_account or not self.selected_rate_card:
-            messagebox.showwarning("Missing Info", "Please select an account and rate card first")
+            messagebox.showwarning("Missing Info", "Please select a rate card first")
             return
 
         # Build language list from currently selected/imported rate card
         language_choices = []
         rate_card = self.cached_rate_card if self.cached_rate_card else self.load_rate_card(self.selected_rate_card)
         if isinstance(rate_card, dict) and "languages" in rate_card:
-            language_choices = sorted([str(k).strip() for k in rate_card.get("languages", {}).keys() if str(k).strip()])
+            language_choices = ["English (US)", "English (GB)"] + sorted([str(k).strip() for k in rate_card.get("languages", {}).keys() if str(k).strip()])
         
         # Fallback: derive source/target suggestions from existing LPs
         if not language_choices:
@@ -4665,12 +4996,12 @@ class OneStopShopMain:
                         derived.add(src.strip())
                     if tgt.strip():
                         derived.add(tgt.strip())
-            language_choices = sorted(derived)
+            language_choices = ["English (US)", "English (GB)"] +sorted(derived)
         
         # Create modal dialog
         dialog = ctk.CTkToplevel(self.root)
         dialog.title("Manual Word Count Entry")
-        dialog.geometry("700x600")
+        dialog.geometry("700x800")
         dialog.resizable(True, True)
         dialog.grab_set()
         dialog.transient(self.root)
@@ -4964,28 +5295,69 @@ class OneStopShopMain:
         ).pack(side="left", padx=5)
     
     def _on_rush_rate_changed(self, event=None):
-        """Handle rush rate value change"""
+        """Handle rush rate value change.
+
+        Snapshot current user-entered quantities for all non-Rush services so they
+        are restored exactly after the table rebuild, then run only the Rush Premium
+        recalculation on top of them.
+        """
         try:
             rush_value_str = self.rush_rate_entry.get().strip()
-            
+
             if rush_value_str:
                 self.rush_rate_value = float(rush_value_str)
                 print(f"[DEBUG] Rush rate set to: {self.rush_rate_value}%")
             else:
                 self.rush_rate_value = None
                 print(f"[DEBUG] Rush rate cleared")
-            
-            # Refresh services to add/remove Rush Premium and recalculate quantities
-            if self.selected_workflow:
-                services = self.account_workflow_manager.get_workflow_services(
-                    self.current_account,
-                    self.selected_workflow
-                )
-                self.populate_services_table(services)
-                # Recalculate quantities and Rush Premium rate
-                self.update_quantities_from_quoteme(self.selected_workflow)
+
+            if not self.selected_workflow:
+                return
+
+            # --- Snapshot current table values before rebuild ---
+            saved_quantities: dict = {}   # {service_name: {lp: qty_str}}
+            saved_rates: dict = {}        # {service_name: {lp: rate_str}}
+            for svc, lp_map in self.workflow_service_widgets.items():
+                saved_quantities[svc] = {}
+                saved_rates[svc] = {}
+                for lp, widgets in lp_map.items():
+                    try:
+                        saved_quantities[svc][lp] = widgets["quantity"].get()
+                        saved_rates[svc][lp] = widgets["rate"].get()
+                    except Exception:
+                        pass
+
+            services = self.account_workflow_manager.get_workflow_services(
+                self.current_account,
+                self.selected_workflow
+            )
+            # Rebuild the table (adds/removes Rush Premium row)
+            self.populate_services_table(services)
+
+            # --- Restore saved values for every service except Rush Premium ---
+            for svc, lp_map in self.workflow_service_widgets.items():
+                if svc == "Rush Premium":
+                    continue
+                for lp, widgets in lp_map.items():
+                    saved_qty = saved_quantities.get(svc, {}).get(lp)
+                    saved_rate = saved_rates.get(svc, {}).get(lp)
+                    if saved_qty is not None:
+                        try:
+                            widgets["quantity"].delete(0, "end")
+                            widgets["quantity"].insert(0, saved_qty)
+                        except Exception:
+                            pass
+                    if saved_rate is not None:
+                        try:
+                            widgets["rate"].delete(0, "end")
+                            widgets["rate"].insert(0, saved_rate)
+                        except Exception:
+                            pass
+
+            # Now recalculate only Rush Premium on top of restored values
+            self._recalculate_rush_premium_from_current_table()
+
         except ValueError:
-            # Invalid number, just ignore
             pass
 
     def _schedule_rush_recalculation(self, event=None):
@@ -5042,7 +5414,48 @@ class OneStopShopMain:
                 print(f"[DEBUG]   ✓ Live Rush Premium recalc for {lp}: Qty={rush_qty}, Rate={total_cost}")
             except KeyError:
                 pass
-    
+
+    def _recalculate_fee_rates_from_table(self):
+        """Recalculate Fee service rates (SUMPRODUCT of all services above them) from current table values.
+
+        Called when user edits an Hourly quantity so that downstream Fee services stay correct.
+        """
+        if not self.workflow_service_widgets:
+            return
+
+        service_order = list(self.workflow_service_widgets.keys())
+        lps = list(next(iter(self.workflow_service_widgets.values())).keys())
+
+        for svc_idx, svc in enumerate(service_order):
+            svc_lp_data = self.workflow_service_widgets.get(svc, {})
+            # Detect Fee services by stored metadata or by quoteme_value_mapper
+            first_lp_data = next(iter(svc_lp_data.values()), {}) if svc_lp_data else {}
+            svc_type = first_lp_data.get("service_type", "Word") if isinstance(first_lp_data, dict) else "Word"
+            if svc_type != "Fee":
+                continue
+
+            for lp in lps:
+                if lp not in svc_lp_data:
+                    continue
+                sumproduct = 0.0
+                for prev_idx in range(svc_idx):
+                    prev_svc = service_order[prev_idx]
+                    prev_lp_data = self.workflow_service_widgets.get(prev_svc, {})
+                    if lp not in prev_lp_data:
+                        continue
+                    try:
+                        qty = float(prev_lp_data[lp]["quantity"].get().strip() or "0")
+                        rate = float(prev_lp_data[lp]["rate"].get().strip() or "0")
+                        sumproduct += qty * rate
+                    except (ValueError, KeyError):
+                        pass
+
+                try:
+                    svc_lp_data[lp]["rate"].delete(0, "end")
+                    svc_lp_data[lp]["rate"].insert(0, str(sumproduct))
+                except Exception:
+                    pass
+
     def _show_quoteme_mapping_dialog(self, services: List[str], workflow_name: str):
         """
         Show dialog to map QuoteMe word count fields to workflow services.
@@ -5079,6 +5492,19 @@ class OneStopShopMain:
         # Load existing account-level mapping
         existing_mapping = self.quoteme_value_mapper.load_mapping(self.current_account)
         
+        # Build available rate-card services for "Rate Source Service" dropdown
+        available_rate_services = []
+        card_for_services = self.cached_rate_card if self.cached_rate_card else (
+            self.load_rate_card(self.selected_rate_card) if self.selected_rate_card else {}
+        )
+        if isinstance(card_for_services, dict):
+            for lang_data in card_for_services.get("languages", {}).values():
+                if isinstance(lang_data, dict) and "rates" in lang_data and isinstance(lang_data["rates"], dict):
+                    for svc_name in lang_data["rates"].keys():
+                        if svc_name not in available_rate_services:
+                            available_rate_services.append(svc_name)
+        available_rate_services = sorted(available_rate_services)
+
         # Main scrollable frame
         main_scroll = ctk.CTkScrollableFrame(dialog, fg_color="gray25", corner_radius=6)
         main_scroll.pack(fill="both", expand=True, padx=15, pady=(0, 15))
@@ -5109,7 +5535,12 @@ class OneStopShopMain:
             # Config button for hourly settings
             def make_config_button(svc_name):
                 def open_config():
-                    self._show_service_config_dialog(dialog, svc_name, service_configs)
+                    self._show_service_config_dialog(
+                        dialog, 
+                        svc_name, 
+                        service_configs,
+                        available_rate_services
+                    )
                 return open_config
             
             ctk.CTkButton(
@@ -5150,13 +5581,16 @@ class OneStopShopMain:
             # Initialize service config
             if existing_service_cfg:
                 service_configs[service] = existing_service_cfg.copy()
+                if not service_configs[service].get("rate_source_service"):
+                    service_configs[service]["rate_source_service"] = service
             else:
                 service_configs[service] = {
                     "fields": [],
                     "service_type": "Word",
                     "divider": 1.0,
                     "increment": 1.0,
-                    "minimum": 0
+                    "minimum": 0,
+                    "rate_source_service": service
                 }
             
             service_configs[service]["field_vars"] = field_vars
@@ -5264,7 +5698,11 @@ class OneStopShopMain:
             
             # Refresh the services table to display quantities with new mapping
             if self.selected_workflow:
-                self.populate_services_table(self.lp_manager.get_all_language_pairs(), self.selected_workflow)
+                services = self.account_workflow_manager.get_workflow_services(
+                    self.current_account,
+                    self.selected_workflow
+                )
+                self.populate_services_table(services)
         
         def skip_mapping():
             dialog.destroy()
@@ -5289,10 +5727,16 @@ class OneStopShopMain:
             fg_color="gray"
         ).pack(side="left", padx=5)
     
-    def _show_service_config_dialog(self, parent_dialog, service_name: str, service_configs: dict):
+    def _show_service_config_dialog(
+        self,
+        parent_dialog,
+        service_name: str,
+        service_configs: dict,
+        available_rate_services: Optional[list] = None
+    ):
         """
         Show configuration dialog for service type settings (Word, Hourly, or Fee).
-        Allows setting divider, increment, and minimum values for Hourly services.
+        Allows setting divider, increment, minimum values, and rate source service.
         """
         config_dialog = ctk.CTkToplevel(parent_dialog)
         config_dialog.title(f"Configure: {service_name}")
@@ -5308,6 +5752,10 @@ class OneStopShopMain:
         
         current_config = service_configs.get(service_name, {})
         current_service_type = current_config.get("service_type", "Word")
+        current_rate_source = current_config.get("rate_source_service", service_name)
+
+        if available_rate_services is None:
+            available_rate_services = []
         
         # Header
         ctk.CTkLabel(
@@ -5336,6 +5784,35 @@ class OneStopShopMain:
             height=32
         )
         service_type_dropdown.pack(fill="x", pady=(5, 0))
+
+        # Rate source service dropdown
+        rate_source_frame = ctk.CTkFrame(config_dialog, fg_color="transparent")
+        rate_source_frame.pack(fill="x", padx=30, pady=10)
+
+        ctk.CTkLabel(
+            rate_source_frame,
+            text="Rate Source Service (from loaded rate card):",
+            font=("Arial", 11, "bold")
+        ).pack(anchor="w")
+
+        rate_source_values = [service_name]
+        for svc_name in available_rate_services:
+            if svc_name not in rate_source_values:
+                rate_source_values.append(svc_name)
+
+        rate_source_var = ctk.StringVar(
+            value=current_rate_source if current_rate_source in rate_source_values else service_name
+        )
+
+        rate_source_dropdown = ctk.CTkComboBox(
+            rate_source_frame,
+            values=rate_source_values,
+            variable=rate_source_var,
+            state="readonly",
+            font=("Arial", 10),
+            height=32
+        )
+        rate_source_dropdown.pack(fill="x", pady=(5, 0))
         
         # Info labels for each service type
         info_frame = ctk.CTkFrame(config_dialog, fg_color="#2b2b2b", corner_radius=6)
@@ -5464,6 +5941,7 @@ class OneStopShopMain:
                     return
                 
                 service_configs[service_name]["service_type"] = service_type_var.get()
+                service_configs[service_name]["rate_source_service"] = rate_source_var.get().strip() or service_name
                 service_configs[service_name]["divider"] = divider
                 service_configs[service_name]["increment"] = increment
                 service_configs[service_name]["minimum"] = minimum
@@ -5607,7 +6085,7 @@ class OneStopShopMain:
         conv_path = self._get_currency_conversion_path()
         if not conv_path or not conv_path.exists():
             # Default to USD and 1.0
-            self.currency_dropdown.set("USD")
+            self.target_currency_dropdown.set("USD")
             self.conversion_rate_entry.delete(0, "end")
             self.conversion_rate_entry.insert(0, "1.0")
             return
@@ -6090,6 +6568,12 @@ class OneStopShopMain:
                 # Load rate card based on file format
                 if file_ext == ".xlsx":
                     # Load Excel rate card
+                    if load_excel_rate_card is None:
+                        messagebox.showerror(
+                            "Missing Dependency",
+                            "Excel rate card loader is not available in this environment."
+                        )
+                        return
                     rate_card = load_excel_rate_card(file_path)
                     print(f"Loaded from Excel file")
                 elif file_ext == ".json":
@@ -6232,12 +6716,26 @@ class OneStopShopMain:
         rate_card_services = list(set(rate_card_services))  # Unique services
         
         # Normalize services using service mapper
-        mapping, unmapped = self.service_mapper.normalize_services(
+        mapping, unmapped, conflict_report = self.service_mapper.normalize_services(
             rate_card_services,
             account_name=self.current_account,
             rate_card_name=rate_card_name
         )
-        
+
+        # Flag alias conflicts so the user knows some mappings are ambiguous
+        if conflict_report.get("has_conflicts"):
+            self.service_mapping_conflicts = conflict_report
+            conflict_count = len(conflict_report.get("conflicts", {}))
+            self.rate_card_info.configure(
+                text=f"⚠️ {conflict_count} service alias conflict(s) detected for {rate_card_name}"
+            )
+            messagebox.showwarning(
+                "Service Mapping Conflicts",
+                f"{conflict_count} alias conflict(s) were detected for {rate_card_name}.\n\n"
+                "Some saved mappings use the same alias for different canonical services.\n"
+                "The card will still load, but these mappings should be reviewed."
+            )
+            
         # If there are unmapped services, show mapping dialog
         if unmapped and self.current_account:
             self._show_service_mapping_dialog(
@@ -6459,7 +6957,7 @@ class OneStopShopMain:
         """
         dialog = ctk.CTkToplevel(self.root)
         dialog.title(f"Map Services - {rate_card_name}")
-        dialog.geometry("700x600")
+        dialog.geometry("900x600")
         dialog.transient(self.root)
         dialog.grab_set()
         
@@ -6506,7 +7004,7 @@ class OneStopShopMain:
         service_dropdowns = {}
         for idx, unmapped_service in enumerate(unmapped_services):
             frame = ctk.CTkFrame(scrollable_frame, fg_color="#3b3b3b", corner_radius=5)
-            frame.pack(fill="x", pady=8, padx=5)
+            frame.pack(fill="x", pady=8, padx=20)
             
             # Service name label
             service_label = ctk.CTkLabel(
@@ -6541,7 +7039,7 @@ class OneStopShopMain:
                 width=400,
                 font=("Arial", 10)
             )
-            dropdown.pack(side="left", fill="x", expand=True)
+            dropdown.pack(side="right", fill="x", expand=True, padx=(80, 0))
             service_dropdowns[unmapped_service] = var
         
         # Enable mouse wheel scrolling
@@ -6600,7 +7098,7 @@ class OneStopShopMain:
         save_btn.pack(side="right", padx=5)
 
     
-    def populate_services_table(self, services: list):
+    def populate_services_table(self, services: Optional[list]):
         """
         Populate the services table with workflow services and language pair columns.
         Uses pure grid layout for perfect alignment of LP headers with Qty/Rate columns.
@@ -6612,7 +7110,7 @@ class OneStopShopMain:
         self.workflow_service_widgets = {}
         
         # Add Rush Premium service if rush rate is set (session-only, not persisted)
-        services_to_display = list(services)  # Make a copy to avoid modifying the original
+        services_to_display = list(services or [])  # Make a copy to avoid modifying the original
         if self.rush_rate_value is not None and self.rush_rate_value > 0:
             # Check if Rush Premium is not already in the list
             if "Rush Premium" not in [s if isinstance(s, str) else s.get("name") for s in services_to_display]:
@@ -6631,10 +7129,8 @@ class OneStopShopMain:
                 except Exception as e:
                     print(f"[DEBUG] Error loading fee defaults: {e}")
         
-        if not services or not self.language_pairs:
+        if not services:
             msg_text = "Select a workflow to view services"
-            if not self.language_pairs:
-                msg_text = "No language pairs available. Parse QuoteMe data or use Manual WC."
             
             self.services_empty_label = ctk.CTkLabel(
                 self.services_table_frame,
@@ -6644,6 +7140,9 @@ class OneStopShopMain:
             )
             self.services_empty_label.pack(expand=True, pady=20)
             return
+
+        # Keep services visible even before LP parsing by showing a placeholder LP column.
+        display_language_pairs = self.language_pairs if self.language_pairs else ["No LP (parse QuoteMe or add Manual WC)"]
         
         # Create a main table frame using grid layout
         table_frame = ctk.CTkFrame(self.services_table_frame, fg_color="transparent")
@@ -6651,7 +7150,7 @@ class OneStopShopMain:
         
         # Configure columns: Service column (column 0) + LP columns (2 per LP)
         table_frame.grid_columnconfigure(0, minsize=150, weight=0)  # Service column - fixed
-        for lp_idx in range(len(self.language_pairs)):
+        for lp_idx in range(len(display_language_pairs)):
             col_qty = 1 + lp_idx * 2
             col_rate = 2 + lp_idx * 2
             table_frame.grid_columnconfigure(col_qty, minsize=50, weight=1)
@@ -6668,7 +7167,7 @@ class OneStopShopMain:
         service_header.grid(row=0, column=0, sticky="ew", padx=1, pady=1)
         
         # Create LP header containers (row 0, spanning columns for each LP)
-        for lp_idx, lp in enumerate(self.language_pairs):
+        for lp_idx, lp in enumerate(display_language_pairs):
             col_start = 1 + lp_idx * 2
             col_span = 2
             
@@ -6713,6 +7212,25 @@ class OneStopShopMain:
         # Create service rows with filtering based on source type and LP direction
         print(f"\n[TABLE DISPLAY] Populating services table for workflow '{self.selected_workflow}'")
         print(f"  Source Type: {self.source_type_var.get()}")
+
+        # If current filter combination would hide everything, show all services as a safe fallback.
+        has_any_visible_service = False
+        for service in services_to_display:
+            if isinstance(service, dict):
+                service_name = service.get("name", str(service))
+            else:
+                service_name = service
+            for lp in display_language_pairs:
+                lp_direction = self._detect_translation_direction(lp)
+                if self._should_include_service(service_name, self.source_type_var.get(), lp_direction):
+                    has_any_visible_service = True
+                    break
+            if has_any_visible_service:
+                break
+
+        bypass_filters = not has_any_visible_service
+        if bypass_filters:
+            print("  [TABLE DISPLAY] No services matched filters; showing all workflow services.")
         
         row_idx = 1
         for service in services_to_display:
@@ -6726,7 +7244,7 @@ class OneStopShopMain:
             
             # Check if this service has any rows that would be visible across all LPs
             service_has_visible_rows = False
-            for lp in self.language_pairs:
+            for lp in display_language_pairs:
                 lp_direction = self._detect_translation_direction(lp)
                 selected_source_type = self.source_type_var.get()
                 
@@ -6735,7 +7253,7 @@ class OneStopShopMain:
                     break
             
             # Skip services that wouldn't be visible in any LP
-            if not service_has_visible_rows and used_when:  # Only skip if it has attributes (defined filters)
+            if not bypass_filters and not service_has_visible_rows and used_when:  # Only skip if it has attributes (defined filters)
                 print(f"  [SKIP] Service '{service_name}': Not applicable for any LP with current settings")
                 continue
             
@@ -6744,10 +7262,11 @@ class OneStopShopMain:
             row_bg = "gray22" if row_idx % 2 == 1 else "gray20"
             
             # Build display text with attributes on separate lines
-            display_text = service_name
+            display_service_name = self._get_display_service_name(service_name)
+            display_text = display_service_name
             if used_when:
                 attr_text = ", ".join(used_when)
-                display_text = f"{service_name}\n({attr_text})"
+                display_text = f"{display_service_name}\n({attr_text})"
             
             # Service name cell
             service_label = ctk.CTkLabel(
@@ -6764,7 +7283,7 @@ class OneStopShopMain:
             
             # Create entries for each language pair
             service_data = {}
-            for lp_idx, lp in enumerate(self.language_pairs):
+            for lp_idx, lp in enumerate(display_language_pairs):
                 col_qty = 1 + lp_idx * 2
                 col_rate = 2 + lp_idx * 2
                 
@@ -6782,23 +7301,33 @@ class OneStopShopMain:
                     except:
                         pass
                 
-                # Determine styling based on service type and current theme
+                # Determine styling — Fee AND Hourly both get highlighted, user-editable quantity
                 is_fee_service = service_type == "Fee"
-                
-                # Theme-aware colors for Fee services
-                # Dark mode: bright green (#00ff00), Light mode: dark red (#CC0000)
+                is_hourly_service = service_type == "Hourly"
+                needs_highlight = is_fee_service or is_hourly_service
+
+                # Theme-aware colors for highlighted (Fee/Hourly) services
                 current_mode = ctk.get_appearance_mode()
                 if is_fee_service:
+                    # Fee: bright green (dark) / dark red (light)
                     if current_mode == "Light":
-                        qty_border_color = "#CC0000"  # Dark red for light mode
-                        qty_fg_color = "#FFE6E6"      # Very light red background
+                        qty_border_color = "#CC0000"
+                        qty_fg_color = "#FFE6E6"
                     else:
-                        qty_border_color = "#00ff00"  # Bright green for dark mode
-                        qty_fg_color = "#1a3a1a"      # Dark background
+                        qty_border_color = "#00ff00"
+                        qty_fg_color = "#1a3a1a"
+                elif is_hourly_service:
+                    # Hourly: orange (dark) / dark orange (light) – distinct from Fee
+                    if current_mode == "Light":
+                        qty_border_color = "#b35900"
+                        qty_fg_color = "#fff3e0"
+                    else:
+                        qty_border_color = "#ff8c00"
+                        qty_fg_color = "#2a1a00"
                 else:
                     qty_border_color = "#505050"
                     qty_fg_color = "#3a3a3a"
-                
+
                 # Quantity entry
                 quantity_entry = ctk.CTkEntry(
                     table_frame,
@@ -6808,7 +7337,7 @@ class OneStopShopMain:
                     placeholder_text="0",
                     fg_color=qty_fg_color,
                     border_color=qty_border_color,
-                    border_width=2 if is_fee_service else 1
+                    border_width=2 if needs_highlight else 1
                 )
                 quantity_entry.grid(row=row_idx, column=col_qty, sticky="ew", padx=1, pady=1)
 
@@ -6834,7 +7363,7 @@ class OneStopShopMain:
                     if default_fee_qty is not None and str(default_fee_qty) != "":
                         quantity_entry.insert(0, str(default_fee_qty))
                         print(f"[DEBUG] Applied default quantity to {service_name}: {default_fee_qty}")
-                
+
                 # Store LP for binding closure with service type metadata
                 service_data[lp] = {
                     "quantity": quantity_entry,
@@ -6842,31 +7371,27 @@ class OneStopShopMain:
                     "service_type": service_type,  # Store service type (Word/Hourly/Fee)
                     "original_quantity": None  # Will store original quantity before min fee adjustments
                 }
-                
-                # Bind on-focus-out or key release to sync quantities across LPs for Fee services
-                if is_fee_service:
-                    # Create a proper closure for this specific service and LP
-                    def create_fee_qty_change_handler(service_name, current_lp, qty_widget):
-                        def on_fee_qty_change(event):
-                            """Sync quantity across all LPs for this Fee service"""
+
+                # Bind cross-LP quantity sync for Fee AND Hourly services.
+                # User types in any LP column → value mirrors to all other LP columns.
+                # For Hourly, also recalculate downstream Fee service rates.
+                if needs_highlight:
+                    def create_sync_qty_handler(svc_name, current_lp, qty_widget, is_hourly):
+                        def on_qty_change(event):
                             new_qty = qty_widget.get().strip()
-                            if new_qty:  # Only sync if there's a value
-                                print(f"[DEBUG] Fee service quantity changed: {service_name} in {current_lp} = {new_qty}")
-                                # Update same service in ALL LPs
-                                if service_name in self.workflow_service_widgets:
-                                    all_lps = list(self.workflow_service_widgets[service_name].keys())
-                                    print(f"[DEBUG] Syncing {service_name} to all {len(all_lps)} LPs: {all_lps}")
-                                    for other_lp in all_lps:
-                                        other_widgets = self.workflow_service_widgets[service_name][other_lp]
-                                        other_widgets["quantity"].delete(0, "end")
-                                        other_widgets["quantity"].insert(0, new_qty)
-                                        print(f"[DEBUG]   ✓ Updated {service_name} in {other_lp} to {new_qty}")
-                                    # Keep Rush Premium aligned after fee quantity sync
-                                    self._schedule_rush_recalculation()
-                        return on_fee_qty_change
-                    
-                    # Bind to FocusOut and Enter key
-                    handler = create_fee_qty_change_handler(service_name, lp, quantity_entry)
+                            if not new_qty:
+                                return
+                            if svc_name in self.workflow_service_widgets:
+                                for other_lp, other_widgets in self.workflow_service_widgets[svc_name].items():
+                                    other_widgets["quantity"].delete(0, "end")
+                                    other_widgets["quantity"].insert(0, new_qty)
+                            # Always reschedule Rush Premium and, for Hourly, also recalc Fee rates
+                            self._schedule_rush_recalculation()
+                            if is_hourly:
+                                self._recalculate_fee_rates_from_table()
+                        return on_qty_change
+
+                    handler = create_sync_qty_handler(service_name, lp, quantity_entry, is_hourly_service)
                     quantity_entry.bind("<FocusOut>", handler, add="+")
                     quantity_entry.bind("<Return>", handler, add="+")
                 
@@ -6916,11 +7441,30 @@ class OneStopShopMain:
         # Try to populate quantities from QuoteMe mapping or Manual WC data
         if self.selected_workflow and (self.quoteme_data or self.manual_wc_data):
             self.update_quantities_from_quoteme(self.selected_workflow)
+        
+        # Re-bind mousewheel to all child widgets so scrolling works anywhere in the table
+        self._rebind_services_mousewheel(self.services_table_frame)
     
+    def _rebind_services_mousewheel(self, widget):
+        """Recursively bind mousewheel scrolling to widget and all its children."""
+        if not hasattr(self, '_services_table_scroll_handler'):
+            return
+        try:
+            widget.bind("<MouseWheel>", self._services_table_scroll_handler, add="+")
+        except Exception:
+            pass
+        for child in widget.winfo_children():
+            self._rebind_services_mousewheel(child)
+
     def update_rates_in_table(self, rate_card: dict):
         """Update rate values in the services table from a rate card"""
         if not self.workflow_service_widgets:
             return
+
+        # Load service configs once so we can honor rate_source_service overrides
+        account_mapping = {}
+        if self.current_account:
+            account_mapping = self.quoteme_value_mapper.load_mapping(self.current_account)
         
         # Debug: Print rate card structure
         print("\n=== DEBUG: Rate Card Structure ===")
@@ -6932,6 +7476,14 @@ class OneStopShopMain:
                     print(f"Services in {lang_name}: {list(lang_data['rates'].keys())}")
         
         for service, service_data in self.workflow_service_widgets.items():
+            service_config = None
+            if account_mapping:
+                service_config = self.quoteme_value_mapper.get_service_config_from_mapping(account_mapping, service)
+
+            rate_source_service = service_config.get("rate_source_service", service) if service_config else service
+            if not rate_source_service:
+                rate_source_service = service
+
             for lp, widgets in service_data.items():
                 # Extract target language from language pair (e.g., "Polish" from "English > Polish")
                 if ">" in lp:
@@ -6941,8 +7493,8 @@ class OneStopShopMain:
                     target_lang = lp
                 
                 # Get rate based on target language
-                rate = self.get_rate_from_card(rate_card, service, target_lang)
-                print(f"DEBUG: Service='{service}', LP='{lp}', Target='{target_lang}' -> Rate='{rate}'")
+                rate = self.get_rate_from_card(rate_card, rate_source_service, target_lang)
+                print(f"DEBUG: WorkflowService='{service}', RateSource='{rate_source_service}', LP='{lp}', Target='{target_lang}' -> Rate='{rate}'")
                 
                 if rate:
                     widgets["rate"].delete(0, "end")
@@ -7503,8 +8055,17 @@ class OneStopShopMain:
         try:
             # Get selected source type
             selected_source_type = self.source_type_var.get()
+            selected_entity = self.selected_entity_var.get().strip() if hasattr(self, "selected_entity_var") else "TPUS"
+            if not selected_entity:
+                selected_entity = "TPUS"
+
+            # Load entity mapping/metadata once for this export
+            from entity_service_mapper import EntityServiceMapper
+            entity_mapper = EntityServiceMapper()
+            selected_entity_profile = self._get_entity_service_profile(selected_entity)
+            tpus_profile = self._get_entity_service_profile("TPUS")
             
-            print(f"\n[EXPORT DEBUG] Starting export with SourceType='{selected_source_type}'")
+            print(f"\n[EXPORT DEBUG] Starting export with SourceType='{selected_source_type}', Entity='{selected_entity}'")
             print(f"  Workflows selected: {self.selected_workflow}")
             print(f"  Language pairs: {self.language_pairs}")
             
@@ -7555,6 +8116,28 @@ class OneStopShopMain:
                     for row_idx, (service_name, quantity, rate) in enumerate(services_for_lp):
                         # Mark first row of this LP with "x"
                         mark_new = "x" if row_idx == 0 else ""
+
+                        # Resolve entity-specific service label from canonical workflow service
+                        export_service_name = self._resolve_service_for_entity(
+                            service_name,
+                            selected_entity,
+                            entity_mapper
+                        )
+
+                        # Pull SG1/SG2/UofM from selected entity service row when possible.
+                        # Fallback to TPUS canonical metadata for stability.
+                        entity_meta = selected_entity_profile.get(export_service_name, {})
+                        if not entity_meta:
+                            entity_meta = selected_entity_profile.get(service_name, {})
+                        tpus_meta = tpus_profile.get(service_name, {})
+
+                        service_group_1 = entity_meta.get("group1", "") or tpus_meta.get("group1", "")
+                        service_group_2 = entity_meta.get("group2", "") or tpus_meta.get("group2", "")
+
+                        uom_value = entity_meta.get("uom", "") or tpus_meta.get("uom", "")
+                        if not uom_value:
+                            svc_widgets = self.workflow_service_widgets.get(service_name, {}).get(lp_name, {})
+                            uom_value = svc_widgets.get("service_type", "Word") if isinstance(svc_widgets, dict) else "Word"
                         
                         # Parse source and target from LP name using " into " delimiter
                         if " into " in lp_name:
@@ -7575,11 +8158,11 @@ class OneStopShopMain:
                             "Target": target_lang,
                             "Hide Unit Costs": 0,
                             "Hide Details": 0,
-                            "Service Group 1": "",  # Left blank - no data source
-                            "Service Group 2": "",  # Left blank - no data source
+                            "Service Group 1": service_group_1,
+                            "Service Group 2": service_group_2,
                             "Service Group 3": "",
-                            "Service": service_name,
-                            "UofM": "Word",  # Default - could be made dynamic
+                            "Service": export_service_name,
+                            "UofM": uom_value,
                             "Quantity": quantity,
                             "Rate": rate,
                             "CommentsForInvoice": "",
@@ -7620,7 +8203,8 @@ class OneStopShopMain:
                 "Export Successful",
                 f"Charges exported to:\n{filepath}\n\n"
                 f"Total line items: {len(charges_list)}\n"
-                f"Source Type: {selected_source_type}"
+                f"Source Type: {selected_source_type}\n"
+                f"Entity: {selected_entity}"
             )
             
         except ValueError as e:
@@ -7723,7 +8307,7 @@ class OneStopShopMain:
             self.root.update_idletasks()
 
             preview_df = self.template_processor.process_dataframe(
-                source_data, source_data, self.current_account, row_index=0
+                source_data, self.current_account, row_index=0
             )
 
             # Clear scroll area

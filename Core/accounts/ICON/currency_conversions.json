@@ -1,9 +1,0 @@
-{
-  "description": "Currency conversions for account ICON",
-  "conversions": {
-    "Menarini_RC": {
-      "currency": "EUR",
-      "rate": 1.1
-    }
-  }
-}

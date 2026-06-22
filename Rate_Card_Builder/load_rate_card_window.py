@@ -21,15 +21,146 @@ except ImportError:
     load_excel_rate_card = None
     find_excel_rate_cards = None
 
+try:
+    from itemized_rate_card_editor import ItemizedRateCardEditor
+except ImportError:
+    ItemizedRateCardEditor = None
+
+class LoadedRateCardEditor(ItemizedRateCardEditor):
+    """Itemized editor variant that saves through LoadRateCardWindow callbacks."""
+
+    def __init__(self, parent_frame, root, save_callback):
+        self._save_callback = save_callback
+        super().__init__(parent_frame, root)
+
+    def _build_rate_card_payload(self):
+        if not self.name_entry.get().strip():
+            messagebox.showwarning("Missing Name", "Please enter a rate card name.")
+            return None
+
+        if not self.languages_data:
+            messagebox.showwarning("No Data", "Please import languages first.")
+            return None
+
+        payload = {
+            "name": self.name_entry.get().strip(),
+            "sponsor": self.sponsor_entry.get().strip(),
+            "services": list(self.DEFAULT_SERVICES),
+            "iso_codes": self._build_local_iso_codes_snapshot(),
+            "languages": {}
+        }
+
+        for lang_name, lang_info in self.languages_data.items():
+            payload["languages"][lang_name] = {
+                "iso_code": lang_info.get("iso_code", ""),
+                "rates": dict(lang_info.get("rates", {}))
+            }
+
+        return payload
+
+    def on_save(self):
+        payload = self._build_rate_card_payload()
+        if payload is None:
+            return
+
+        try:
+            self._save_callback(payload)
+            self._save_global_services()
+            messagebox.showinfo("Success", "Rate card saved successfully.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save rate card:\n{str(e)}")
 
 class LoadRateCardWindow:
     """Window for loading and editing existing rate cards."""
+
+    def get_master_rate_cards_path(self):
+        """Return the shared master rate cards JSON file."""
+        return Path(__file__).parent.parent / "Core" / "master_rate_cards.json"
+
+    def load_master_rate_card_names(self):
+        """Return the available master rate card names from the shared JSON."""
+        master_path = self.get_master_rate_cards_path()
+        if not master_path.exists():
+            return []
+
+        try:
+            with open(master_path, "r", encoding="utf-8") as file_handle:
+                data = json.load(file_handle)
+            return sorted(list(data.get("rate_cards", {}).keys()))
+        except Exception:
+            return []
+
+    def on_load_master_rate_card(self):
+        """Open a picker for master rate cards and load the selected card."""
+        master_names = self.load_master_rate_card_names()
+        if not master_names:
+            messagebox.showwarning("No Master Cards", "No master rate cards were found.")
+            return
+
+        picker = ctk.CTkToplevel(self.window)
+        picker.title("Load Master Rate Card")
+        picker.geometry("450x300")
+        picker.transient(self.window)
+        picker.grab_set()
+
+        title = ctk.CTkLabel(
+            picker,
+            text="Select a Master Rate Card you would like to Load",
+            font=ctk.CTkFont(size=14, weight="bold")
+        )
+        title.pack(pady=(20, 10))
+
+        selected_var = tk.StringVar(value=master_names[0])
+
+        dropdown = ctk.CTkComboBox(
+            picker,
+            values=master_names,
+            variable=selected_var,
+            state="readonly",
+            width=320
+        )
+        dropdown.pack(pady=15)
+
+        def load_selected():
+            master_path = self.get_master_rate_cards_path()
+            try:
+                with open(master_path, "r", encoding="utf-8") as file_handle:
+                    data = json.load(file_handle)
+
+                selected_name = selected_var.get().strip()
+                rate_card = data.get("rate_cards", {}).get(selected_name)
+
+                if not rate_card:
+                    messagebox.showerror("Error", f"Could not find master card: {selected_name}")
+                    return
+
+                self.current_file = master_path
+                self.rate_card_data = rate_card
+                self.current_master_card_name = selected_name
+                self.info_text.configure(
+                    text=f"Master Card: {selected_name}\nStored in: master_rate_cards.json"
+                )
+                picker.destroy()
+                self.on_open()
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load master rate card:\n{str(e)}")
+
+        load_button = ctk.CTkButton(
+            picker,
+            text="Load Selected",
+            command=load_selected,
+            fg_color="green"
+        )
+        load_button.pack(pady=15)
+
+        
     
     def __init__(self, parent):
         """Initialize the load rate card window."""
         self.parent = parent
         self.current_file = None
         self.rate_card_data = None
+        self.current_master_card_name = None
         
         # Create window
         self.window = ctk.CTkToplevel(parent)
@@ -122,6 +253,18 @@ class LoadRateCardWindow:
         button_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
         button_frame.pack(fill="x")
         
+        master_button = ctk.CTkButton(
+            button_frame,
+            text="Load Master Rate Card",
+            height=40,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color="#8e44ad",
+            hover_color="#7d3c98",
+            command=self.on_load_master_rate_card
+        )
+        master_button.pack(side="left", padx=(0, 10), pady=10)
+
+
         # Open button
         open_button = ctk.CTkButton(
             button_frame,
@@ -157,6 +300,7 @@ class LoadRateCardWindow:
     def populate_file_list(self):
         """Populate the list of rate card files (both JSON and Excel)."""
         self.file_listbox.delete(0, "end")
+        self._file_paths = []  # Reset stored file paths
         
         # Get rate card files from the module directory
         module_dir = Path(__file__).parent
@@ -181,8 +325,6 @@ class LoadRateCardWindow:
             display_name = f"[{file_type}] {filename}"
             self.file_listbox.insert("end", display_name)
             # Store the actual filepath in a tag or separate structure
-            if not hasattr(self, '_file_paths'):
-                self._file_paths = []
             self._file_paths.append(filepath)
     
     def on_file_selected(self, event):
@@ -217,6 +359,7 @@ class LoadRateCardWindow:
                     self.rate_card_data = json.load(f)
             
             self.current_file = file_path
+            self.current_master_card_name = None  # Reset master card name since this is a selected file
             
             # Display info
             info = f"""
@@ -267,6 +410,7 @@ Source: {self.rate_card_data.get('source', 'Unknown')}
                         self.rate_card_data = json.load(f)
                 
                 self.current_file = file_path
+                self.current_master_card_name = None  # Reset master card name since this is a browsed file
                 
                 # Display info
                 info = f"""
@@ -283,55 +427,172 @@ Services: {len(self.rate_card_data.get('services', []))}
                 messagebox.showerror("Error", f"Failed to load file:\n{str(e)}")
                 import traceback
                 traceback.print_exc()
+
+    def _save_rate_card_from_editor(self, updated_data):
+        """Save edited data either to standalone file or to selected master entry."""
+        if self.current_master_card_name:
+            master_path = self.get_master_rate_cards_path()
+            with open(master_path, "r", encoding="utf-8") as file_handle:
+                master_data = json.load(file_handle)
+
+            master_data.setdefault("rate_cards", {})
+            master_data["rate_cards"][self.current_master_card_name] = updated_data
+
+            with open(master_path, "w", encoding="utf-8") as file_handle:
+                json.dump(master_data, file_handle, indent=2, ensure_ascii=False)
+        else:
+            with open(str(self.current_file), "w", encoding="utf-8") as file_handle:
+                json.dump(updated_data, file_handle, indent=2, ensure_ascii=False)
+
+        self.rate_card_data = updated_data
+        self.populate_file_list()
+
+    def _populate_editor_from_rate_card(self, editor):
+        """Load self.rate_card_data into the itemized editor grid."""
+        data = self.rate_card_data or {}
+
+        loaded_iso_codes = data.get("iso_codes", {})
+        if isinstance(loaded_iso_codes, dict):
+            editor.local_iso_codes = {
+                str(language_name).strip(): str(iso_code).strip()
+                for language_name, iso_code in loaded_iso_codes.items()
+                if str(language_name).strip() and str(iso_code).strip()
+            }
+        else:
+            editor.local_iso_codes = {}
+
+        global_services = editor._load_global_services()
+        loaded_services = editor._extract_services_from_loaded_card(data)
+        merged_services = editor._merge_service_names(global_services, loaded_services)
+        if not merged_services:
+            merged_services = editor._merge_service_names(global_services, editor.base_service_columns)
+
+        editor._set_service_columns(merged_services, persist=False)
+        editor._normalize_hidden_service_columns()
+
+        current_name = data.get("name", "")
+        if not current_name and self.current_master_card_name:
+            current_name = self.current_master_card_name
+
+        editor.name_entry.delete(0, "end")
+        editor.name_entry.insert(0, current_name)
+
+        editor.sponsor_entry.delete(0, "end")
+        editor.sponsor_entry.insert(0, data.get("sponsor", ""))
+
+        editor.languages_data = {}
+        editor.missing_languages = []
+        editor.error_label.configure(text="")
+
+        for lang_name, lang_info in data.get("languages", {}).items():
+            iso_code = lang_info.get("iso_code", "")
+            loaded_rates = lang_info.get("rates", {}) if isinstance(lang_info.get("rates", {}), dict) else {}
+
+            if lang_name in editor.local_iso_codes:
+                iso_code = editor.local_iso_codes[lang_name]
+
+            iso_data = editor.language_manager.get_by_code(iso_code) if iso_code else None
+            is_found = iso_data is not None if iso_code else False
+
+            editor.languages_data[lang_name] = {
+                "iso_code": iso_code,
+                "found": is_found,
+                "rates": {
+                    service_name: loaded_rates.get(service_name, "")
+                    for service_name in editor.DEFAULT_SERVICES
+                }
+            }
+
+            if iso_code:
+                editor._set_local_iso_code(lang_name, iso_code)
+
+            if iso_code and not is_found:
+                editor.missing_languages.append(lang_name)
+
+        editor._refresh_tree_structure()
+        editor.update_table()
+        editor.language_text.delete("1.0", "end")
     
     def on_open(self):
-        """Open selected rate card for editing."""
+        """Open selected rate card in the itemized grid editor."""
         if not self.current_file or not self.rate_card_data:
             messagebox.showwarning("No Selection", "Please select a rate card first.")
             return
+
+        if ItemizedRateCardEditor is None:
+            messagebox.showerror(
+                "Editor Unavailable",
+                "Itemized editor module could not be imported."
+            )
+            return
+
+        editor_window = ctk.CTkToplevel(self.window)
+        if self.current_master_card_name:
+            editor_window.title(f"Editing Master Rate Card: {self.current_master_card_name}")
+        else:
+            editor_window.title(f"Editing: {self.rate_card_data.get('name', 'Rate Card')}")
+        editor_window.state("zoomed")
+
+        host_frame = ctk.CTkFrame(editor_window, corner_radius=0)
+        host_frame.pack(fill="both", expand=True)
+
+        self.active_editor = LoadedRateCardEditor(
+            host_frame,
+            editor_window,
+            self._save_rate_card_from_editor
+        )
+        self._populate_editor_from_rate_card(self.active_editor)
         
-        # Display rate card content
-        content = json.dumps(self.rate_card_data, indent=2, ensure_ascii=False)
-        
-        # Create a view window
-        view_window = ctk.CTkToplevel(self.window)
-        view_window.title(f"Editing: {self.rate_card_data.get('name', 'Rate Card')}")
-        view_window.geometry("800x600")
-        
-        # Text area to display content
-        text_area = ctk.CTkTextbox(view_window, wrap="word")
-        text_area.pack(fill="both", expand=True, padx=10, pady=10)
-        text_area.insert("1.0", content)
-        
-        # Save button
-        def save_changes():
-            try:
-                updated_data = json.loads(text_area.get("1.0", "end-1c"))
-                with open(self.current_file, 'w', encoding='utf-8') as f:
-                    json.dump(updated_data, f, indent=2, ensure_ascii=False)
-                messagebox.showinfo("Success", "Rate card saved successfully!")
-                view_window.destroy()
-                self.populate_file_list()
-            except json.JSONDecodeError:
-                messagebox.showerror("Error", "Invalid JSON format.")
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to save:\n{str(e)}")
-        
-        button_frame = ctk.CTkFrame(view_window)
-        button_frame.pack(fill="x", padx=10, pady=(0, 10))
-        
-        save_btn = ctk.CTkButton(button_frame, text="Save", command=save_changes, fg_color="green")
-        save_btn.pack(side="left", padx=5)
-        
-        close_btn = ctk.CTkButton(button_frame, text="Close", command=view_window.destroy, fg_color="gray40")
-        close_btn.pack(side="left", padx=5)
-    
     def on_delete(self):
-        """Delete selected rate card."""
+        """Delete selected rate card (file) or selected master rate card entry."""
+        # Master-card delete path: remove only one entry from Core/master_rate_cards.json
+        if self.current_master_card_name:
+            confirm = messagebox.askyesno(
+                "Confirm Delete",
+                f"Delete master rate card '{self.current_master_card_name}'?\n\n"
+                "This removes only this card from master_rate_cards.json."
+            )
+            if not confirm:
+                return
+
+            try:
+                master_path = self.get_master_rate_cards_path()
+                with open(master_path, "r", encoding="utf-8") as f:
+                    master_data = json.load(f)
+
+                cards = master_data.get("rate_cards", {})
+                if self.current_master_card_name not in cards:
+                    messagebox.showwarning(
+                        "Not Found",
+                        f"Master rate card '{self.current_master_card_name}' no longer exists."
+                    )
+                    return
+
+                cards.pop(self.current_master_card_name, None)
+
+                with open(master_path, "w", encoding="utf-8") as f:
+                    json.dump(master_data, f, indent=2, ensure_ascii=False)
+
+                messagebox.showinfo(
+                    "Deleted",
+                    f"Master rate card '{self.current_master_card_name}' deleted successfully."
+                )
+
+                self.populate_file_list()
+                self.info_text.configure(text="Select a rate card to view details")
+                self.current_file = None
+                self.rate_card_data = None
+                self.current_master_card_name = None
+                return
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to delete master rate card:\n{str(e)}")
+                return
+
+        # Standalone file delete path
         if not self.current_file:
             messagebox.showwarning("No Selection", "Please select a rate card first.")
             return
-        
+
         if messagebox.askyesno("Confirm Delete", f"Delete {self.current_file.name}?"):
             try:
                 self.current_file.unlink()
@@ -340,5 +601,6 @@ Services: {len(self.rate_card_data.get('services', []))}
                 self.info_text.configure(text="Select a rate card to view details")
                 self.current_file = None
                 self.rate_card_data = None
+                self.current_master_card_name = None
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to delete:\n{str(e)}")

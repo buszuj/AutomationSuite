@@ -1,24 +1,67 @@
-# List of TPUS PA Services
+﻿# List of TPUS PA Services
 TPUS_PA_SERVICES = [
     ['Service Group 1', 'Service Group 2', 'Service', 'Default UofM'],
-    ['Language Services', 'Translation', 'Translation and Proofreading', 'Word'],
-    ['Language Services', 'Translation', 'MT full EditProof', 'Word'],
-    ['Language Services', 'Translation', 'TM - Fuzzy Matches', 'Word'],
-    ['Language Services', 'Translation', 'TM - Exact Matches', 'Word'],
-    ['Language Services', 'Translation', 'Localization', 'Hour'],
-    ['Desktop Publishing', 'Translation', 'Formatting', 'Hour'],
-    ['Language Services', 'Translation', 'Redaction', 'Hour'],
-    ['Language Services', 'Translation', 'Transcription', 'Word'],
-    ['Language Services', 'Translation', 'Proofreading', 'Hour'],
-    ['Language Services', 'Translation', 'Reconciliation', 'Hour'],
-    ['Language Services', 'Translation', 'Review', 'Hour'],
-    ['Language Services', 'Translation', 'Revision', 'Hour'],
-    ['Verification Services', 'Notary Service', 'Notary Service', 'Word'],
-    ['Handling & Delivery', '', 'Courrier', 'Fee'],
+    ['Language Services', 'Translation', 'Apostille', 'Fee'],
+    ['Language Services', 'Translation', 'Assessment', 'Hour'],
+    ['Language Services', 'Translation', 'Attorney Fee', 'Fee'],
+    ['Language Services', 'Translation', 'Back Translation', 'Word'],
+    ['Language Services', 'Translation', 'Certification', 'Fee'],
+    ['Language Services', 'Translation', 'Client Review Implementation', 'Hour'],
+    ['Language Services', 'Translation', 'Courier', 'Fee'],
+    ['Language Services', 'Translation', 'Data Entry', 'Word'],
     ['Desktop Publishing', 'Translation', 'Desktop Publishing', 'Hour'],
-    ['Handling & Delivery', '', 'Courier - Domestic', 'Fee'],
-    ['Handling & Delivery', '', 'Rush\n', 'Fee'],
-    ['', '', '', ''],
+    ['Language Services', 'Translation', 'Desktop Publishing (DTP)', 'Hour'],
+    ['Language Services', 'Translation', 'Editing', 'Hour'],
+    ['Language Services', 'Translation', 'Engineering', 'Hour'],
+    ['Language Services', 'Translation', 'File Conversion', 'Word'],
+    ['Language Services', 'Translation', 'File Preparation', 'Word'],
+    ['Desktop Publishing', 'Translation', 'Formatting', 'Hour'],
+    ['Language Services', 'Translation', 'Government Fee', 'Fee'],
+    ['Language Services', 'Translation', 'Handwritten', 'Word'],
+    ['Language Services', 'Translation', 'Interpretation Services', 'Word'],
+    ['Language Services', 'Translation', 'Localization', 'Hour'],
+    ['Language Services', 'Translation', 'Localization QA', 'Word'],
+    ['Language Services', 'Translation', 'Machine Translation', 'Word'],
+    ['Language Services', 'Translation', 'Medical Review', 'Hour'],
+    ['Language Services', 'Translation', 'Migration Assessment', 'Hour'],
+    ['Language Services', 'Translation', 'MT - Exact Match', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match High', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match Low', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match Medium', 'Word'],
+    ['Language Services', 'Translation', 'MT - Repetitions', 'Word'],
+    ['Language Services', 'Translation', 'MT Double Review / Formatting', 'Hour'],
+    ['Language Services', 'Translation', 'MT full back-editing', 'Hour'],
+    ['Language Services', 'Translation', 'MT full editing', 'Hour'],
+    ['Language Services', 'Translation', 'MT full EditProof', 'Word'],
+    ['Language Services', 'Translation', 'MT light editing', 'Hour'],
+    ['Verification Services', 'Notary Service', 'Notary Service', 'Word'],
+    ['Language Services', 'Translation', 'PD Maintenance', 'Word'],
+    ['Language Services', 'Translation', 'PD SaaS Fee', 'Fee'],
+    ['Language Services', 'Translation', 'Post-DTP Proofreading', 'Hour'],
+    ['Language Services', 'Translation', 'Program Management', 'Hour'],
+    ['Language Services', 'Translation', 'Project Management', 'Hour'],
+    ['Language Services', 'Translation', 'Proofreading', 'Hour'],
+    ['Language Services', 'Translation', 'Quality Management', 'Hour'],
+    ['Language Services', 'Translation', 'Reconciliation', 'Hour'],
+    ['Language Services', 'Translation', 'Redaction', 'Hour'],
+    ['Language Services', 'Translation', 'Review', 'Hour'],
+    ['Language Services', 'Translation', 'Revisions', 'Word'],
+    ['Language Services', 'Translation', 'Rush Premium', 'Fee'],
+    ['Language Services', 'Translation', 'Screenshot Review', 'Hour'],
+    ['Language Services', 'Translation', 'Secondary Review', 'Hour'],
+    ['Language Services', 'Translation', 'Sidlayout', 'Word'],
+    ['Language Services', 'Translation', 'TM - Context Matches', 'Word'],
+    ['Language Services', 'Translation', 'TM - Exact Matches', 'Word'],
+    ['Language Services', 'Translation', 'TM - Fuzzy Match High', 'Word'],
+    ['Language Services', 'Translation', 'TM - Fuzzy Match Low', 'Word'],
+    ['Language Services', 'Translation', 'TM - Fuzzy Matches', 'Word'],
+    ['Language Services', 'Translation', 'TM - New Word', 'Word'],
+    ['Language Services', 'Translation', 'TM - Repetitions', 'Word'],
+    ['Language Services', 'Translation', 'Trans./Edit/Proof.', 'Hour'],
+    ['Language Services', 'Translation', 'Transcription', 'Word'],
+    ['Language Services', 'Translation', 'Translation', 'Word'],
+    ['Language Services', 'Translation', 'Translation and Proofreading', 'Word'],
 ]
 
 # List of TPTDE PA Services
@@ -29,7 +72,7 @@ TPTDE_PA_SERVICES = [
     ['Language Services', 'Translation', 'TM - Fuzzy Matches', 'Word'],
     ['Language Services', 'Translation', 'TM - Exact Matches', 'Word'],
     ['Language Services', 'Translation', 'Localization', 'Hour'],
-    ['Desktop Publishing', 'Translation', 'Formatting', 'Hour'],
+    ['Desktop Publishing', 'Translation', 'Formatierung', 'Hour'],
     ['Language Services', 'Translation', 'Redaction', 'Hour'],
     ['Language Services', 'Translation', 'Transcription', 'Word'],
     ['Language Services', 'Translation', 'Proofreading', 'Hour'],
@@ -42,10 +85,56 @@ TPTDE_PA_SERVICES = [
     ['Handling & Delivery', '', 'Courier - Domestic', 'Fee'],
     ['testSG1', 'test Sg2', 'test Servce', 'test Uofm'],
     ['', '', '', ''],
+    ['Language Services', 'Translation', 'Apostille', 'Fee'],
+    ['Language Services', 'Translation', 'Assessment', 'Hour'],
+    ['Language Services', 'Translation', 'Attorney Fee', 'Fee'],
+    ['Language Services', 'Translation', 'Back Translation', 'Word'],
+    ['Language Services', 'Translation', 'Certification', 'Fee'],
+    ['Language Services', 'Translation', 'Client Review Implementation', 'Hour'],
+    ['Language Services', 'Translation', 'Courier', 'Fee'],
+    ['Language Services', 'Translation', 'Data Entry', 'Word'],
+    ['Language Services', 'Translation', 'Desktop Publishing (DTP)', 'Hour'],
+    ['Language Services', 'Translation', 'Editing', 'Hour'],
+    ['Language Services', 'Translation', 'Engineering', 'Hour'],
+    ['Language Services', 'Translation', 'File Conversion', 'Word'],
+    ['Language Services', 'Translation', 'File Preparation', 'Word'],
+    ['Desktop Publishing', 'Translation', 'Formatting', 'Hour'],
+    ['Language Services', 'Translation', 'Government Fee', 'Fee'],
+    ['Language Services', 'Translation', 'Handwritten', 'Word'],
+    ['Language Services', 'Translation', 'Interpretation Services', 'Word'],
+    ['Language Services', 'Translation', 'Localization QA', 'Word'],
+    ['Language Services', 'Translation', 'Machine Translation', 'Word'],
+    ['Language Services', 'Translation', 'Medical Review', 'Hour'],
+    ['Language Services', 'Translation', 'Migration Assessment', 'Hour'],
+    ['Language Services', 'Translation', 'MT - Exact Match', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match High', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match Low', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match Medium', 'Word'],
+    ['Language Services', 'Translation', 'MT - Repetitions', 'Word'],
+    ['Language Services', 'Translation', 'MT Double Review / Formatting', 'Hour'],
+    ['Language Services', 'Translation', 'MT full back-editing', 'Hour'],
+    ['Language Services', 'Translation', 'MT full editing', 'Hour'],
+    ['Language Services', 'Translation', 'MT light editing', 'Hour'],
+    ['Language Services', 'Translation', 'PD Maintenance', 'Word'],
+    ['Language Services', 'Translation', 'PD SaaS Fee', 'Fee'],
+    ['Language Services', 'Translation', 'Post-DTP Proofreading', 'Hour'],
+    ['Language Services', 'Translation', 'Program Management', 'Hour'],
+    ['Language Services', 'Translation', 'Project Management', 'Hour'],
+    ['Language Services', 'Translation', 'Quality Management', 'Hour'],
+    ['Language Services', 'Translation', 'Revisions', 'Word'],
+    ['Language Services', 'Translation', 'Rush Premium', 'Fee'],
+    ['Language Services', 'Translation', 'Screenshot Review', 'Hour'],
+    ['Language Services', 'Translation', 'Secondary Review', 'Hour'],
+    ['Language Services', 'Translation', 'Sidlayout', 'Word'],
+    ['Language Services', 'Translation', 'TM - Context Matches', 'Word'],
+    ['Language Services', 'Translation', 'TM - Fuzzy Match High', 'Word'],
+    ['Language Services', 'Translation', 'TM - Fuzzy Match Low', 'Word'],
+    ['Language Services', 'Translation', 'TM - New Word', 'Word'],
+    ['Language Services', 'Translation', 'TM - Repetitions', 'Word'],
+    ['Language Services', 'Translation', 'Trans./Edit/Proof.', 'Hour'],
+    ['Language Services', 'Translation', 'Translation', 'Word'],
 ]
-
-# Dictionary mapping entity names to their service lists
-
 
 # List of TPTFR PA Services
 TPTFR_PA_SERVICES = [
@@ -66,59 +155,56 @@ TPTFR_PA_SERVICES = [
     ['Handling & Delivery', '', 'Courrier', 'Fee'],
     ['Desktop Publishing', 'Translation', 'Desktop Publishing', 'Hour'],
     ['Handling & Delivery', '', 'Courier - Domestic', 'Fee'],
+    ['Language Services', 'Translation', 'Apostille', 'Fee'],
+    ['Language Services', 'Translation', 'Assessment', 'Hour'],
+    ['Language Services', 'Translation', 'Attorney Fee', 'Fee'],
+    ['Language Services', 'Translation', 'Back Translation', 'Word'],
+    ['Language Services', 'Translation', 'Certification', 'Fee'],
+    ['Language Services', 'Translation', 'Client Review Implementation', 'Hour'],
+    ['Language Services', 'Translation', 'Courier', 'Fee'],
+    ['Language Services', 'Translation', 'Data Entry', 'Word'],
+    ['Language Services', 'Translation', 'Desktop Publishing (DTP)', 'Hour'],
+    ['Language Services', 'Translation', 'Editing', 'Hour'],
+    ['Language Services', 'Translation', 'Engineering', 'Hour'],
+    ['Language Services', 'Translation', 'File Conversion', 'Word'],
+    ['Language Services', 'Translation', 'File Preparation', 'Word'],
     ['Desktop Publishing', 'Translation', 'Formatting', 'Hour'],
-    ['testSG1', 'test Sg2', 'test Servce', 'test Uofm'],
-    ['', '', '', ''],
+    ['Language Services', 'Translation', 'Government Fee', 'Fee'],
+    ['Language Services', 'Translation', 'Handwritten', 'Word'],
+    ['Language Services', 'Translation', 'Interpretation Services', 'Word'],
+    ['Language Services', 'Translation', 'Localization QA', 'Word'],
+    ['Language Services', 'Translation', 'Machine Translation', 'Word'],
+    ['Language Services', 'Translation', 'Medical Review', 'Hour'],
+    ['Language Services', 'Translation', 'Migration Assessment', 'Hour'],
+    ['Language Services', 'Translation', 'MT - Exact Match', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match High', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match Low', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match Medium', 'Word'],
+    ['Language Services', 'Translation', 'MT - Repetitions', 'Word'],
+    ['Language Services', 'Translation', 'MT Double Review / Formatting', 'Hour'],
+    ['Language Services', 'Translation', 'MT full back-editing', 'Hour'],
+    ['Language Services', 'Translation', 'MT full editing', 'Hour'],
+    ['Language Services', 'Translation', 'MT light editing', 'Hour'],
+    ['Language Services', 'Translation', 'PD Maintenance', 'Word'],
+    ['Language Services', 'Translation', 'PD SaaS Fee', 'Fee'],
+    ['Language Services', 'Translation', 'Post-DTP Proofreading', 'Hour'],
+    ['Language Services', 'Translation', 'Program Management', 'Hour'],
+    ['Language Services', 'Translation', 'Project Management', 'Hour'],
+    ['Language Services', 'Translation', 'Quality Management', 'Hour'],
+    ['Language Services', 'Translation', 'Revisions', 'Word'],
+    ['Language Services', 'Translation', 'Rush Premium', 'Fee'],
+    ['Language Services', 'Translation', 'Screenshot Review', 'Hour'],
+    ['Language Services', 'Translation', 'Secondary Review', 'Hour'],
+    ['Language Services', 'Translation', 'Sidlayout', 'Word'],
+    ['Language Services', 'Translation', 'TM - Context Matches', 'Word'],
+    ['Language Services', 'Translation', 'TM - Fuzzy Match High', 'Word'],
+    ['Language Services', 'Translation', 'TM - Fuzzy Match Low', 'Word'],
+    ['Language Services', 'Translation', 'TM - New Word', 'Word'],
+    ['Language Services', 'Translation', 'TM - Repetitions', 'Word'],
+    ['Language Services', 'Translation', 'Trans./Edit/Proof.', 'Hour'],
+    ['Language Services', 'Translation', 'Translation', 'Word'],
 ]
-
-
-# List of TPTIT PA Services
-TPTIT_PA_SERVICES = [
-    ['Service Group 1', 'Service Group 2', 'Service', 'Default UofM'],
-    ['Language Services', 'Translation', 'Translation and Proofreading', 'Word'],
-    ['Language Services', 'Translation', 'MT full EditProof', 'Word'],
-    ['Language Services', 'Translation', 'TM - Fuzzy Matches', 'Word'],
-    ['Language Services', 'Translation', 'TM - Exact Matches', 'Word'],
-    ['Language Services', 'Translation', 'Localization', 'Hour'],
-    ['Desktop Publishing', 'Translation', 'Formatting', 'Hour'],
-    ['Language Services', 'Translation', 'Redaction', 'Hour'],
-    ['Language Services', 'Translation', 'Transcription', 'Word'],
-    ['Language Services', 'Translation', 'Proofreading', 'Hour'],
-    ['Language Services', 'Translation', 'Reconciliation', 'Hour'],
-    ['Language Services', 'Translation', 'Review', 'Hour'],
-    ['Language Services', 'Translation', 'Revision', 'Hour'],
-    ['Verification Services', 'Notary Service', 'Notary Service', 'Word'],
-    ['Handling & Delivery', '', 'Courrier', 'Fee'],
-    ['Desktop Publishing', 'Translation', 'Desktop Publishing', 'Hour'],
-    ['Handling & Delivery', '', 'Courier - Domestic', 'Fee'],
-    ['testSG1', 'test Sg2', 'test Servce', 'test Uofm'],
-    ['', '', '', ''],
-]
-
-
-# List of TPT PA Services
-TPT_PA_SERVICES = [
-    ['Service Group 1', 'Service Group 2', 'Service', 'Default UofM'],
-    ['Language Services', 'Translation', 'Translation and Proofreading', 'Word'],
-    ['Language Services', 'Translation', 'MT full EditProof', 'Word'],
-    ['Language Services', 'Translation', 'TM - Fuzzy Matches', 'Word'],
-    ['Language Services', 'Translation', 'TM - Exact Matches', 'Word'],
-    ['Language Services', 'Translation', 'Localization', 'Hour'],
-    ['Desktop Publishing', 'Translation', 'Formatting', 'Hour'],
-    ['Language Services', 'Translation', 'Redaction', 'Hour'],
-    ['Language Services', 'Translation', 'Transcription', 'Word'],
-    ['Language Services', 'Translation', 'Proofreading', 'Hour'],
-    ['Language Services', 'Translation', 'Reconciliation', 'Hour'],
-    ['Language Services', 'Translation', 'Review', 'Hour'],
-    ['Language Services', 'Translation', 'Revision', 'Hour'],
-    ['Verification Services', 'Notary Service', 'Notary Service', 'Word'],
-    ['Handling & Delivery', '', 'Courrier', 'Fee'],
-    ['Desktop Publishing', 'Translation', 'Desktop Publishing', 'Hour'],
-    ['Handling & Delivery', '', 'Courier - Domestic', 'Fee'],
-    ['testSG1', 'test Sg2', 'test Servce', 'test Uofm'],
-    ['', '', '', ''],
-]
-
 
 # List of TPTSWE PA Services
 TPTSWE_PA_SERVICES = [
@@ -137,82 +223,184 @@ TPTSWE_PA_SERVICES = [
     ['Language Services', 'Translation', 'Revision', 'Timme'],
     ['Verification Services', 'Notary Service', 'Notary Service', 'Ord'],
     ['Handling & Delivery', '', 'Courrier', 'Fee'],
-    ['Desktop Publishing', 'Translation', 'Desktop Publishing', 'Timme'],
+    ['Desktop Publishing', 'Translation', 'Sidlayout', 'Timme'],
     ['Handling & Delivery', '', 'Courier - Domestic', 'Fee'],
     ['Language Services', 'Translation', 'TM - Repetitions', 'Ord'],
     ['', '', '', ''],
     ['', '', '', ''],
     ['', '', '', ''],
-    ['testSG1', 'test Sg2', 'test Servce', 'test Uofm'],
+    ['Language Services', 'Translation', 'Apostille', 'Fee'],
+    ['Language Services', 'Translation', 'Assessment', 'Hour'],
+    ['Language Services', 'Translation', 'Attorney Fee', 'Fee'],
+    ['Language Services', 'Translation', 'Back Translation', 'Word'],
+    ['Language Services', 'Translation', 'Certification', 'Fee'],
+    ['Language Services', 'Translation', 'Client Review Implementation', 'Hour'],
+    ['Language Services', 'Translation', 'Courier', 'Fee'],
+    ['Language Services', 'Translation', 'Data Entry', 'Word'],
+    ['Desktop Publishing', 'Translation', 'Desktop Publishing', 'Hour'],
+    ['Language Services', 'Translation', 'Desktop Publishing (DTP)', 'Hour'],
+    ['Language Services', 'Translation', 'Editing', 'Hour'],
+    ['Language Services', 'Translation', 'Engineering', 'Hour'],
+    ['Language Services', 'Translation', 'File Conversion', 'Word'],
+    ['Language Services', 'Translation', 'File Preparation', 'Word'],
+    ['Language Services', 'Translation', 'Government Fee', 'Fee'],
+    ['Language Services', 'Translation', 'Handwritten', 'Word'],
+    ['Language Services', 'Translation', 'Interpretation Services', 'Word'],
+    ['Language Services', 'Translation', 'Localization QA', 'Word'],
+    ['Language Services', 'Translation', 'Machine Translation', 'Word'],
+    ['Language Services', 'Translation', 'Medical Review', 'Hour'],
+    ['Language Services', 'Translation', 'Migration Assessment', 'Hour'],
+    ['Language Services', 'Translation', 'MT - Exact Match', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match High', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match Low', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match Medium', 'Word'],
+    ['Language Services', 'Translation', 'MT - Repetitions', 'Word'],
+    ['Language Services', 'Translation', 'MT Double Review / Formatting', 'Hour'],
+    ['Language Services', 'Translation', 'MT full back-editing', 'Hour'],
+    ['Language Services', 'Translation', 'MT full editing', 'Hour'],
+    ['Language Services', 'Translation', 'MT light editing', 'Hour'],
+    ['Language Services', 'Translation', 'PD Maintenance', 'Word'],
+    ['Language Services', 'Translation', 'PD SaaS Fee', 'Fee'],
+    ['Language Services', 'Translation', 'Post-DTP Proofreading', 'Hour'],
+    ['Language Services', 'Translation', 'Program Management', 'Hour'],
+    ['Language Services', 'Translation', 'Project Management', 'Hour'],
+    ['Language Services', 'Translation', 'Quality Management', 'Hour'],
+    ['Language Services', 'Translation', 'Revisions', 'Word'],
+    ['Language Services', 'Translation', 'Rush Premium', 'Fee'],
+    ['Language Services', 'Translation', 'Screenshot Review', 'Hour'],
+    ['Language Services', 'Translation', 'Secondary Review', 'Hour'],
+    ['Language Services', 'Translation', 'TM - Context Matches', 'Word'],
+    ['Language Services', 'Translation', 'TM - Fuzzy Match High', 'Word'],
+    ['Language Services', 'Translation', 'TM - Fuzzy Match Low', 'Word'],
+    ['Language Services', 'Translation', 'TM - New Word', 'Word'],
+    ['Language Services', 'Translation', 'Trans./Edit/Proof.', 'Hour'],
+    ['Language Services', 'Translation', 'Translation', 'Word'],
+]
+
+
+# List of TPTIT PA Services
+TPTIT_PA_SERVICES = [
+    ['Service Group 1', 'Service Group 2', 'Service', 'Default UofM'],
+    ['Language Services', 'Translation', 'Apostille', 'Fee'],
+    ['Language Services', 'Translation', 'Assessment', 'Hour'],
+    ['Language Services', 'Translation', 'Attorney Fee', 'Fee'],
+    ['Language Services', 'Translation', 'Back Translation', 'Word'],
+    ['Language Services', 'Translation', 'Certification', 'Fee'],
+    ['Language Services', 'Translation', 'Client Review Implementation', 'Hour'],
+    ['Language Services', 'Translation', 'Courier', 'Fee'],
+    ['Language Services', 'Translation', 'Data Entry', 'Word'],
+    ['Desktop Publishing', 'Translation', 'Desktop Publishing', 'Hour'],
+    ['Language Services', 'Translation', 'Desktop Publishing (DTP)', 'Hour'],
+    ['Language Services', 'Translation', 'Editing', 'Hour'],
+    ['Language Services', 'Translation', 'Engineering', 'Hour'],
+    ['Language Services', 'Translation', 'File Conversion', 'Word'],
+    ['Language Services', 'Translation', 'File Preparation', 'Word'],
+    ['Desktop Publishing', 'Translation', 'Formatting', 'Hour'],
+    ['Language Services', 'Translation', 'Government Fee', 'Fee'],
+    ['Language Services', 'Translation', 'Handwritten', 'Word'],
+    ['Language Services', 'Translation', 'Interpretation Services', 'Word'],
+    ['Language Services', 'Translation', 'Localization', 'Hour'],
+    ['Language Services', 'Translation', 'Localization QA', 'Word'],
+    ['Language Services', 'Translation', 'Machine Translation', 'Word'],
+    ['Language Services', 'Translation', 'Medical Review', 'Hour'],
+    ['Language Services', 'Translation', 'Migration Assessment', 'Hour'],
+    ['Language Services', 'Translation', 'MT - Exact Match', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match High', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match Low', 'Word'],
+    ['Language Services', 'Translation', 'MT - Fuzzy Match Medium', 'Word'],
+    ['Language Services', 'Translation', 'MT - Repetitions', 'Word'],
+    ['Language Services', 'Translation', 'MT Double Review / Formatting', 'Hour'],
+    ['Language Services', 'Translation', 'MT full back-editing', 'Hour'],
+    ['Language Services', 'Translation', 'MT full editing', 'Hour'],
+    ['Language Services', 'Translation', 'MT full EditProof', 'Word'],
+    ['Language Services', 'Translation', 'MT light editing', 'Hour'],
+    ['Verification Services', 'Notary Service', 'Notary Service', 'Word'],
+    ['Language Services', 'Translation', 'PD Maintenance', 'Word'],
+    ['Language Services', 'Translation', 'PD SaaS Fee', 'Fee'],
+    ['Language Services', 'Translation', 'Post-DTP Proofreading', 'Hour'],
+    ['Language Services', 'Translation', 'Program Management', 'Hour'],
+    ['Language Services', 'Translation', 'Project Management', 'Hour'],
+    ['Language Services', 'Translation', 'Proofreading', 'Hour'],
+    ['Language Services', 'Translation', 'Quality Management', 'Hour'],
+    ['Language Services', 'Translation', 'Reconciliation', 'Hour'],
+    ['Language Services', 'Translation', 'Redaction', 'Hour'],
+    ['Language Services', 'Translation', 'Review', 'Hour'],
+    ['Language Services', 'Translation', 'Revisions', 'Word'],
+    ['Language Services', 'Translation', 'Rush Premium', 'Fee'],
+    ['Language Services', 'Translation', 'Screenshot Review', 'Hour'],
+    ['Language Services', 'Translation', 'Secondary Review', 'Hour'],
+    ['Language Services', 'Translation', 'Sidlayout', 'Word'],
+    ['Language Services', 'Translation', 'TM - Context Matches', 'Word'],
+    ['Language Services', 'Translation', 'TM - Exact Matches', 'Word'],
+    ['Language Services', 'Translation', 'TM - Fuzzy Match High', 'Word'],
+    ['Language Services', 'Translation', 'TM - Fuzzy Match Low', 'Word'],
+    ['Language Services', 'Translation', 'TM - Fuzzy Matches', 'Word'],
+    ['Language Services', 'Translation', 'TM - New Word', 'Word'],
+    ['Language Services', 'Translation', 'TM - Repetitions', 'Word'],
+    ['Language Services', 'Translation', 'Trans./Edit/Proof.', 'Hour'],
+    ['Language Services', 'Translation', 'Transcription', 'Word'],
+    ['Language Services', 'Translation', 'Translation', 'Word'],
+    ['Language Services', 'Translation', 'Translation and Proofreading', 'Word'],
 ]
 
 PA_SERVICES = {
     "TPUS": TPUS_PA_SERVICES,
     "TPTDE": TPTDE_PA_SERVICES,
-    "TPTIT": TPTIT_PA_SERVICES,
-    "TPT": TPT_PA_SERVICES,
+    "TPTFR": TPTFR_PA_SERVICES,
     "TPTSWE": TPTSWE_PA_SERVICES,
+    "TPTIT": TPTIT_PA_SERVICES,
 }
-
-
-
 
 def add_pa_service(entity, service_group_1, service_group_2, service, default_uom):
     """
     Add a new PA service to the specified entity's service list.
-    
+
     Args:
-        entity (str): Entity name (TPUS or TPTDE)
+        entity (str): Entity name
         service_group_1 (str): First service group
         service_group_2 (str): Second service group
         service (str): Service name
         default_uom (str): Default unit of measure
-    
+
     Returns:
         bool: True if successful, False otherwise
     """
     entity_upper = entity.upper()
-    
+
     if entity_upper not in PA_SERVICES:
         print(f"Error: Entity '{entity}' not found. Available entities: {', '.join(PA_SERVICES.keys())}")
         return False
-    
+
     new_service = [service_group_1, service_group_2, service, default_uom]
     PA_SERVICES[entity_upper].append(new_service)
-    print(f"✓ Service '{service}' added to {entity_upper}")
+    print(f"Service '{service}' added to {entity_upper}")
     return True
 
 
 def interactive_add_service():
-    """
-    Interactive function to add a service with user input.
-    """
+    """Interactive function to add a service with user input."""
     print("\n" + "="*60)
     print("Add New PA Service")
     print("="*60)
-    
-    # Display available entities
+
     print("\nAvailable entities:")
     for i, entity in enumerate(PA_SERVICES.keys(), 1):
         print(f"  {i}. {entity}")
-    
-    # Get entity
+
     while True:
-        entity = input("\nEnter entity name (TPUS/TPTDE): ").strip().upper()
+        entity = input("\nEnter entity name: ").strip().upper()
         if entity in PA_SERVICES:
             break
         print(f"Invalid entity. Please choose from: {', '.join(PA_SERVICES.keys())}")
-    
-    # Get service details
+
     service_group_1 = input("Enter Service Group 1: ").strip()
     service_group_2 = input("Enter Service Group 2 (or leave empty): ").strip()
     service = input("Enter Service name: ").strip()
-    
-    # Display common UofM options
     print("\nCommon Units of Measure: Word, Hour, Fee, Page")
     default_uom = input("Enter Default UofM: ").strip()
-    
-    # Confirm before adding
+
     print("\n" + "-"*60)
     print("Review your entry:")
     print(f"  Entity:          {entity}")
@@ -221,9 +409,8 @@ def interactive_add_service():
     print(f"  Service:         {service}")
     print(f"  Default UofM:    {default_uom}")
     print("-"*60)
-    
+
     confirm = input("\nAdd this service? (yes/no): ").strip().lower()
-    
     if confirm in ['yes', 'y']:
         add_pa_service(entity, service_group_1, service_group_2, service, default_uom)
     else:
@@ -233,7 +420,7 @@ def interactive_add_service():
 def display_services(entity=None):
     """
     Display all services for a given entity or all entities.
-    
+
     Args:
         entity (str, optional): Entity name. If None, displays all.
     """
@@ -254,13 +441,5 @@ def display_services(entity=None):
                 print(f"  {service}")
 
 
-# Example usage:
 if __name__ == "__main__":
-    # Interactive mode - uncomment to use
-    # interactive_add_service()
-    
-    # Or add programmatically:
-    # add_pa_service("TPUS", "Language Services", "Translation", "Copywriting", "Word")
-    
-    # Display all services
     display_services()

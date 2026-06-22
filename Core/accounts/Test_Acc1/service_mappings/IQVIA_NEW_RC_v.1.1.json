@@ -1,0 +1,13 @@
+{
+  "description": "Service mapping for IQVIA_NEW_RC_v.1.1 under account Test_Acc1",
+  "account": "Test_Acc1",
+  "rate_card": "IQVIA_NEW_RC_v.1.1",
+  "mappings": {
+    "Review": "Review",
+    "Formatting": "Formatting",
+    "MT full EditProof": "MT full EditProof",
+    "TM - Repetitions": "TM - Repetitions",
+    "TM - Fuzzy Matches": "TM - Fuzzy Matches",
+    "Translation and Proofreading": "Translation and Proofreading"
+  }
+}

@@ -15,27 +15,8 @@ class ExcelRateCardLoader:
     """Load and convert Excel rate cards to JSON format."""
     
     # Map common service column names to standardized names
-    SERVICE_NAME_MAPPING = {
-        'Translation': 'Translation and Proofreading',
-        'Translation/Proofreading': 'Translation and Proofreading',
-        'Translation and Proofreading': 'Translation and Proofreading',
-        'MT': 'MT full EditProof',
-        'MT full': 'MT full EditProof',
-        'MT full EditProof': 'MT full EditProof',
-        'MT EditProof': 'MT full EditProof',
-        'TM - Fuzzy': 'TM - Fuzzy Matches',
-        'TM Fuzzy': 'TM - Fuzzy Matches',
-        'TM - Fuzzy Matches': 'TM - Fuzzy Matches',
-        'TM - Exact Matches': 'TM - Exact Matches',
-        'TM - Exact': 'TM - Exact Matches',
-        'TM Exact': 'TM - Exact Matches',
-        'TM - Exact Match': 'TM - Exact Matches',
-        'TM - Repetitions': 'TM - Repetitions',
-        'TM Repetitions': 'TM - Repetitions',
-        'Fuzzy Low': 'TM - Fuzzy Match Low',
-        'Fuzzy Medium': 'TM - Fuzzy Match Medium',
-        'Fuzzy High': 'TM - Fuzzy Match High',
-    }
+    SERVICE_NAME_MAPPING = {}
+
     
     def __init__(self, excel_file_path: str):
         """

@@ -127,13 +127,15 @@ class DataFrameProcessor:
         Returns:
             Pivoted DataFrame
         """
+    
         return pd.pivot_table(
             df,
             index=index,
             columns=columns,
             values=values,
             aggfunc=aggfunc,
-            fill_value=0
+            fill_value=0,
+            dropna=True
         )
     
     @staticmethod

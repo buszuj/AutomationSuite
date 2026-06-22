@@ -6,7 +6,7 @@ Supports per-account, per-rate-card mapping configuration.
 
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 class ServiceMapper:
@@ -105,6 +105,100 @@ class ServiceMapper:
         except Exception as e:
             print(f"Error loading service mapping: {e}")
             return {}
+    def _normalize_alias_key(self, service_name: str) -> str:
+        """
+            Normalize service alias for conflict detection.
+            Keeps logic intentionally simple and deterministic.
+        """
+        return " ".join(str(service_name).strip().lower().split())
+
+    def get_account_service_mapping_files(self, account_name: str) -> List[Path]:
+        """
+        Return all mapping files for an account under service_mappings.
+        """
+        mapping_dir = self.core_path / "accounts" / account_name / "service_mappings"
+        if not mapping_dir.exists():
+            return []
+        return sorted(mapping_dir.glob("*.json"))
+
+    def detect_account_mapping_conflicts(self, account_name: str) -> Dict[str, Any]:
+        """
+        Detect alias conflicts across all rate-card mapping files for an account.
+
+        Conflict definition:
+        The same normalized alias maps to more than one canonical service.
+
+        Returns:
+            {
+            "has_conflicts": bool,
+            "conflicts": {
+                "<normalized_alias>": {
+                "alias_variants": [original_alias_strings],
+                "canonical_services": [canonical_names],
+                "sources": [
+                    {"rate_card": "<rate_card_name>", "alias": "<original_alias>", "canonical": "<canonical_name>"}
+                ]
+                }
+            },
+            "scanned_files": [file_names]
+            }
+        """
+        alias_index: Dict[str, Dict[str, Any]] = {}
+        scanned_files: List[str] = []
+
+        for mapping_file in self.get_account_service_mapping_files(account_name):
+            try:
+                with open(mapping_file, "r", encoding="utf-8") as f:
+                    payload = json.load(f)
+
+                mappings = payload.get("mappings", {})
+                if not isinstance(mappings, dict):
+                    continue
+
+                rate_card_name = payload.get("rate_card", mapping_file.stem)
+                scanned_files.append(mapping_file.name)
+
+                for raw_alias, canonical in mappings.items():
+                    alias_norm = self._normalize_alias_key(raw_alias)
+                    canonical_name = str(canonical).strip()
+                    alias_display = str(raw_alias).strip()
+
+                    if not alias_norm or not canonical_name:
+                        continue
+
+                    if alias_norm not in alias_index:
+                        alias_index[alias_norm] = {
+                            "alias_variants": set(),
+                            "canonical_services": set(),
+                            "sources": []
+                        }
+
+                    alias_index[alias_norm]["alias_variants"].add(alias_display)
+                    alias_index[alias_norm]["canonical_services"].add(canonical_name)
+                    alias_index[alias_norm]["sources"].append({
+                        "rate_card": rate_card_name,
+                        "alias": alias_display,
+                        "canonical": canonical_name
+                    })
+
+            except Exception as e:
+                print(f"Error scanning mapping file for conflicts ({mapping_file.name}): {e}")
+
+        conflicts: Dict[str, Any] = {}
+        for alias_norm, data in alias_index.items():
+            canonical_set: Set[str] = data["canonical_services"]
+            if len(canonical_set) > 1:
+                conflicts[alias_norm] = {
+                    "alias_variants": sorted(list(data["alias_variants"])),
+                    "canonical_services": sorted(list(canonical_set)),
+                    "sources": data["sources"]
+                }
+
+        return {
+            "has_conflicts": len(conflicts) > 0,
+            "conflicts": conflicts,
+            "scanned_files": scanned_files
+        }         
     
     def save_mapping(self, account_name: str, rate_card_name: str, mapping: Dict[str, str]):
         """
@@ -134,14 +228,15 @@ class ServiceMapper:
         rate_card_services: List[str],
         account_name: Optional[str] = None,
         rate_card_name: Optional[str] = None
-    ) -> Tuple[Dict[str, str], List[str]]:
+    ) -> Tuple[Dict[str, str], List[str], Dict[str, Any]]:
         """
         Normalize rate card services to canonical names.
         
         Process:
         1. Try exact matches (case-insensitive)
         2. Load saved mappings for this account/rate-card if provided
-        3. Return unmapped services
+        3. Detect mapping conflicts for the account
+        4. Return unmapped services plus conflict report
         
         Args:
             rate_card_services: Services from rate card
@@ -149,9 +244,10 @@ class ServiceMapper:
             rate_card_name: Optional rate card name to load saved mappings
             
         Returns:
-            Tuple of (normalized_mapping, unmapped_services)
+            Tuple of (normalized_mapping, unmapped_services, conflict_report)
             - normalized_mapping: {rate_card_service -> canonical_service}
             - unmapped_services: [services not mapped]
+            - conflict_report: conflict scan result dict
         """
         # First, find exact matches
         matched, unmapped = self.find_exact_matches(rate_card_services)
@@ -171,8 +267,15 @@ class ServiceMapper:
             else:
                 remaining_unmapped.append(service)
         
-        return final_mapping, remaining_unmapped
-    
+        conflict_report = {
+            "has_conflicts": False,
+            "conflicts": {},
+            "scanned_files": []
+        }
+        if account_name:
+            conflict_report = self.detect_account_mapping_conflicts(account_name)
+        
+        return final_mapping, remaining_unmapped, conflict_report
     def apply_service_mapping(self, rate_card: dict, mapping: Dict[str, str]) -> dict:
         """
         Apply service mapping to a rate card, renaming all services to canonical names.

@@ -186,7 +186,19 @@ class RateCardBuilderTab:
             command=self.on_open_rate_card
         )
         open_button.pack(side="left", padx=(0, 10), pady=10)
-        
+
+        # Load Master Rate Card button
+        master_button = ctk.CTkButton(
+            button_frame,
+            text="📦 Load Master Rate Card",
+            height=40,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color="#8e44ad",  
+            hover_color="#7d3c99",
+            command=self.on_load_master_rate_card
+        )
+        master_button.pack(side="left", padx=(0, 10), pady=10)
+
         # Load from file button
         load_button = ctk.CTkButton(
             button_frame,
@@ -264,6 +276,18 @@ class RateCardBuilderTab:
             messagebox.showerror("Error", f"Failed to open Load Rate Card:\n{str(e)}")
             self.status_label.configure(text="✗ Error opening Load Rate Card")
     
+    def on_load_master_rate_card(self):
+        """Open the master rate card picker directly."""
+        try:
+            win = LoadRateCardWindow(self.root)
+            # Automatically trigger the master card picker after window opens
+            win.window.after(200, win.on_load_master_rate_card)
+            self.status_label.configure(text="✓ Master Rate Card loader opened")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open Master Rate Card loader:\n{str(e)}")
+            self.status_label.configure(text="✗ Error opening Master Rate Card loader")
+
+
     def on_browse_rate_cards(self):
         """Browse for rate card files."""
         file_path = filedialog.askopenfilename(

@@ -1,0 +1,25 @@
+{
+  "description": "Service mapping for Regeneron_RC_v1.2 under account Test_Acc1",
+  "account": "Test_Acc1",
+  "rate_card": "Regeneron_RC_v1.2",
+  "mappings": {
+    "Review": "Review",
+    "Formatting": "Formatting",
+    "Revisions": "Revisions",
+    "Reconciliation": "Reconciliation",
+    "Localization QA": "Localization QA",
+    "Notary Service": "Notary Service",
+    "Proofreading": "Proofreading",
+    "Desktop Publishing": "Desktop Publishing",
+    "File Preparation": "File Preparation",
+    "TM - Fuzzy Matches": "TM - Fuzzy Matches",
+    "Localization": "Localization",
+    "Engineering": "Engineering",
+    "TM - Exact Matches": "TM - Exact Matches",
+    "Trans./Edit/Proof.": "Trans./Edit/Proof.",
+    "Project Management": "Project Management",
+    "MT full EditProof (>FOR)": "MT full EditProof",
+    "MT full EditProof (>ENG)": "MT full EditProof",
+    "Translation and Proofreading (>ENG)": "Translation and Proofreading"
+  }
+}
