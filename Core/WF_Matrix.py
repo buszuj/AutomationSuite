@@ -50,7 +50,6 @@ TPUS_PA_SERVICES = [
     ['Language Services', 'Translation', 'Rush Premium', 'Fee'],
     ['Language Services', 'Translation', 'Screenshot Review', 'Hour'],
     ['Language Services', 'Translation', 'Secondary Review', 'Hour'],
-    ['Language Services', 'Translation', 'Sidlayout', 'Word'],
     ['Language Services', 'Translation', 'TM - Context Matches', 'Word'],
     ['Language Services', 'Translation', 'TM - Exact Matches', 'Word'],
     ['Language Services', 'Translation', 'TM - Fuzzy Match High', 'Word'],

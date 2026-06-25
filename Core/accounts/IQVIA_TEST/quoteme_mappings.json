@@ -1,0 +1,60 @@
+{
+  "description": "QuoteMe value mapping for account IQVIA_TEST (shared across all workflows)",
+  "account": "IQVIA_TEST",
+  "mappings": {
+    "Machine Translation": {
+      "fields": [
+        "New Words"
+      ],
+      "service_type": "Word",
+      "divider": 1.0,
+      "increment": 1.0,
+      "minimum": 0.0,
+      "rate_source_service": "Machine Translation"
+    },
+    "TM - Fuzzy Matches": {
+      "fields": [
+        "Fuzzy Matches",
+        "Repetitions"
+      ],
+      "service_type": "Word",
+      "divider": 1.0,
+      "increment": 1.0,
+      "minimum": 0.0,
+      "rate_source_service": "TM - Fuzzy Matches"
+    },
+    "TM - Exact Matches": {
+      "fields": [
+        "Context Matches",
+        "100% Matches"
+      ],
+      "service_type": "Word",
+      "divider": 1.0,
+      "increment": 1.0,
+      "minimum": 0.0,
+      "rate_source_service": "TM - Exact Matches"
+    },
+    "PD Maintenance": {
+      "fields": [],
+      "service_type": "Fee",
+      "divider": 1.0,
+      "increment": 1.0,
+      "minimum": 0.0,
+      "rate_source_service": ""
+    },
+    "Formatting": {
+      "fields": [
+        "Context Matches",
+        "100% Matches",
+        "Fuzzy Matches",
+        "Repetitions",
+        "New Words"
+      ],
+      "service_type": "Hourly",
+      "divider": 1000.0,
+      "increment": 0.5,
+      "minimum": 1.0,
+      "rate_source_service": "Formatting"
+    }
+  }
+}

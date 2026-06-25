@@ -4,6 +4,7 @@ Manages accounts and their workflows (replaces workflow_translator.py for accoun
 """
 
 import json
+import shutil
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -53,12 +54,21 @@ class AccountWorkflowManager:
         return True
     
     def delete_account(self, account_name: str) -> bool:
-        """Delete an account and all its workflows"""
+        """Delete an account, workflows, and all persisted account artifacts."""
         if account_name not in self.accounts:
             return False
-        
+
+        account_dir = Path(__file__).parent / "accounts" / account_name
+        if account_dir.exists():
+            try:
+                shutil.rmtree(account_dir)
+            except Exception:
+                # Keep failure visible to caller so UI can report delete failure.
+                return False
+
         del self.accounts[account_name]
         self.save_accounts()
+
         return True
     
     def rename_account(self, old_name: str, new_name: str) -> bool:

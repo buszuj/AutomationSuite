@@ -1,0 +1,8 @@
+{
+  "description": "Service aliases for entity TPUS",
+  "entity": "TPUS",
+  "aliases": {
+    "Translation": "Translation",
+    "Translation and Proofreading": "Transaltion and Proofreading"
+  }
+}

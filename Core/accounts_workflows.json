@@ -1,8 +1,33 @@
 {
   "accounts": {
-    "Test_Acc1": {
+    "IQVIA_TEST": {
       "workflows": {
-        "test1": {
+        "Translation + 1 step verification": {
+          "services": [
+            {
+              "name": "Machine Translation",
+              "used_when": []
+            },
+            {
+              "name": "TM - Fuzzy Matches",
+              "used_when": []
+            },
+            {
+              "name": "TM - Exact Matches",
+              "used_when": []
+            },
+            {
+              "name": "Formatting",
+              "used_when": []
+            },
+            {
+              "name": "PD Maintenance",
+              "used_when": []
+            }
+          ],
+          "quoteme_mapping": {}
+        },
+        "FT + BT + REcon": {
           "services": [
             {
               "name": "Translation and Proofreading",
@@ -17,21 +42,24 @@
               "used_when": []
             },
             {
-              "name": "File Preparation",
+              "name": "Back Translation",
               "used_when": []
             },
             {
-              "name": "Proofreading",
+              "name": "Reconciliation",
               "used_when": []
             },
             {
-              "name": "Project Management",
+              "name": "Formatting",
               "used_when": []
             }
           ],
           "quoteme_mapping": {}
         }
       }
+    },
+    "PAXEL_TEST": {
+      "workflows": {}
     }
   }
 }

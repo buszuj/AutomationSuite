@@ -6,7 +6,7 @@ Supports per-account, per-rate-card mapping configuration.
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 
 class ServiceMapper:
@@ -88,12 +88,12 @@ class ServiceMapper:
         mapping_dir.mkdir(parents=True, exist_ok=True)
         return mapping_dir / f"{rate_card_name}.json"
     
-    def load_mapping(self, account_name: str, rate_card_name: str) -> Dict[str, str]:
+    def load_mapping(self, account_name: str, rate_card_name: str) -> Dict[str, Union[str, List[str]]]:
         """
         Load service mapping for a specific account and rate card.
         
         Returns:
-            Dict mapping rate_card_service -> canonical_service
+            Dict mapping rate_card_service -> canonical_service or list of canonical services
         """
         mapping_file = self.get_account_mapping_path(account_name, rate_card_name)
         try:
@@ -160,10 +160,19 @@ class ServiceMapper:
 
                 for raw_alias, canonical in mappings.items():
                     alias_norm = self._normalize_alias_key(raw_alias)
-                    canonical_name = str(canonical).strip()
                     alias_display = str(raw_alias).strip()
 
-                    if not alias_norm or not canonical_name:
+                    if str(raw_alias).startswith("__"):
+                        continue
+
+                    canonical_names: List[str]
+                    if isinstance(canonical, list):
+                        canonical_names = [str(c).strip() for c in canonical if str(c).strip()]
+                    else:
+                        canonical_name = str(canonical).strip()
+                        canonical_names = [canonical_name] if canonical_name else []
+
+                    if not alias_norm or not canonical_names:
                         continue
 
                     if alias_norm not in alias_index:
@@ -174,12 +183,13 @@ class ServiceMapper:
                         }
 
                     alias_index[alias_norm]["alias_variants"].add(alias_display)
-                    alias_index[alias_norm]["canonical_services"].add(canonical_name)
-                    alias_index[alias_norm]["sources"].append({
-                        "rate_card": rate_card_name,
-                        "alias": alias_display,
-                        "canonical": canonical_name
-                    })
+                    for canonical_name in canonical_names:
+                        alias_index[alias_norm]["canonical_services"].add(canonical_name)
+                        alias_index[alias_norm]["sources"].append({
+                            "rate_card": rate_card_name,
+                            "alias": alias_display,
+                            "canonical": canonical_name
+                        })
 
             except Exception as e:
                 print(f"Error scanning mapping file for conflicts ({mapping_file.name}): {e}")
@@ -200,14 +210,14 @@ class ServiceMapper:
             "scanned_files": scanned_files
         }         
     
-    def save_mapping(self, account_name: str, rate_card_name: str, mapping: Dict[str, str]):
+    def save_mapping(self, account_name: str, rate_card_name: str, mapping: Dict[str, Union[str, List[str]]]):
         """
         Save service mapping for a specific account and rate card.
         
         Args:
             account_name: Account name
             rate_card_name: Rate card name
-            mapping: Dict of {rate_card_service -> canonical_service}
+            mapping: Dict of {rate_card_service -> canonical_service or [canonical_services]}
         """
         mapping_file = self.get_account_mapping_path(account_name, rate_card_name)
         try:
@@ -228,7 +238,7 @@ class ServiceMapper:
         rate_card_services: List[str],
         account_name: Optional[str] = None,
         rate_card_name: Optional[str] = None
-    ) -> Tuple[Dict[str, str], List[str], Dict[str, Any]]:
+    ) -> Tuple[Dict[str, Union[str, List[str]]], List[str], Dict[str, Any]]:
         """
         Normalize rate card services to canonical names.
         
@@ -245,7 +255,7 @@ class ServiceMapper:
             
         Returns:
             Tuple of (normalized_mapping, unmapped_services, conflict_report)
-            - normalized_mapping: {rate_card_service -> canonical_service}
+            - normalized_mapping: {rate_card_service -> canonical_service or [canonical_services]}
             - unmapped_services: [services not mapped]
             - conflict_report: conflict scan result dict
         """
@@ -276,14 +286,14 @@ class ServiceMapper:
             conflict_report = self.detect_account_mapping_conflicts(account_name)
         
         return final_mapping, remaining_unmapped, conflict_report
-    def apply_service_mapping(self, rate_card: dict, mapping: Dict[str, str]) -> dict:
+    def apply_service_mapping(self, rate_card: dict, mapping: Dict[str, Union[str, List[str]]]) -> dict:
         """
         Apply service mapping to a rate card, renaming all services to canonical names.
         Also filters out metadata columns like "Iso Code".
         
         Args:
             rate_card: Rate card dict with languages and rates
-            mapping: Dict of {old_service_name -> canonical_service_name}
+            mapping: Dict of {old_service_name -> canonical_service_name or [canonical_service_names]}
             
         Returns:
             Modified rate card with normalized service names (metadata columns removed)
@@ -304,9 +314,19 @@ class ServiceMapper:
                     # Skip ignored columns
                     if old_service in ignore_columns:
                         continue
-                    # Use mapping if available, otherwise keep original
-                    canonical_service = mapping.get(old_service, old_service)
-                    mapped_rates[canonical_service] = rate_value
+                    # Use mapping if available, otherwise keep original.
+                    # Supports one-to-many mapping when one alias must feed multiple canonical services.
+                    mapped_targets = mapping.get(old_service, old_service)
+                    if isinstance(mapped_targets, list):
+                        targets = [str(t).strip() for t in mapped_targets if str(t).strip()]
+                    else:
+                        targets = [str(mapped_targets).strip()]
+
+                    if not targets:
+                        targets = [old_service]
+
+                    for canonical_service in targets:
+                        mapped_rates[canonical_service] = rate_value
                 
                 mapped_languages[language] = {
                     **lang_data,
