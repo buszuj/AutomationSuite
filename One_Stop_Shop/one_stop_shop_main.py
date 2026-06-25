@@ -463,6 +463,8 @@ class OneStopShopMain:
         self.workflow_service_data = {}  # Stores service data: {service_name: {lp: {quantity, rate}}}
         self.selected_entity_var = ctk.StringVar(value="TPUS")
         self.entity_dropdown = None
+        self.last_rate_diagnostics = {}
+        self.current_rate_aliases = {}
         
         # Setup menu bar BEFORE UI
         self.setup_menu_bar()
@@ -2502,6 +2504,17 @@ class OneStopShopMain:
             fg_color="#27ae60",
             hover_color="#229954"
         ).pack(side="left", padx=(5, 0))
+
+        ctk.CTkButton(
+            rc_dropdown_frame,
+            text="🗑 Delete Card Data",
+            command=self.delete_selected_rate_card_data,
+            width=140,
+            height=32,
+            font=("Arial", 10, "bold"),
+            fg_color="#c0392b",
+            hover_color="#a93226"
+        ).pack(side="left", padx=(5, 0))
         
         # Currency section (Native Currency + Target Currency + Conversion Rate)
         currency_frame = ctk.CTkFrame(rc_frame, fg_color="transparent")
@@ -2590,6 +2603,30 @@ class OneStopShopMain:
             justify="left"
         )
         self.rate_card_info.pack(fill="x", pady=(5, 0))
+
+        self.rate_issues_info = ctk.CTkLabel(
+            rc_frame,
+            text="Rate Issues: No diagnostics yet",
+            font=("Arial", 9),
+            text_color="#95a5a6",
+            wraplength=750,
+            justify="left",
+            anchor="w"
+        )
+        self.rate_issues_info.pack(fill="x", pady=(4, 0))
+
+        self.fix_rate_issues_btn = ctk.CTkButton(
+            rc_frame,
+            text="Fix Rate Issues",
+            command=self._open_rate_issue_service_config_dialog,
+            width=130,
+            height=26,
+            font=("Arial", 9, "bold"),
+            fg_color="#e67e22",
+            hover_color="#d35400",
+            state="disabled"
+        )
+        self.fix_rate_issues_btn.pack(anchor="w", pady=(4, 0))
         
         # Services table section
         # Services table label with Service Config button (moved to row 3 since Source Type is now with Workflow)
@@ -2613,6 +2650,17 @@ class OneStopShopMain:
             fg_color="#e67e22",
             hover_color="#d35400"
         ).pack(side="right", padx=(5, 0))
+
+        ctk.CTkButton(
+            table_label_frame,
+            text="Clear Data",
+            command=self.clear_charges_data,
+            width=100,
+            height=28,
+            font=("Arial", 9, "bold"),
+            fg_color="#a5220b",
+            hover_color="#d30000"
+        ).pack(side="right", padx=(5, 0))
         
         # Service Config button
         ctk.CTkButton(
@@ -2629,7 +2677,7 @@ class OneStopShopMain:
         # Rates Config button (for Min Fee thresholds)
         ctk.CTkButton(
             table_label_frame,
-            text="💰 Rates Config",
+            text="💰 Min Fee Config",
             command=self.open_min_fee_editor,
             width=140,
             height=28,
@@ -3501,6 +3549,17 @@ class OneStopShopMain:
         service_frames = {}  # Track frames for visibility toggling
         
         from Core.service_search_engine import ServiceSearchEngine
+
+        def on_search_change(*args):
+            """Filter services based on search query"""
+            query = search_var.get()
+            filtered_services = set(ServiceSearchEngine.filter_services(query, canonical_services))
+
+            for service, frame in service_frames.items():
+                if not query.strip() or service in filtered_services:
+                    frame.pack(anchor="w", padx=10, pady=2, fill="x")
+                else:
+                    frame.pack_forget()
         
         search_var.trace_add("write", on_search_change)
         
@@ -3901,11 +3960,39 @@ class OneStopShopMain:
         Returns:
             Rate as string or empty string if not found
         """
+        resolved = self._resolve_rate_from_card_details(rate_card, service, target_language)
+        return resolved.get("rate", "")
+
+    def _resolve_rate_from_card_details(self, rate_card: dict, service: str, target_language: Optional[str] = None) -> dict:
+        """
+        Resolve rate with diagnostics for UI health reporting.
+
+        Returns dict with:
+        {
+            "rate": str,
+            "matched_lang": str,
+            "reason": str,
+            "available_services": list,
+            "target_language": str,
+            "service": str
+        }
+        """
+        result = {
+            "rate": "",
+            "matched_lang": "",
+            "reason": "",
+            "available_services": [],
+            "target_language": target_language or "",
+            "service": service or ""
+        }
+
         if not rate_card or "languages" not in rate_card:
-            return ""
+            result["reason"] = "no_rate_card"
+            return result
         
         if not target_language:
-            return ""
+            result["reason"] = "no_target_language"
+            return result
         
         # Normalize the target language using language normalizer
         iso_code, lang_name, display_name = self.language_normalizer.normalize(target_language)
@@ -3961,28 +4048,39 @@ class OneStopShopMain:
                 if lang_key.lower() in target_language.lower():
                     matched_lang = lang_key
                     break
+
+        if not matched_lang:
+            result["reason"] = "language_not_found"
+            return result
         
-        if matched_lang:
-            lang_data = languages_dict[matched_lang]
-            if isinstance(lang_data, dict) and "rates" in lang_data:
-                rates = lang_data["rates"]
-                
-                # Try exact service match first
-                if service in rates:
-                    rate = rates[service]
-                    return str(rate) if rate else ""
-                
-                # Try case-insensitive match
-                for rate_service, rate_value in rates.items():
-                    if rate_service.lower() == service.lower():
-                        return str(rate_value) if rate_value else ""
-                
-                # Debug: print available services for this language
-                print(f"DEBUG: Language '{matched_lang}' found for target '{target_language}'")
-                print(f"  Services available: {list(rates.keys())}")
-                print(f"  Looking for service: '{service}'")
+        result["matched_lang"] = matched_lang
+        lang_data = languages_dict[matched_lang]
+        if not isinstance(lang_data, dict) or "rates" not in lang_data:
+            result["reason"] = "language_rates_missing"
+            return result
+
+        rates = lang_data["rates"]
+        result["available_services"] = list(rates.keys())
         
-        return ""
+        # Try exact service match first
+        if service in rates:
+            rate = rates[service]
+            result["rate"] = str(rate) if rate else ""
+            result["reason"] = "matched_exact" if result["rate"] else "rate_empty"
+            return result
+        
+        # Try case-insensitive match
+        for rate_service, rate_value in rates.items():
+            if rate_service.lower() == service.lower():
+                result["rate"] = str(rate_value) if rate_value else ""
+                result["reason"] = "matched_case_insensitive" if result["rate"] else "rate_empty"
+                return result
+
+        result["reason"] = "service_not_found"
+        print(f"DEBUG: Language '{matched_lang}' found for target '{target_language}'")
+        print(f"  Services available: {list(rates.keys())}")
+        print(f"  Looking for service: '{service}'")
+        return result
     
     def refresh_workflow_dropdown(self):
         """Refresh workflow dropdown for current account"""
@@ -4018,6 +4116,8 @@ class OneStopShopMain:
             self.rate_card_dropdown.set("")
             self.selected_rate_card = None
             self.rate_card_info.configure(text="ℹ️ No rate card loaded. Select from dropdown or browse for a file.")
+            self.last_rate_diagnostics = {}
+            self._update_rate_issues_panel(None)
         except Exception as e:
             print(f"[ERROR] refresh_rate_card_dropdown failed: {e}")
             import traceback
@@ -4914,6 +5014,59 @@ class OneStopShopMain:
         
         # Show the mapping dialog
         self._show_quoteme_mapping_dialog(service_names, self.selected_workflow)
+
+    def _open_rate_issue_service_config_dialog(self):
+        """Open Service Config focused on services with current rate diagnostics issues."""
+        if not self.current_account:
+            messagebox.showwarning("No Account", "Please select an account first")
+            return
+
+        if not self.selected_workflow:
+            messagebox.showwarning("No Workflow", "Please select a workflow first")
+            return
+
+        diagnostics = self.last_rate_diagnostics if isinstance(self.last_rate_diagnostics, dict) else {}
+        samples = diagnostics.get("samples", []) if diagnostics else []
+
+        # Use impacted services from diagnostics samples first.
+        affected_services = []
+        seen = set()
+        for sample in samples:
+            service = str(sample.get("display_service", sample.get("service", ""))).strip()
+            if service and service not in seen:
+                seen.add(service)
+                affected_services.append(service)
+
+        if not affected_services:
+            # No sample misses available: fall back to full Service Config workflow.
+            self._open_service_config_dialog()
+            return
+
+        issue_context = {}
+        for sample in samples:
+            service = str(sample.get("display_service", sample.get("service", ""))).strip()
+            if not service:
+                continue
+
+            reason = str(sample.get("reason", "unknown"))
+            lp = str(sample.get("lp", ""))
+            rate_source = str(sample.get("display_rate_source", sample.get("rate_source", "")))
+            hint = f"{reason} | LP: {lp}"
+            if rate_source:
+                hint += f" | rate source: {rate_source}"
+
+            if service not in issue_context:
+                issue_context[service] = []
+            if hint not in issue_context[service]:
+                issue_context[service].append(hint)
+
+        # Require WC data only for the fallback path. For targeted fixes, opening config is always useful.
+        self._show_quoteme_mapping_dialog(
+            affected_services,
+            self.selected_workflow,
+            issue_context=issue_context,
+            focus_service=affected_services[0]
+        )
     
     def on_workflow_selected(self, workflow_name: str):
         """Handle workflow selection - populate services table and check for QuoteMe mapping"""
@@ -5456,7 +5609,13 @@ class OneStopShopMain:
                 except Exception:
                     pass
 
-    def _show_quoteme_mapping_dialog(self, services: List[str], workflow_name: str):
+    def _show_quoteme_mapping_dialog(
+        self,
+        services: List[str],
+        workflow_name: str,
+        issue_context: Optional[dict] = None,
+        focus_service: Optional[str] = None
+    ):
         """
         Show dialog to map QuoteMe word count fields to workflow services.
         Allows users to assign one or more QuoteMe fields to each service.
@@ -5488,22 +5647,28 @@ class OneStopShopMain:
             font=("Arial", 9),
             text_color="gray"
         ).pack(padx=15, pady=(0, 15))
+
+        if issue_context:
+            ctk.CTkLabel(
+                dialog,
+                text="Focused mode: showing only services flagged by Rate Issues diagnostics.",
+                font=("Arial", 9, "bold"),
+                text_color="#f39c12"
+            ).pack(padx=15, pady=(0, 8), anchor="w")
+
+        focused_mode = bool(issue_context)
+        baseline_diag = self.last_rate_diagnostics if isinstance(self.last_rate_diagnostics, dict) else {}
+        baseline_missing = (
+            baseline_diag.get("missing_language", 0)
+            + baseline_diag.get("missing_service", 0)
+            + baseline_diag.get("missing_other", 0)
+        )
         
         # Load existing account-level mapping
         existing_mapping = self.quoteme_value_mapper.load_mapping(self.current_account)
         
-        # Build available rate-card services for "Rate Source Service" dropdown
-        available_rate_services = []
-        card_for_services = self.cached_rate_card if self.cached_rate_card else (
-            self.load_rate_card(self.selected_rate_card) if self.selected_rate_card else {}
-        )
-        if isinstance(card_for_services, dict):
-            for lang_data in card_for_services.get("languages", {}).values():
-                if isinstance(lang_data, dict) and "rates" in lang_data and isinstance(lang_data["rates"], dict):
-                    for svc_name in lang_data["rates"].keys():
-                        if svc_name not in available_rate_services:
-                            available_rate_services.append(svc_name)
-        available_rate_services = sorted(available_rate_services)
+        # Build available rate-card aliases for "Rate Source Service" dropdown.
+        available_rate_services = self._get_loaded_rate_card_aliases_for_source()
 
         # Main scrollable frame
         main_scroll = ctk.CTkScrollableFrame(dialog, fg_color="gray25", corner_radius=6)
@@ -5515,6 +5680,8 @@ class OneStopShopMain:
         
         # Track configuration for each service
         service_configs = {}
+        first_focus_widget = None
+        focus_target = focus_service or (services[0] if services else None)
         
         # Create a frame for each service
         for service in services:
@@ -5552,6 +5719,20 @@ class OneStopShopMain:
                 font=("Arial", 9),
                 fg_color="#555"
             ).pack(side="right", padx=5)
+
+            if issue_context and service in issue_context:
+                hints = issue_context.get(service, [])
+                if hints:
+                    hint_text = "Rate issue hints: " + " || ".join(hints[:2])
+                    ctk.CTkLabel(
+                        service_frame,
+                        text=hint_text,
+                        font=("Arial", 8),
+                        text_color="#f5cba7",
+                        justify="left",
+                        wraplength=720,
+                        anchor="w"
+                    ).pack(fill="x", padx=12, pady=(0, 2))
             
             # Checkboxes for QuoteMe fields
             field_vars = {}
@@ -5577,12 +5758,17 @@ class OneStopShopMain:
                     offvalue=False
                 )
                 cb.pack(anchor="w", side="left", padx=5, pady=2)
+
+                if first_focus_widget is None and service == focus_target:
+                    first_focus_widget = cb
             
-            # Initialize service config
+            # Initialize service config (strict alias mode: no fallback/migration)
             if existing_service_cfg:
                 service_configs[service] = existing_service_cfg.copy()
-                if not service_configs[service].get("rate_source_service"):
-                    service_configs[service]["rate_source_service"] = service
+                configured_source = str(service_configs[service].get("rate_source_service", "")).strip()
+                if configured_source not in available_rate_services:
+                    configured_source = ""
+                service_configs[service]["rate_source_service"] = configured_source
             else:
                 service_configs[service] = {
                     "fields": [],
@@ -5590,10 +5776,13 @@ class OneStopShopMain:
                     "divider": 1.0,
                     "increment": 1.0,
                     "minimum": 0,
-                    "rate_source_service": service
+                    "rate_source_service": ""
                 }
             
             service_configs[service]["field_vars"] = field_vars
+
+        if first_focus_widget is not None:
+            dialog.after(120, lambda: first_focus_widget.focus_set())
         
         # Skip prompt checkbox
         skip_prompt_var = BooleanVar(value=False)
@@ -5703,6 +5892,31 @@ class OneStopShopMain:
                     self.selected_workflow
                 )
                 self.populate_services_table(services)
+
+            if focused_mode:
+                latest_diag = self.last_rate_diagnostics if isinstance(self.last_rate_diagnostics, dict) else {}
+                latest_missing = (
+                    latest_diag.get("missing_language", 0)
+                    + latest_diag.get("missing_service", 0)
+                    + latest_diag.get("missing_other", 0)
+                )
+                resolved = max(0, baseline_missing - latest_missing)
+
+                if latest_diag.get("total_cells", 0) == 0:
+                    messagebox.showinfo(
+                        "Rate Issue Update",
+                        "Service config saved.\n\nDiagnostics were not recalculated because no rate table is active yet."
+                    )
+                else:
+                    messagebox.showinfo(
+                        "Rate Issue Update",
+                        (
+                            f"Service config saved.\n\n"
+                            f"Resolved issue cells: {resolved}\n"
+                            f"Remaining issue cells: {latest_missing}\n"
+                            f"Matched cells: {latest_diag.get('matched_rates', 0)}/{latest_diag.get('total_cells', 0)}"
+                        )
+                    )
         
         def skip_mapping():
             dialog.destroy()
@@ -5752,10 +5966,18 @@ class OneStopShopMain:
         
         current_config = service_configs.get(service_name, {})
         current_service_type = current_config.get("service_type", "Word")
-        current_rate_source = current_config.get("rate_source_service", service_name)
+        current_rate_source = str(current_config.get("rate_source_service", "")).strip()
 
         if available_rate_services is None:
             available_rate_services = []
+        available_rate_services = sorted({str(s).strip() for s in available_rate_services if str(s).strip()})
+
+        # Label services for display: (C) for canonical, (A) for alias
+        labeled_values, display_to_actual = self._label_rate_sources_for_display(available_rate_services)
+        
+        # Build reverse mapping: actual_value -> labeled_value for dropdown display
+        actual_to_labeled = {v: k for k, v in display_to_actual.items()}
+        labeled_current_rate_source = actual_to_labeled.get(current_rate_source, "")
         
         # Header
         ctk.CTkLabel(
@@ -5795,20 +6017,20 @@ class OneStopShopMain:
             font=("Arial", 11, "bold")
         ).pack(anchor="w")
 
-        rate_source_values = [service_name]
-        for svc_name in available_rate_services:
-            if svc_name not in rate_source_values:
-                rate_source_values.append(svc_name)
+        # Dropdown values represent aliases from the currently loaded card only (strict mode).
+        rate_source_values = labeled_values
+        if labeled_current_rate_source not in rate_source_values:
+            labeled_current_rate_source = ""
 
         rate_source_var = ctk.StringVar(
-            value=current_rate_source if current_rate_source in rate_source_values else service_name
+            value=labeled_current_rate_source
         )
 
         rate_source_dropdown = ctk.CTkComboBox(
             rate_source_frame,
             values=rate_source_values,
             variable=rate_source_var,
-            state="readonly",
+            state="readonly" if rate_source_values else "disabled",
             font=("Arial", 10),
             height=32
         )
@@ -5868,12 +6090,12 @@ class OneStopShopMain:
         
         divider_entry = ctk.CTkEntry(
             divider_frame,
-            placeholder_text="1.0",
+            placeholder_text="1000",
             font=("Arial", 10),
             height=32
         )
         divider_entry.pack(fill="x", pady=(5, 0))
-        divider_entry.insert(0, str(current_config.get("divider", 1.0)))
+        divider_entry.insert(0, str(current_config.get("divider", 1000)))
         
         # Increment field
         increment_frame = ctk.CTkFrame(settings_frame, fg_color="transparent")
@@ -5906,12 +6128,12 @@ class OneStopShopMain:
         
         minimum_entry = ctk.CTkEntry(
             minimum_frame,
-            placeholder_text="0.0",
+            placeholder_text="1",
             font=("Arial", 10),
             height=32
         )
         minimum_entry.pack(fill="x", pady=(5, 0))
-        minimum_entry.insert(0, str(current_config.get("minimum", 0.0)))
+        minimum_entry.insert(0, str(current_config.get("minimum", 1)))
         
         # Help text
         help_label = ctk.CTkLabel(
@@ -5940,8 +6162,19 @@ class OneStopShopMain:
                     messagebox.showerror("Invalid", "Increment must be greater than 0")
                     return
                 
+                selected_labeled = rate_source_var.get().strip()
+                # Extract actual service name from labeled display (e.g., "(A) Formatting" -> "Formatting")
+                selected_rate_source = display_to_actual.get(selected_labeled, selected_labeled)
+                
+                if selected_rate_source not in available_rate_services:
+                    messagebox.showerror(
+                        "Invalid Rate Source",
+                        "Please select a valid Rate Source Service alias from the loaded card."
+                    )
+                    return
+
                 service_configs[service_name]["service_type"] = service_type_var.get()
-                service_configs[service_name]["rate_source_service"] = rate_source_var.get().strip() or service_name
+                service_configs[service_name]["rate_source_service"] = selected_rate_source
                 service_configs[service_name]["divider"] = divider
                 service_configs[service_name]["increment"] = increment
                 service_configs[service_name]["minimum"] = minimum
@@ -6704,7 +6937,7 @@ class OneStopShopMain:
         # Columns to ignore (metadata, not services)
         ignore_columns = {"Iso Code", "iso code", "ISO Code", "ISO CODE"}
         
-        # Extract services from rate card
+        # Extract services (aliases) from rate card
         rate_card_services = []
         for lang_data in rate_card.get("languages", {}).values():
             if isinstance(lang_data, dict) and "rates" in lang_data:
@@ -6722,6 +6955,62 @@ class OneStopShopMain:
             rate_card_name=rate_card_name
         )
 
+        # Keep only mappings whose alias exists in the currently loaded card.
+        current_aliases = {str(alias).strip() for alias in rate_card_services if str(alias).strip()}
+        mapping = {
+            str(alias): value
+            for alias, value in mapping.items()
+            if str(alias).strip() in current_aliases
+        }
+
+        # Recompute unmapped from current card aliases only.
+        unmapped = [alias for alias in rate_card_services if str(alias).strip() not in mapping]
+
+        # Debug: show canonical-to-alias mapping created during import normalization.
+        print("\n=== DEBUG: Import Canonical-to-Alias Mapping ===")
+        print(f"Rate card: {rate_card_name}")
+        if mapping:
+            emitted_pairs = set()
+            for raw_alias in sorted(mapping.keys(), key=lambda x: str(x).lower()):
+                mapped_value = mapping.get(raw_alias)
+                canonical_targets = mapped_value if isinstance(mapped_value, list) else [mapped_value]
+                for canonical_name in canonical_targets:
+                    canonical_clean = str(canonical_name).strip()
+                    alias_clean = str(raw_alias).strip()
+                    if canonical_clean and alias_clean:
+                        pair = (canonical_clean, alias_clean)
+                        if pair in emitted_pairs:
+                            continue
+                        emitted_pairs.add(pair)
+                        print(f"Mapping: (C) {canonical_clean} >> (A) {alias_clean}")
+        else:
+            print("Mapping: no canonical-to-alias mappings produced")
+
+        if unmapped:
+            print(f"[DEBUG] Unmapped aliases during import: {sorted(str(a).strip() for a in unmapped if str(a).strip())}")
+
+        # Build canonical -> original alias lookup for diagnostics/remap UX.
+        alias_lookup = {}
+        for raw_alias, mapped_value in mapping.items():
+            if isinstance(mapped_value, list):
+                for canonical_name in mapped_value:
+                    canonical_name = str(canonical_name).strip()
+                    if canonical_name:
+                        alias_lookup.setdefault(canonical_name, str(raw_alias))
+            else:
+                canonical_name = str(mapped_value).strip()
+                if canonical_name:
+                    alias_lookup.setdefault(canonical_name, str(raw_alias))
+
+        self.current_rate_aliases = alias_lookup
+
+        if alias_lookup:
+            print("=== DEBUG: Primary Canonical Alias Lookup (used by rate source) ===")
+            for canonical_name in sorted(alias_lookup.keys(), key=lambda x: str(x).lower()):
+                alias_name = str(alias_lookup.get(canonical_name, "")).strip()
+                if alias_name:
+                    print(f"Mapping: (C) {canonical_name} >> (A) {alias_name}")
+
         # Flag alias conflicts so the user knows some mappings are ambiguous
         if conflict_report.get("has_conflicts"):
             self.service_mapping_conflicts = conflict_report
@@ -6736,16 +7025,40 @@ class OneStopShopMain:
                 "The card will still load, but these mappings should be reviewed."
             )
             
-        # If there are unmapped services, show mapping dialog
+        # If there are unmapped services, show mapping dialog.
+        # wait_window() inside the dialog blocks until user saves/skips.
         if unmapped and self.current_account:
             self._show_service_mapping_dialog(
                 unmapped, 
                 mapping,
-                rate_card_name
+                rate_card_name,
+                sorted(current_aliases)
             )
-        
+            # Dialog has returned (user saved or skipped).
+            # Rebuild alias_lookup from the NOW-COMPLETE mapping so that
+            # all user-mapped aliases are captured in __canonical_aliases.
+            alias_lookup = {}
+            for raw_alias, mapped_value in mapping.items():
+                if isinstance(mapped_value, list):
+                    for canonical_name in mapped_value:
+                        canonical_name = str(canonical_name).strip()
+                        if canonical_name:
+                            alias_lookup.setdefault(canonical_name, str(raw_alias))
+                else:
+                    canonical_name = str(mapped_value).strip()
+                    if canonical_name:
+                        alias_lookup.setdefault(canonical_name, str(raw_alias))
+            self.current_rate_aliases = alias_lookup
+            print("=== DEBUG: Rebuilt alias_lookup after user mapping dialog ===")
+            for cn in sorted(alias_lookup.keys(), key=lambda x: str(x).lower()):
+                print(f"Mapping: (C) {cn} >> (A) {alias_lookup[cn]}")
+
         # Apply mapping to rate card
         normalized_card = self.service_mapper.apply_service_mapping(rate_card, mapping)
+
+        # Persist alias metadata so [Master] cards retain original alias display context.
+        normalized_card["__canonical_aliases"] = dict(self.current_rate_aliases)
+        print(f"[DEBUG] __canonical_aliases persisted ({len(self.current_rate_aliases)} entries): {dict(self.current_rate_aliases)}")
         
         # Save mapping for future use
         if self.current_account and mapping:
@@ -6945,8 +7258,202 @@ class OneStopShopMain:
         
         dialog.wait_window()
         return saved_name[0]
+
+    def _get_clean_rate_card_name(self, rate_card_name: str) -> str:
+        """Return rate card name without [Master] prefix."""
+        return (rate_card_name or "").replace("[Master] ", "").strip()
+
+    def _collect_rate_card_alias_candidates(self, rate_card: dict) -> set:
+        """Collect service aliases that might be referenced by rate_source_service."""
+        aliases = set()
+        if not isinstance(rate_card, dict):
+            return aliases
+
+        for lang_data in rate_card.get("languages", {}).values():
+            if isinstance(lang_data, dict) and isinstance(lang_data.get("rates"), dict):
+                for service_name in lang_data["rates"].keys():
+                    aliases.add(str(service_name).strip())
+
+        alias_meta = rate_card.get("__canonical_aliases", {})
+        if isinstance(alias_meta, dict):
+            for canonical_name, alias_name in alias_meta.items():
+                aliases.add(str(canonical_name).strip())
+                aliases.add(str(alias_name).strip())
+
+        return {a for a in aliases if a}
+
+    def _cleanup_account_rate_card_artifacts(self, clean_name: str, alias_candidates: set) -> dict:
+        """Delete account-scoped artifacts related to one rate card."""
+        results = {
+            "service_mapping_deleted": False,
+            "min_fee_deleted": False,
+            "conversion_deleted": False,
+            "quoteme_updates": 0
+        }
+
+        if not self.current_account:
+            return results
+
+        account_dir = Path(__file__).parent.parent / "Core" / "accounts" / self.current_account
+
+        # 1) Service mapping file for this account/rate card
+        service_mapping_file = account_dir / "service_mappings" / f"{clean_name}.json"
+        if service_mapping_file.exists():
+            try:
+                service_mapping_file.unlink()
+                results["service_mapping_deleted"] = True
+            except Exception as e:
+                print(f"[DEBUG] Could not delete service mapping file: {e}")
+
+        # 2) Min fee thresholds for this account/rate card
+        min_fee_file = account_dir / "min_fee_thresholds" / f"{clean_name}.json"
+        if min_fee_file.exists():
+            try:
+                min_fee_file.unlink()
+                results["min_fee_deleted"] = True
+            except Exception as e:
+                print(f"[DEBUG] Could not delete min fee file: {e}")
+
+        # 3) Currency conversion entry for this rate card
+        conv_path = account_dir / "currency_conversions.json"
+        if conv_path.exists():
+            try:
+                with open(conv_path, "r", encoding="utf-8") as f:
+                    conv_data = json.load(f)
+
+                conversions = conv_data.get("conversions", {})
+                if clean_name in conversions:
+                    del conversions[clean_name]
+                    conv_data["conversions"] = conversions
+                    with open(conv_path, "w", encoding="utf-8") as f:
+                        json.dump(conv_data, f, indent=2, ensure_ascii=False)
+                    results["conversion_deleted"] = True
+            except Exception as e:
+                print(f"[DEBUG] Could not update currency conversions: {e}")
+
+        # 4) QuoteMe mappings: reset rate_source_service links that point to removed aliases
+        quoteme_path = account_dir / "quoteme_mappings.json"
+        if quoteme_path.exists():
+            try:
+                with open(quoteme_path, "r", encoding="utf-8") as f:
+                    qm_data = json.load(f)
+
+                mappings = qm_data.get("mappings", {})
+                updates = 0
+                for svc_name, cfg in mappings.items():
+                    if not isinstance(cfg, dict):
+                        continue
+                    current_source = str(cfg.get("rate_source_service", "")).strip()
+                    if current_source and current_source in alias_candidates:
+                        cfg["rate_source_service"] = str(svc_name)
+                        updates += 1
+
+                if updates > 0:
+                    qm_data["mappings"] = mappings
+                    with open(quoteme_path, "w", encoding="utf-8") as f:
+                        json.dump(qm_data, f, indent=2, ensure_ascii=False)
+                results["quoteme_updates"] = updates
+            except Exception as e:
+                print(f"[DEBUG] Could not clean QuoteMe mapping links: {e}")
+
+        return results
+
+    def delete_selected_rate_card_data(self):
+        """Delete selected rate card data and account-specific mappings/artifacts."""
+        if not self.selected_rate_card:
+            messagebox.showwarning("No Rate Card", "Please select a rate card first")
+            return
+
+        if not self.current_account:
+            messagebox.showwarning("No Account", "Please select an account first")
+            return
+
+        selected_name = self.selected_rate_card
+        clean_name = self._get_clean_rate_card_name(selected_name)
+        is_master = selected_name.startswith("[Master] ")
+
+        confirm = messagebox.askyesno(
+            "Delete Rate Card Data",
+            (
+                f"Delete all data for rate card '{clean_name}'?\n\n"
+                f"This removes:\n"
+                f"- Selected rate card source ({'Master entry' if is_master else 'rate_cards_*.json file'})\n"
+                f"- Account service mappings for this rate card\n"
+                f"- Account min fee thresholds for this rate card\n"
+                f"- Account currency conversion for this rate card\n"
+                f"- QuoteMe rate_source links pointing to this card aliases\n\n"
+                f"Account: {self.current_account}\n"
+                f"This action cannot be undone."
+            )
+        )
+        if not confirm:
+            return
+
+        # Capture alias candidates before delete for QuoteMe link cleanup.
+        card_for_aliases = self.cached_rate_card if self.cached_rate_card else self.load_rate_card(selected_name)
+        alias_candidates = self._collect_rate_card_alias_candidates(card_for_aliases)
+
+        deleted_master = False
+        deleted_file = False
+
+        # Delete from master collection (if selected master card)
+        if is_master:
+            try:
+                master_data = self.load_master_rate_cards()
+                if clean_name in master_data.get("rate_cards", {}):
+                    del master_data["rate_cards"][clean_name]
+                    master_path = self.get_master_rate_cards_path()
+                    with open(master_path, "w", encoding="utf-8") as f:
+                        json.dump(master_data, f, indent=2, ensure_ascii=False)
+                    deleted_master = True
+            except Exception as e:
+                print(f"[DEBUG] Could not delete master rate card: {e}")
+
+        # Delete backing file rate card if present
+        try:
+            rate_card_file = Path(__file__).parent.parent / "Rate_Card_Builder" / f"rate_cards_{clean_name}.json"
+            if rate_card_file.exists():
+                rate_card_file.unlink()
+                deleted_file = True
+        except Exception as e:
+            print(f"[DEBUG] Could not delete rate card file: {e}")
+
+        cleanup = self._cleanup_account_rate_card_artifacts(clean_name, alias_candidates)
+
+        # Reset local state if this card was active
+        self.selected_rate_card = None
+        self.cached_rate_card = None
+        self.current_rate_aliases = {}
+        self.last_rate_diagnostics = {}
+        self.rate_card_info.configure(text="ℹ️ No rate card loaded. Select from dropdown or browse for a file.")
+        self._update_rate_issues_panel(None)
+        self.native_currency_label.configure(text="USD")
+        self.target_currency_dropdown.set("USD")
+        self.conversion_rate_entry.delete(0, "end")
+        self.conversion_rate_entry.insert(0, "1.0")
+
+        self.refresh_rate_card_dropdown()
+
+        messagebox.showinfo(
+            "Rate Card Data Deleted",
+            (
+                f"Rate card cleanup complete for '{clean_name}'.\n\n"
+                f"Deleted master entry: {'Yes' if deleted_master else 'No'}\n"
+                f"Deleted rate card file: {'Yes' if deleted_file else 'No'}\n"
+                f"Deleted service mapping: {'Yes' if cleanup['service_mapping_deleted'] else 'No'}\n"
+                f"Deleted min fee thresholds: {'Yes' if cleanup['min_fee_deleted'] else 'No'}\n"
+                f"Deleted conversion entry: {'Yes' if cleanup['conversion_deleted'] else 'No'}\n"
+                f"QuoteMe rate-source links reset: {cleanup['quoteme_updates']}"
+            )
+        )
     
-    def _show_service_mapping_dialog(self, unmapped_services: list, current_mapping: dict, rate_card_name: str):
+    def _show_service_mapping_dialog(
+        self,
+        unmapped_services: list,
+        current_mapping: dict,
+        rate_card_name: str,
+        all_rate_card_aliases: Optional[list] = None
+    ):
         """
         Show dialog for user to map unmapped services to canonical names.
         
@@ -6964,7 +7471,7 @@ class OneStopShopMain:
         # Title
         title_label = ctk.CTkLabel(
             dialog,
-            text=f"Map Unmapped Services from {rate_card_name}",
+            text=f" Rate Card Services from {rate_card_name}",
             font=("Arial", 14, "bold")
         )
         title_label.pack(pady=10, padx=20)
@@ -6972,7 +7479,10 @@ class OneStopShopMain:
         # Info text
         info_label = ctk.CTkLabel(
             dialog,
-            text=f"The following {len(unmapped_services)} service(s) need to be mapped to canonical names:\n(Select a canonical name from the dropdown for each service)",
+            text=(
+                f"Found {len(all_rate_card_aliases or []) or len(unmapped_services)} alias(es) in this Rate Card.\n"
+                f"Each alias can map to multiple canonical services."
+            ),
             font=("Arial", 10),
             text_color="#888",
             wraplength=650
@@ -7000,21 +7510,74 @@ class OneStopShopMain:
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         
-        # Create dropdown for each unmapped service
-        service_dropdowns = {}
-        for idx, unmapped_service in enumerate(unmapped_services):
+        # Build alias options only from the currently loaded card.
+        loaded_card_aliases = []
+        card_for_aliases = self.cached_rate_card if isinstance(self.cached_rate_card, dict) else None
+        if card_for_aliases is None and self.selected_rate_card:
+            card_for_aliases = self.load_rate_card(self.selected_rate_card)
+        if card_for_aliases is None:
+            card_for_aliases = self.load_rate_card(rate_card_name)
+
+        if isinstance(card_for_aliases, dict):
+            alias_set = set()
+            for lang_data in card_for_aliases.get("languages", {}).values():
+                if isinstance(lang_data, dict) and isinstance(lang_data.get("rates"), dict):
+                    for alias_name in lang_data["rates"].keys():
+                        alias_clean = str(alias_name).strip()
+                        if alias_clean:
+                            alias_set.add(alias_clean)
+            loaded_card_aliases = sorted(alias_set)
+
+        if all_rate_card_aliases:
+            loaded_card_aliases = sorted({str(alias).strip() for alias in all_rate_card_aliases if str(alias).strip()})
+
+        if not loaded_card_aliases:
+            loaded_card_aliases = sorted({str(s).strip() for s in unmapped_services if str(s).strip()})
+
+        # Render a row for each alias in the current rate card.
+        row_aliases = loaded_card_aliases if loaded_card_aliases else list(unmapped_services)
+
+        # Create dropdown for each alias row
+        service_dropdowns = []
+        for idx, unmapped_RateCard_service in enumerate(row_aliases):
             frame = ctk.CTkFrame(scrollable_frame, fg_color="#3b3b3b", corner_radius=5)
             frame.pack(fill="x", pady=8, padx=20)
             
-            # Service name label
+            # Mapping row label
             service_label = ctk.CTkLabel(
                 frame,
-                text=f"{idx + 1}. {unmapped_service}",
+                text=f"{idx + 1}. Alias mapping row",
                 font=("Arial", 11, "bold"),
                 text_color="#fff",
                 anchor="w"
             )
             service_label.pack(fill="x", padx=10, pady=(8, 4))
+
+            # Primary alias selector (from loaded card aliases only)
+            alias_frame = ctk.CTkFrame(frame, fg_color="transparent")
+            alias_frame.pack(fill="x", padx=10, pady=(0, 6))
+
+            ctk.CTkLabel(
+                alias_frame,
+                text="Rate Card Alias:",
+                font=("Arial", 9),
+                text_color="#aaa"
+            ).pack(side="left", padx=(0, 10))
+
+            initial_alias = str(unmapped_RateCard_service).strip()
+            if initial_alias not in loaded_card_aliases and loaded_card_aliases:
+                initial_alias = loaded_card_aliases[0]
+
+            alias_var = ctk.StringVar(value=initial_alias)
+            alias_dropdown = ctk.CTkComboBox(
+                alias_frame,
+                variable=alias_var,
+                values=loaded_card_aliases,
+                state="readonly",
+                width=400,
+                font=("Arial", 10)
+            )
+            alias_dropdown.pack(side="right", fill="x", expand=True, padx=(80, 0))
             
             # Dropdown for canonical names
             dropdown_frame = ctk.CTkFrame(frame, fg_color="transparent")
@@ -7028,8 +7591,23 @@ class OneStopShopMain:
             )
             dropdown_label.pack(side="left", padx=(0, 10))
             
+            existing_targets = current_mapping.get(initial_alias, None)
+            initial_primary_target = ""
+            initial_extra_targets = []
+            if isinstance(existing_targets, list) and existing_targets:
+                initial_primary_target = str(existing_targets[0]).strip()
+                initial_extra_targets = [
+                    str(t).strip() for t in existing_targets[1:]
+                    if str(t).strip() and str(t).strip() in self.service_mapper.canonical_services
+                ]
+            elif isinstance(existing_targets, str):
+                initial_primary_target = existing_targets.strip()
+
+            if initial_primary_target not in self.service_mapper.canonical_services:
+                initial_primary_target = ""
+
             # Use StringVar to track dropdown value
-            var = ctk.StringVar(value="")
+            var = ctk.StringVar(value=initial_primary_target)
             
             dropdown = ctk.CTkComboBox(
                 dropdown_frame,
@@ -7040,7 +7618,109 @@ class OneStopShopMain:
                 font=("Arial", 10)
             )
             dropdown.pack(side="right", fill="x", expand=True, padx=(80, 0))
-            service_dropdowns[unmapped_service] = var
+
+            additional_targets = list(initial_extra_targets)
+
+            extra_label = ctk.CTkLabel(
+                frame,
+                text="Additional canonical targets for this alias:",
+                font=("Arial", 8),
+                text_color="#9aa0a6",
+                anchor="w"
+            )
+            extra_label.pack(fill="x", padx=10, pady=(0, 2))
+
+            extra_frame = ctk.CTkFrame(frame, fg_color="transparent")
+            extra_frame.pack(fill="x", padx=10, pady=(0, 4))
+
+            extra_target_var = ctk.StringVar(value="")
+            extra_target_combo = ctk.CTkComboBox(
+                extra_frame,
+                variable=extra_target_var,
+                values=self.service_mapper.canonical_services,
+                state="normal",
+                width=320,
+                font=("Arial", 9)
+            )
+            extra_target_combo.pack(side="left", fill="x", expand=True)
+
+            added_targets_frame = ctk.CTkFrame(frame, fg_color="transparent")
+            added_targets_frame.pack(fill="x", padx=10, pady=(0, 8))
+
+            def render_added_targets():
+                for child in added_targets_frame.winfo_children():
+                    child.destroy()
+
+                if not additional_targets:
+                    ctk.CTkLabel(
+                        added_targets_frame,
+                        text="No extra canonical targets added",
+                        font=("Arial", 8),
+                        text_color="#7f8c8d",
+                        anchor="w"
+                    ).pack(anchor="w")
+                    return
+
+                for target_name in additional_targets:
+                    chip = ctk.CTkFrame(added_targets_frame, fg_color="#37474f", corner_radius=6)
+                    chip.pack(side="left", padx=(0, 6), pady=2)
+
+                    ctk.CTkLabel(
+                        chip,
+                        text=target_name,
+                        font=("Arial", 8),
+                        text_color="#ecf0f1"
+                    ).pack(side="left", padx=(8, 4), pady=3)
+
+                    def remove_target(target_canonical=target_name):
+                        if target_canonical in additional_targets:
+                            additional_targets.remove(target_canonical)
+                            render_added_targets()
+
+                    ctk.CTkButton(
+                        chip,
+                        text="x",
+                        width=18,
+                        height=18,
+                        font=("Arial", 9, "bold"),
+                        fg_color="#c0392b",
+                        hover_color="#a93226",
+                        command=remove_target
+                    ).pack(side="left", padx=(0, 4), pady=2)
+
+            def add_target_to_row():
+                candidate = extra_target_var.get().strip()
+                primary_target = var.get().strip()
+                if not candidate:
+                    return
+                if candidate not in self.service_mapper.canonical_services:
+                    messagebox.showwarning(
+                        "Invalid Canonical Service",
+                        "Canonical service must be selected from the canonical services list."
+                    )
+                    return
+                if candidate == primary_target or candidate in additional_targets:
+                    return
+                additional_targets.append(candidate)
+                render_added_targets()
+                extra_target_var.set("")
+
+            ctk.CTkButton(
+                extra_frame,
+                text="+",
+                width=28,
+                height=26,
+                font=("Arial", 11, "bold"),
+                command=add_target_to_row
+            ).pack(side="left", padx=(6, 0))
+
+            render_added_targets()
+
+            service_dropdowns.append({
+                "alias": alias_var,
+                "primary_target": var,
+                "additional_targets": additional_targets,
+            })
         
         # Enable mouse wheel scrolling
         def _on_mousewheel(event):
@@ -7058,12 +7738,47 @@ class OneStopShopMain:
         
         def on_save():
             """Save the mappings"""
+            alias_assignments = {}
+
+            # Enforce per-card isolation: drop aliases not present in the current loaded card.
+            for existing_alias in list(current_mapping.keys()):
+                if str(existing_alias).strip() not in loaded_card_aliases:
+                    del current_mapping[existing_alias]
+
+            for controls in service_dropdowns:
+                selected_target = controls["primary_target"].get().strip()
+                primary_alias = controls["alias"].get().strip()
+                extra_targets = controls["additional_targets"]
+
+                if not selected_target:
+                    continue
+
+                if primary_alias not in loaded_card_aliases:
+                    messagebox.showerror(
+                        "Invalid Alias",
+                        f"'{primary_alias}' is not part of the currently loaded card aliases."
+                    )
+                    return
+
+                all_targets = [selected_target] + [t for t in extra_targets if t and t != selected_target]
+                for canonical_name in all_targets:
+                    if canonical_name not in self.service_mapper.canonical_services:
+                        messagebox.showerror(
+                            "Invalid Canonical Service",
+                            f"'{canonical_name}' is not a valid canonical service."
+                        )
+                        return
+                alias_assignments.setdefault(primary_alias, [])
+                for canonical_name in all_targets:
+                    if canonical_name not in alias_assignments[primary_alias]:
+                        alias_assignments[primary_alias].append(canonical_name)
+
             mapped_count = 0
-            for service, var in service_dropdowns.items():
-                selected = var.get()
-                if selected:
-                    current_mapping[service] = selected
-                    mapped_count += 1
+            for alias_name, canonical_targets in alias_assignments.items():
+                if not canonical_targets:
+                    continue
+                current_mapping[alias_name] = canonical_targets[0] if len(canonical_targets) == 1 else canonical_targets
+                mapped_count += 1
             
             # Save to file
             if self.current_account:
@@ -7074,7 +7789,7 @@ class OneStopShopMain:
                 )
                 messagebox.showinfo(
                     "Success",
-                    f"Service mappings saved for {rate_card_name}\n({mapped_count} service(s) mapped)"
+                    f"Service mappings saved for {rate_card_name}\n({mapped_count} alias(es) mapped; multi-canonical enabled)"
                 )
             
             dialog.destroy()
@@ -7097,7 +7812,84 @@ class OneStopShopMain:
         )
         save_btn.pack(side="right", padx=5)
 
+        # Block the calling function until the user saves or skips.
+        # Without this, normalize_rate_card_services() continues immediately
+        # and bakes an incomplete alias_lookup into __canonical_aliases.
+        dialog.wait_window(dialog)
+
     
+    def clear_charges_data(self):
+        """Clear QuoteMe/manual WC data and refresh the services table UI."""
+        self.quoteme_data = None
+        self.language_pairs = []
+        self.manual_wc_data = {}
+        self.workflow_service_data = {}
+        self.calculated_quantities_cache = {}
+        self.last_rate_diagnostics = {}
+
+        self._update_rate_issues_panel(None)
+
+        # Rebuild table from workflow services with no LP-derived quantities.
+        services = None
+        if self.current_account and self.selected_workflow:
+            services = self.account_workflow_manager.get_workflow_services(
+                self.current_account,
+                self.selected_workflow
+            )
+
+        self.populate_services_table(services)
+        self.update_status("Cleared QuoteMe and Manual WC data")
+
+    def _update_rate_issues_panel(self, diagnostics: Optional[dict]):
+        """Render compact rate diagnostics in the Job Charges panel."""
+        if not hasattr(self, "rate_issues_info"):
+            return
+
+        if not diagnostics:
+            self.rate_issues_info.configure(
+                text="Rate Issues: No diagnostics yet",
+                text_color="#95a5a6"
+            )
+            if hasattr(self, "fix_rate_issues_btn"):
+                self.fix_rate_issues_btn.configure(state="disabled")
+            return
+
+        total = diagnostics.get("total_cells", 0)
+        matched = diagnostics.get("matched_rates", 0)
+        miss_lang = diagnostics.get("missing_language", 0)
+        miss_svc = diagnostics.get("missing_service", 0)
+        miss_other = diagnostics.get("missing_other", 0)
+        samples = diagnostics.get("samples", []) or []
+
+        if matched == total and total > 0:
+            self.rate_issues_info.configure(
+                text=f"Rate Issues: none ({matched}/{total} matched)",
+                text_color="#27ae60"
+            )
+            if hasattr(self, "fix_rate_issues_btn"):
+                self.fix_rate_issues_btn.configure(state="disabled")
+            return
+
+        lines = [
+            f"Rate Issues: matched {matched}/{total} | missing language {miss_lang}, missing service {miss_svc}, other {miss_other}"
+        ]
+
+        for sample in samples:
+            service = sample.get("display_service", sample.get("service", ""))
+            lp = sample.get("lp", "")
+            reason = sample.get("reason", "")
+            rate_source = sample.get("display_rate_source", sample.get("rate_source", ""))
+            lines.append(
+                f"- {service} ({lp}) -> {reason} [rate source: {rate_source}]"
+            )
+
+        self.rate_issues_info.configure(
+            text="\n".join(lines),
+            text_color="#e67e22"
+        )
+        if hasattr(self, "fix_rate_issues_btn"):
+            self.fix_rate_issues_btn.configure(state="normal")
+
     def populate_services_table(self, services: Optional[list]):
         """
         Populate the services table with workflow services and language pair columns.
@@ -7456,15 +8248,76 @@ class OneStopShopMain:
         for child in widget.winfo_children():
             self._rebind_services_mousewheel(child)
 
+    def _get_loaded_rate_card_aliases_for_source(self) -> list:
+        """Return rate source aliases from the currently selected rate card only."""
+        if not self.selected_rate_card:
+            return []
+
+        raw_card = self.load_rate_card(self.selected_rate_card)
+        if not isinstance(raw_card, dict):
+            return []
+
+        card_keys = set()
+        for lang_data in raw_card.get("languages", {}).values():
+            if isinstance(lang_data, dict) and isinstance(lang_data.get("rates"), dict):
+                for svc_name in lang_data["rates"].keys():
+                    svc_clean = str(svc_name).strip()
+                    if svc_clean:
+                        card_keys.add(svc_clean)
+
+        alias_meta = raw_card.get("__canonical_aliases", {})
+        alias_values = set()
+        if isinstance(alias_meta, dict):
+            for alias_name in alias_meta.values():
+                alias_clean = str(alias_name).strip()
+                if alias_clean:
+                    alias_values.add(alias_clean)
+
+        # For master cards, aliases must come from persisted alias metadata only.
+        if str(self.selected_rate_card).startswith("[Master] "):
+            return sorted(alias_values)
+
+        # For file cards, aliases are the raw service keys.
+        return sorted(card_keys)
+
+    def _label_rate_sources_for_display(self, rate_sources: list) -> tuple:
+        """
+        Label rate source services for display: (C) for canonical, (A) for alias.
+        Returns: (labeled_list, display_to_actual_map)
+        """
+        canonical_set = set(str(s).strip() for s in self.service_mapper.canonical_services)
+        labeled_list = []
+        display_to_actual = {}
+
+        for source in rate_sources:
+            source_clean = str(source).strip()
+            if source_clean in canonical_set:
+                labeled = f"(C) {source_clean}"
+            else:
+                labeled = f"(A) {source_clean}"
+            labeled_list.append(labeled)
+            display_to_actual[labeled] = source_clean
+
+        return labeled_list, display_to_actual
+
     def update_rates_in_table(self, rate_card: dict):
         """Update rate values in the services table from a rate card"""
         if not self.workflow_service_widgets:
-            return
+            self._update_rate_issues_panel(None)
+            return None
+
+        # Load alias metadata from normalized/master rate cards.
+        if isinstance(rate_card, dict):
+            alias_meta = rate_card.get("__canonical_aliases", {})
+            if isinstance(alias_meta, dict) and alias_meta:
+                self.current_rate_aliases = dict(alias_meta)
 
         # Load service configs once so we can honor rate_source_service overrides
         account_mapping = {}
         if self.current_account:
             account_mapping = self.quoteme_value_mapper.load_mapping(self.current_account)
+
+        current_alias_sources = set(self._get_loaded_rate_card_aliases_for_source())
         
         # Debug: Print rate card structure
         print("\n=== DEBUG: Rate Card Structure ===")
@@ -7475,16 +8328,26 @@ class OneStopShopMain:
                 if isinstance(lang_data, dict) and "rates" in lang_data:
                     print(f"Services in {lang_name}: {list(lang_data['rates'].keys())}")
         
+        diagnostics = {
+            "total_cells": 0,
+            "matched_rates": 0,
+            "missing_language": 0,
+            "missing_service": 0,
+            "missing_other": 0,
+            "samples": []
+        }
+
         for service, service_data in self.workflow_service_widgets.items():
             service_config = None
             if account_mapping:
                 service_config = self.quoteme_value_mapper.get_service_config_from_mapping(account_mapping, service)
 
-            rate_source_service = service_config.get("rate_source_service", service) if service_config else service
-            if not rate_source_service:
-                rate_source_service = service
+            rate_source_service = str(service_config.get("rate_source_service", "")).strip() if service_config else ""
+            if rate_source_service not in current_alias_sources:
+                rate_source_service = ""
 
             for lp, widgets in service_data.items():
+                diagnostics["total_cells"] += 1
                 # Extract target language from language pair (e.g., "Polish" from "English > Polish")
                 if ">" in lp:
                     _, target_lang = lp.split(">", 1)
@@ -7493,12 +8356,73 @@ class OneStopShopMain:
                     target_lang = lp
                 
                 # Get rate based on target language
-                rate = self.get_rate_from_card(rate_card, rate_source_service, target_lang)
-                print(f"DEBUG: WorkflowService='{service}', RateSource='{rate_source_service}', LP='{lp}', Target='{target_lang}' -> Rate='{rate}'")
+                resolved = self._resolve_rate_from_card_details(rate_card, rate_source_service, target_lang)
+                rate = resolved.get("rate", "")
+                reason = resolved.get("reason", "")
+                print(f"DEBUG: WorkflowService='{service}', RateSource='{rate_source_service}', LP='{lp}', Target='{target_lang}' -> Rate='{rate}', Reason='{reason}'")
                 
                 if rate:
                     widgets["rate"].delete(0, "end")
                     widgets["rate"].insert(0, rate)
+                    widgets["rate"].configure(border_color="#505050", placeholder_text="0.00")
+                    diagnostics["matched_rates"] += 1
+                else:
+                    widgets["rate"].delete(0, "end")
+                    widgets["rate"].configure(border_color="#d35400", placeholder_text="No rate")
+
+                    if reason == "language_not_found":
+                        diagnostics["missing_language"] += 1
+                    elif reason == "service_not_found":
+                        diagnostics["missing_service"] += 1
+                    else:
+                        diagnostics["missing_other"] += 1
+
+                    if len(diagnostics["samples"]) < 5:
+                        display_service = self.current_rate_aliases.get(service, service)
+                        display_rate_source = self.current_rate_aliases.get(rate_source_service, rate_source_service)
+                        diagnostics["samples"].append(
+                            {
+                                "service": service,
+                                "display_service": display_service,
+                                "rate_source": rate_source_service,
+                                "display_rate_source": display_rate_source,
+                                "lp": lp,
+                                "reason": reason,
+                                "matched_lang": resolved.get("matched_lang", "")
+                            }
+                        )
+
+        self.last_rate_diagnostics = diagnostics
+
+        if diagnostics["samples"]:
+            print("[DEBUG] Rate diagnostics sample misses:")
+            for sample in diagnostics["samples"]:
+                print(
+                    "  - Service='{}' RateSource='{}' LP='{}' Reason='{}' MatchedLang='{}'".format(
+                        sample.get("display_service", sample.get("service", "")),
+                        sample.get("display_rate_source", sample.get("rate_source", "")),
+                        sample.get("lp", ""),
+                        sample.get("reason", ""),
+                        sample.get("matched_lang", "")
+                    )
+                )
+
+        if hasattr(self, "rate_card_info"):
+            total = diagnostics["total_cells"]
+            matched = diagnostics["matched_rates"]
+            miss_lang = diagnostics["missing_language"]
+            miss_svc = diagnostics["missing_service"]
+            miss_other = diagnostics["missing_other"]
+            selected_display = (self.selected_rate_card or "").replace("[Master] ", "") or "Rate health"
+            summary = (
+                f"✓ {selected_display}: {matched}/{total} matched | "
+                f"Missing language: {miss_lang}, Missing service: {miss_svc}, Other: {miss_other}"
+            )
+            self.rate_card_info.configure(text=summary)
+
+        self._update_rate_issues_panel(diagnostics)
+
+        return diagnostics
     
     def update_quantities_from_quoteme(self, workflow_name: str):
         """
@@ -7530,10 +8454,9 @@ class OneStopShopMain:
             self.current_account
         )
         print(f"[DEBUG] Loaded account mapping from '{self.current_account}': {list(mapping.keys())}")
-        
+
         if not mapping:
-            print(f"[DEBUG] No mapping found for account '{self.current_account}' - aborting")
-            return  # No mapping defined for this account
+            print(f"[DEBUG] No mapping found for account '{self.current_account}' - using fallback quantity logic")
         
         # Create a mapping of LP name to its corresponding word count data
         # Supports both QuoteMe data and manual WC data
@@ -7578,8 +8501,27 @@ class OneStopShopMain:
 
             service_config = self.quoteme_value_mapper.get_service_config_from_mapping(mapping, service)
             if not service_config:
-                print(f"[DEBUG] Service '{service}' NOT in mapping (even after canonical/normalized match) - skipping")
-                continue
+                # Fallback behavior: keep quantity population working even when mapping is incomplete.
+                # This avoids silent all-zero tables for new test accounts.
+                inferred_type = "Fee" if (
+                    service == "Rush Premium" or self.quoteme_value_mapper.is_fee_service(service)
+                ) else "Word"
+
+                if inferred_type == "Fee":
+                    service_config = {
+                        "service_type": "Fee",
+                        "fields": [],
+                        "minimum": 1
+                    }
+                else:
+                    service_config = {
+                        "service_type": "Word",
+                        "fields": list(self.quoteme_value_mapper.available_fields)
+                    }
+
+                print(
+                    f"[DEBUG] Service '{service}' missing mapping - using fallback config: {service_config}"
+                )
 
             print(f"[DEBUG] Processing service: {service}")
             service_type = service_config.get("service_type", "Word")
